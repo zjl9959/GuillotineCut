@@ -79,11 +79,11 @@ $$
 
 - **HHED (horizontal exclusive definition)** 
 $$
-x_{i} - x_{j} \ge \textrm{w}(j) - W \cdot (1 - r_{ij}), \quad \forall i, j \in I
+x_{i} + W \cdot (1 - r_{ij}) \ge x_{j} + \textrm{w}(j), \quad \forall i, j \in I
 $$
 - **HVED (vertical exclusive definition)** 
 $$
-y_{i} - y_{j} \ge \textrm{h}(j) - H \cdot (1 - u_{ij}), \quad \forall i, j \in I
+y_{i} + H \cdot (1 - u_{ij})  \ge y_{j} + \textrm{h}(j), \quad \forall i, j \in I
 $$
 
 - **HHRP (horizontal relative position)** 
