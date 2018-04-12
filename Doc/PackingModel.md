@@ -30,7 +30,7 @@
 
 ## Decision
 
-| Variable     | Description                                                | type | Domain     | Remark                                                     |
+| Variable     | Description                                                | Type | Domain     | Remark                                                     |
 | -------------- | ------------------------------------------------------------ | ---- | ------------- | ------------------------------------------------------------ |
 | $x_{i}$       | horizontal position of the item $i$'s left bottom                           | real | $[0, W]$ | in Cartesian coordinate system |
 | $y_{i}$ | vertical position of the item $i$'s left bottom | real | $[0, H]$ | in Cartesian coordinate system |

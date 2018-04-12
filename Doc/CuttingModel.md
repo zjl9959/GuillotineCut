@@ -22,36 +22,44 @@
 | $F$ | (**f**law) defect set | $[1, 200]$  | $f$ |               |
 | $G$ | (**g**lass) raw material set | $[1, 200]$ | $g$ |               |
 | $C$ | (**c**ut) cut set | $[1, 200]$ | $c$ | |
-| $L^{1}$ | layer-1 virtual bin |  | $l, l'$ | |
-| $L^{2}_{l}$ | layer-2 virtual bin |  | $m, m'$ | |
-| $L^{3}_{lm}$ | layer-3 virtual bin |  | $n, n'$ | |
+| $L^{1}$ | layer-1 virtual bin |  | $l, l'$ | need good estimation |
+| $L^{2}_{l}$ | layer-2 virtual bin |  | $m, m'$ | need good estimation |
+| $L^{3}_{lm}$ | layer-3 virtual bin |  | $n, n'$ | need good estimation |
 
 ### Constant
 
 | Constant | Description                    | Type | Range       | Remark |
 | -------- | ------------------------------ | ---- | ----------- | ------ |
-| $W$      | the width of the raw material  | real | $(0, 1000]$ |        |
-| $H$      | the height of the raw material | real | $(0, 1000]$ |        |
+| $W$     | the width of the raw material  | real | $(0, 10000]$ | 6000 in challenge |
+| $H$      | the height of the raw material | real | $(0, 10000]$ | 3210 in challenge |
+| $W^{+}_{1}$ | the max width of every non-trivial L1 virtual bin | real | $(0, W]$ | 3500 in challenge |
+| $W^{-}_{1}$ | the min width of every non-trivial L1 virtual bin | real | $(0, W]$ | 100 in challenge |
+| $H^{-}_{2}$ | the min height of every non-trivial L2 virtual bin | real | $(0, H]$ | 100 in challenge |
+| $W^{-}_{3}$ | the min width of every non-trivial empty L3 virtual bin | real | $(0, W]$ | 20 in challenge |
+| $H^{-}_{4}$ | the min height of every non-trivial empty L4 virtual bin | real | $(0, H]$ | 20 in challenge |
 | $w_{i}, w_{f}$ | the width of the item $i$ or flaw $f$ | real | $(0, W]$    |        |
 | $h_{i}, h_{f}$ | the height of the item $i$ or flaw $f$ | real | $(0, H]$    |        |
-| $x_{f}$     | horizontal position of the flaw $f$'s left bottom                        | real | $[0, W]$ | in Cartesian coordinate system |
-| $y_{f}$ | vertical position of the flaw $f$'s left bottom | real | $[0, H]$ | in Cartesian coordinate system |
+| $x_{f}$     | horizontal position of the flaw $f$'s left bottom                        | real | $[0, W - w_{f}]$ | in Cartesian coordinate system |
+| $y_{f}$ | vertical position of the flaw $f$'s left bottom | real | $[0, H - h_{f}]$ | in Cartesian coordinate system |
 
 
 ## Decision
 
-| Variable     | Description                                                | type | Domain     | Remark                                                     |
+| Variable     | Description                                                | Type | Domain     | Remark                                                     |
 | -------------- | ------------------------------------------------------------ | ---- | ------------- | ------------------------------------------------------------ |
-| $d_{i}$       | item $i$ is rotated 90 degree            | bool  | $\{0, 1\}$ |                                              |
-| $\omega^{1}_{l}$ | width of the layer-1 virtual bin $l$ | real | $[0, W]$ | |
-| $\eta^{2}_{lm}$ | height of the layer-2 virtual bin $m$ in L1 virtual bin $l$ | real | $[0, H]$ | |
-| $\omega^{3}_{lmn}$ | width of the layer-3 virtual bin $n$ in L2 virtual bin $(l, m)$ | real | $[0, W]$ | |
+| $d_{i}$       | item $i$ is rotated 90 degree            | bool  | $\{0, 1\}$ |  |
+| $\omega^{1}_{l}$ | width of the L1 virtual bin $l$ | real | $[0, +\infty)$ | |
+| $\eta^{2}_{lm}$ | height of the L2 virtual bin $m$ in L1 virtual bin $l$ | real | $[0, +\infty)$ | |
+| $\omega^{3}_{lmn}$ | width of the L3 virtual bin $n$ in L2 virtual bin $(l, m)$ | real | $[0, +\infty)$ |  |
+| $e_{lmn}$ | L3 virtual bin $(l, m, n)$ conatins waste | bool | $\{0, 1\} $ |  |
 | $p_{lmni}$ | item $i$ is placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
 | $c_{lmnf}$ | L3 virtual bin $(l, m, n)$ contains flaw $f$ | bool | $\{0, 1\}$ | |
-| $c^{k}_{lmnf}$ | L3 virtual bin $(l, m, n)$ is not on the $k^\textrm{th}$ side of flaw $f$ | bool | $\{0, 1\}$ | $k = \{1\textrm{:right}, 2\textrm{:left}, 3\textrm{:up}, 4\textrm{:down}\}$ |
+| $c^{k}_{lmnf}$ | L3 virtual bin $(l, m, n)$ is not on the $k^\textrm{th}$ side of flaw $f$ | bool | $\{0, 1\}$ | $k \in \{1\textrm{:right}, 2\textrm{:left}, 3\textrm{:up}, 4\textrm{:down}\}$ |
 
 ### Convention and Function
 
+- a trivial bin means a bin with 0 width or height, which is nothing.
+- an empty bin means a bin without item placed in, which could be waste or residual.
 - define function $\textrm{w}(i) = w_{i} \cdot (1 - d_{i}) + h_{i} \cdot d_{i}$ to indicate the actual width of item $i$ regarding its rotation.
 - define function $\textrm{h}(i) = h_{i} \cdot (1 - d_{i}) + w_{i} \cdot d_{i}$ to indicate the actual height of item $i$ regarding its rotation.
 - define function $\textrm{x}(l, m, n) = \sum\limits_{l' \in L^{1}, l' < l} \omega^{1}_{l'} + \sum\limits_{n' \in L^{3}_{lm}, n' < n} \omega^{3}_{lmn'}$ to indicate the horizontal position of L3 virtual bin $(l, m, n)$'s left bottom.
@@ -93,31 +101,46 @@ there are several notations about the constraints.
 
 all of the following constraints must be satisfied.
 
-- **HMW1 (L1 max width)** the sum of all L1 virtual bin's width should not exceed the width of the raw material.
+- **HWB1 (L1 width bound)** L1 virtual bin $l$'s width should not exceed the width limits if there are items placed in.
+$$
+W^{-}_{1} \cdot p_{lmni} \le \omega^{1}_{l} \le W^{+}_{1} \cdot p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall i \in I
+$$
+- **HMH2 (L2 min height)** L2 virtual bin $(l, m)$'s height should not be less than the min height.
+$$
+\eta^{2}_{lm} \ge H^{-}_{2} \cdot p_{lmni} + H^{-}_{4} \cdot e_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall i \in I
+$$
+- **HMW3 (L3 min width)** L3 virtual bin $(l, m, n)$'s width should not be less than the min width if it is empty.
+$$
+\omega^{3}_{lmn} \ge W^{-}_{3} - W \cdot p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall i \in I
+$$
+
+- **HTW1 (L1 total width)** the sum of all L1 virtual bin's width should not exceed the width of the raw material.
 $$
 \sum_{l \in L^{1}} \omega^{1}_{l} \le W
 $$
-- **HMH2 (L2 max height)** the sum of all L2 virtual bin's height should not exceed the height of the raw material.
+- **HTH2 (L2 total height)** the sum of all L2 virtual bin's height should be equal to the height of the raw material.
 $$
-\sum_{m \in L^{2}_{l}} \eta^{2}_{lm} \le H, \quad \forall l \in L^{1}
+\sum_{m \in L^{2}_{l}} \eta^{2}_{lm} = H, \quad \forall l \in L^{1}
 $$
-- **HMW3 (L3 max width)** the sum of all L3 virtual bin's width should not exceed the width of its covering L1 virtual bin.
+- **HTW3 (L3 total width)** the sum of all L3 virtual bin's width should not exceed the width of its covering L1 virtual bin.
 $$
 \sum_{n \in L^{3}_{l}} \omega^{3}_{lmn} \le \omega^{1}_{l}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
 $$
 
-- **HHF.L (horizontal fitting)** the width of the item $i$ should be the same as the width of a L3 virtual bin $(l, m, n)$ if $i$ is placed in.
+- **HHF.L (horizontal fitting)** the width of the item $i$ should be equal to the width of a L3 virtual bin $(l, m, n)$ if $i$ is placed in.
 $W$ can be any value that is no less than $\omega^{3}_{lmn}$.
 $$
 \textrm{w}(i) \ge \omega^{3}_{lmn} - W \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
-- **HHB (horizontal bound)** the width of the item $i$ should not exceed the width of a L3 virtual bin $(l, m, n)$ if $i$ is placed in.
+- **HHB (horizontal bound)** the width of the item $i​$ should not exceed the width of a L3 virtual bin $(l, m, n)​$ if $i​$ is placed in.
+one can reduce $W$ to $\max\{w_{i}, h_{i}\}$ to tighten the bound, but it may not accelerate the optimization.
 $$
-\textrm{w}(i) \le \omega^{3}_{lmn} + \max\{w_{i}, h_{i}\} \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+\textrm{w}(i) \le \omega^{3}_{lmn} + W \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
-- **HVB (vertical bound)** the height of the item $i$ should not exceed the height of a L2 virtual bin $(l, m)$ if $i$ is placed in.
+- **HVB (vertical bound)** the height of the item $i$ plus its resulting waste (if there is) should not exceed the height of a L2 virtual bin $(l, m)$ if $i$ is placed in.
+one can reduce $H$ to $\max\{w_{i}, h_{i}\} + H^{-}_{4}$ to tighten the bound, but it may not accelerate the optimization.
 $$
-\textrm{h}(i) \le \eta^{2}_{lm} + \max\{w_{i}, h_{i}\} \cdot ( 1 - \sum_{n \in L^{3}_{lm}} p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}
+\textrm{h}(i) + H^{-}_{4} \cdot e_{lmn} \le \eta^{2}_{lm} + H \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 
 - **HSP (single placement)** each item should be placed in exactly 1 L3 virtual bin.
