@@ -16,11 +16,11 @@
 
 | Set | Description                   | Size        | Element         | Remark                                                         |
 | ---- | ---------------------- | ----------- | ------------ | ------------------------------------------------------------ |
-| $I$  | (**i**tem) item set | $[1, 200]$  | $i, j$ |               |
+| $I$  | (**i**tem) item set | $[1, 200]$  | $i, i'$ |               |
 | $S$ | (**s**tack) ordered list of items | $[1, 200]$  | $s$ |               |
 | $B$ | (**b**atch) stack set | $[1, 200]$  | $b$ |               |
 | $F$ | (**f**law) defect set | $[1, 200]$  | $f$ |               |
-| $G$ | (**g**lass) raw material set | $[1, 200]$ | $g$ |               |
+| $G$ | (**g**lass) ordered list of raw material | $[1, 200]$ | $g$ | bins |
 | $C$ | (**c**ut) cut set | $[1, 200]$ | $c$ | |
 | $L^{1}$ | layer-1 virtual bin |  | $l, l'$ | need good estimation |
 | $L^{2}_{l}$ | layer-2 virtual bin |  | $m, m'$ | need good estimation |
@@ -37,10 +37,11 @@
 | $H^{-}_{2}$ | the min height of every non-trivial L2 virtual bin | real | $(0, H]$ | 100 in challenge |
 | $W^{-}_{3}$ | the min width of every non-trivial empty L3 virtual bin | real | $(0, W]$ | 20 in challenge |
 | $H^{-}_{4}$ | the min height of every non-trivial empty L4 virtual bin | real | $(0, H]$ | 20 in challenge |
-| $w_{i}, w_{f}$ | the width of the item $i$ or flaw $f$ | real | $(0, W]$    |        |
-| $h_{i}, h_{f}$ | the height of the item $i$ or flaw $f$ | real | $(0, H]$    |        |
-| $x_{f}$     | horizontal position of the flaw $f$'s left bottom                        | real | $[0, W - w_{f}]$ | in Cartesian coordinate system |
-| $y_{f}$ | vertical position of the flaw $f$'s left bottom | real | $[0, H - h_{f}]$ | in Cartesian coordinate system |
+| $\Omega_{i}, \Omega_{f}$ | the width of the item $i$ or flaw $f$ | real | $(0, W]$    |  |
+| $\Eta_{i}, \Eta_{f}$ | the height of the item $i$ or flaw $f$ | real | $(0, H]$    |        |
+| $X_{f}$     | horizontal position of the flaw $f$'s left bottom                        | real | $[0, W - \Omega_{f}]$ | in Cartesian coordinate system |
+| $Y_{f}$ | vertical position of the flaw $f$'s left bottom | real | $[0, H - \Eta_{f}]$ | in Cartesian coordinate system |
+| $L$ | the total number of L3 virtual bins | int | $[0, 10000]$ | $L = |G| \cdot |L^{1}| \cdot |L^{2}_{l}| \cdot |L^{3}_{lm}|$ |
 
 
 ## Decision
@@ -55,15 +56,18 @@
 | $p_{lmni}$ | item $i$ is placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
 | $c_{lmnf}$ | L3 virtual bin $(l, m, n)$ contains flaw $f$ | bool | $\{0, 1\}$ | |
 | $c^{k}_{lmnf}$ | L3 virtual bin $(l, m, n)$ is not on the $k^\textrm{th}$ side of flaw $f$ | bool | $\{0, 1\}$ | $k \in \{1\textrm{:right}, 2\textrm{:left}, 3\textrm{:up}, 4\textrm{:down}\}$ |
+| $o_{i}$ | the sequence number of item $i$ to be produced | real | $[0, +\infty)$ | in **HIL (item label)**, **HLO (label order)** only |
 
 ### Convention and Function
 
 - a trivial bin means a bin with 0 width or height, which is nothing.
 - an empty bin means a bin without item placed in, which could be waste or residual.
-- define function $\textrm{w}(i) = w_{i} \cdot (1 - d_{i}) + h_{i} \cdot d_{i}$ to indicate the actual width of item $i$ regarding its rotation.
-- define function $\textrm{h}(i) = h_{i} \cdot (1 - d_{i}) + w_{i} \cdot d_{i}$ to indicate the actual height of item $i$ regarding its rotation.
+- define function $\textrm{w}(i) = \Omega_{i} \cdot (1 - d_{i}) + \Eta_{i} \cdot d_{i}$ to indicate the actual width of item $i$ regarding its rotation.
+- define function $\textrm{h}(i) = \Eta_{i} \cdot (1 - d_{i}) + \Omega_{i} \cdot d_{i}$ to indicate the actual height of item $i$ regarding its rotation.
 - define function $\textrm{x}(l, m, n) = \sum\limits_{l' \in L^{1}, l' < l} \omega^{1}_{l'} + \sum\limits_{n' \in L^{3}_{lm}, n' < n} \omega^{3}_{lmn'}$ to indicate the horizontal position of L3 virtual bin $(l, m, n)$'s left bottom.
 - define function $\textrm{y}(l, m) = \sum\limits_{m' \in L^{2}_{l}, m' < m} \omega^{2}_{lm'}$ to indicate the vertical position of L3 virtual bin $(l, m, n)$'s left bottom.
+- define function $\textrm{seq}(g, l, m, n) = |L^{3}_{lm}| \cdot (|L^{2}_{l}| \cdot (|L^{1}| \cdot g + l) + m) + n$ to indicate the produced order of L3 virtual bin $(l, m, n)$ in bin $g$.
+- define function $\textrm{next}(i)$ to indicate the next item of $i$ in its stack.
 
 
 ## Objective
@@ -103,15 +107,15 @@ all of the following constraints must be satisfied.
 
 - **HWB1 (L1 width bound)** L1 virtual bin $l$'s width should not exceed the width limits if there are items placed in.
 $$
-W^{-}_{1} \cdot p_{lmni} \le \omega^{1}_{l} \le W^{+}_{1} \cdot p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall i \in I
+W^{-}_{1} \cdot p_{lmni} \le \omega^{1}_{l} \le W^{+}_{1} \cdot p_{lmni}, \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 - **HMH2 (L2 min height)** L2 virtual bin $(l, m)$'s height should not be less than the min height.
 $$
-\eta^{2}_{lm} \ge H^{-}_{2} \cdot p_{lmni} + H^{-}_{4} \cdot e_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall i \in I
+\eta^{2}_{lm} \ge H^{-}_{2} \cdot p_{lmni} + H^{-}_{4} \cdot e_{lmn}, \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 - **HMW3 (L3 min width)** L3 virtual bin $(l, m, n)$'s width should not be less than the min width if it is empty.
 $$
-\omega^{3}_{lmn} \ge W^{-}_{3} - W \cdot p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall i \in I
+\omega^{3}_{lmn} \ge W^{-}_{3} - W \cdot p_{lmni}, \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 
 - **HTW1 (L1 total width)** the sum of all L1 virtual bin's width should not exceed the width of the raw material.
@@ -133,12 +137,12 @@ $$
 \textrm{w}(i) \ge \omega^{3}_{lmn} - W \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 - **HHB (horizontal bound)** the width of the item $i​$ should not exceed the width of a L3 virtual bin $(l, m, n)​$ if $i​$ is placed in.
-one can reduce $W$ to $\max\{w_{i}, h_{i}\}$ to tighten the bound, but it may not accelerate the optimization.
+one can reduce $W$ to $\max\{\Omega_{i}, \Eta_{i}\}$ to tighten the bound, but it may not accelerate the optimization.
 $$
 \textrm{w}(i) \le \omega^{3}_{lmn} + W \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 - **HVB (vertical bound)** the height of the item $i$ plus its resulting waste (if there is) should not exceed the height of a L2 virtual bin $(l, m)$ if $i$ is placed in.
-one can reduce $H$ to $\max\{w_{i}, h_{i}\} + H^{-}_{4}$ to tighten the bound, but it may not accelerate the optimization.
+one can reduce $H$ to $\max\{\Omega_{i}, \Eta_{i}\} + H^{-}_{4}$ to tighten the bound, but it may not accelerate the optimization.
 $$
 \textrm{h}(i) + H^{-}_{4} \cdot e_{lmn} \le \eta^{2}_{lm} + H \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
@@ -164,16 +168,32 @@ c_{lmnf} \ge \bigwedge^{4}_{k = 1} c^{k}_{lmnf}
 $$
 - **HDD (defect direction)** L3 virtual bin $(l, m, n)$ is on some sides of flaw $f$.
 $$
-\textrm{x}(l, m, n) + W \cdot c^{1}_{lmnf} \ge x_{f} + w_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+\textrm{x}(l, m, n) + W \cdot c^{1}_{lmnf} \ge X_{f} + \Omega_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 $$
-\textrm{x}(l, m, n) + \omega^{3}_{lmn} + W \cdot c^{2}_{lmnf} \le x_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+\textrm{x}(l, m, n) + \omega^{3}_{lmn} + W \cdot c^{2}_{lmnf} \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 $$
-\textrm{y}(l, m) + H \cdot c^{3}_{lmnf} \ge y_{f} + h_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+\textrm{y}(l, m) + H \cdot c^{3}_{lmnf} \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 $$
-\textrm{y}(l, m) + \omega^{2}_{lm} + H \cdot c^{4}_{lmnf} \le y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+\textrm{y}(l, m) + \omega^{2}_{lm} + H \cdot c^{4}_{lmnf} \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+$$
+
+- **HIO (item order)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its next item in stack should only be in L3 virtual bin $(l', m', n')$ where $\textrm{seq}(l, m, n) < \textrm{seq}(l', m', n')$. it will make **HIL (item label)**, **HLO (label order)** trivial constraints.
+$$
+\begin{split}
+1 - p_{lmni} \ge p_{l'm'n'i'}, \quad &\forall l, l' \in L^{1}, \forall m, m' \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, \forall i, i' \in I, i' = \textrm{next}(i),\\
+&(l' \le l - 1) \vee ((l' = l) \wedge ((m' \le m - 1) \vee ((m = m') \wedge (n' \le n - 1))
+\end{split}
+$$
+- **HIL (item label)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its ordinal number is $\textrm{seq}(l, m, n)$. if **HLO (label order)** is also enabled, they will make **HIO (item order)** a trivial constraint.
+$$
+\textrm{seq}(l, m, n) - |L| \cdot (1 - p_{lmni}) \le o_{i} \le \textrm{seq}(l, m, n) + |L| \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+$$
+- **HLO (label order)** the value of items' labels in the same stack should be in increasing order. if **HIL (item label)** is also enabled, they will make **HIO (item order)** a trivial constraint.
+$$
+o_{i} + 1 \le o_{i'}, \quad \forall i, i' \in I, i' = \textrm{next}(i)
 $$
 
 - **HHO1.O (L1 horizontal order)** the wider virtual bins comes first (this may cut the optima if there are defects).
