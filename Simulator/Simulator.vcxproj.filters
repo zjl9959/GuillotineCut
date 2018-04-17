@@ -13,5 +13,81 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Solver">
+      <UniqueIdentifier>{084c3d0d-7a84-4349-a0f4-529941cdde14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\Header Files">
+      <UniqueIdentifier>{0e6a88d0-fe73-436f-b649-69fe0715169f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\MpSolver">
+      <UniqueIdentifier>{6a765cd5-1d0d-4c92-a3fc-a9758c7069a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\Utility">
+      <UniqueIdentifier>{aa2bb08e-83da-4c57-978f-6e4a3a3c0419}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\Source Files">
+      <UniqueIdentifier>{34b26482-fa2e-4df9-92eb-46aad7400d93}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Simulator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Common.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Config.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\LogSwitch.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Problem.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Solver.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\MpSolverGurobi.h">
+      <Filter>Solver\MpSolver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\MpSolverBase.h">
+      <Filter>Solver\MpSolver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\MpSolver.h">
+      <Filter>Solver\MpSolver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Utility.h">
+      <Filter>Solver\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\CsvReader.h">
+      <Filter>Solver\Utility</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Simulator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\MpSolverGurobi.cpp">
+      <Filter>Solver\MpSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\Utility.cpp">
+      <Filter>Solver\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\CsvReader.cpp">
+      <Filter>Solver\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\Solver.cpp">
+      <Filter>Solver\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\Problem.cpp">
+      <Filter>Solver\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
