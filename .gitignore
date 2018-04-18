@@ -240,3 +240,8 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
+
+# user files
+/Deploy/Solver.exe
+/Deploy/Simulator.exe
+/Deploy/Instance/*.csv

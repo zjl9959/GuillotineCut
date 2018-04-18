@@ -21,7 +21,7 @@ using ID = int;
 // the unit of width and height.
 using Length = int;
 // the unit of x and y coordinates.
-using Coord = int;
+using Coord = Length;
 // the unit of elapsed computational time.
 using Duration = int;
 // number of neighborhood moves in local search.

@@ -57,7 +57,7 @@ int Solver::Cli::run(int argc, char * argv[]) {
 
     Log(LogSwitch::Szx::Cli) << "load instance." << endl;
     Problem::Input input;
-    input.load(env.batchPath(), env.defectsPath());
+    if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
     Solver solver(input, env, cfg);
     solver.solve();

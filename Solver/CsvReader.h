@@ -22,6 +22,10 @@ class CsvReader {
 public:
     using Row = std::vector<char*>;
 
+
+    static constexpr char CommaChar = ';';
+
+
     const std::vector<Row>& scan(std::ostringstream &oss) {
         oss << '\n'; // add a sentinel so that end of file check is only necessary in onNewLine().
         data = oss.str();

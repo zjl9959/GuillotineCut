@@ -100,7 +100,7 @@ void Simulator::debug() {
     task.randSeed = "1500972793";
     //task.randSeed = to_string(RandSeed::generate());
     task.timeout = "3600";
-    task.maxIter = "1000000000";
+    //task.maxIter = "1000000000";
     task.jobNum = "1";
     task.cfgPath = Env::DefaultCfgPath();
     task.logPath = Env::DefaultLogPath();
@@ -115,7 +115,7 @@ void Simulator::benchmark(int repeat) {
     //task.timeout = "180";
     //task.maxIter = "1000000000";
     task.timeout = "1800";
-    task.maxIter = "1000000000";
+    //task.maxIter = "1000000000";
     task.jobNum = "12";
     task.cfgPath = Env::DefaultCfgPath();
     task.logPath = Env::DefaultLogPath();
@@ -141,7 +141,7 @@ void Simulator::parallelBenchmark(int repeat) {
     //task.timeout = "180";
     //task.maxIter = "1000000000";
     task.timeout = "3600";
-    task.maxIter = "1000000000";
+    //task.maxIter = "1000000000";
     task.jobNum = "12";
     task.cfgPath = Env::DefaultCfgPath();
     task.logPath = Env::DefaultLogPath();
