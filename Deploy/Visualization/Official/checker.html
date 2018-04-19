@@ -1,0 +1,61 @@
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <title>Checker</title>
+</head>
+<body >
+  <div>
+    <form class="form-horizontal well">
+      <legend>
+        <h3>
+          <div id="title">Visualize Cutting Patterns</div>
+        </h3>
+      </legend>
+      <fieldset>
+
+        <label for="csvBatch"> <strong>Batch csv File:</strong></label>
+        <input type="file" id="csvBatch" onchange="handleBatch(this.files)" accept=".csv">
+
+        <label for="csvFileInput" style="margin-left:50px"> <strong>Solution csv File:</strong></label>
+        <input type="file" id="csvFileInput" onchange="handleSolution(this.files)" accept=".csv">
+
+        <label for="csvDefects" style="margin-left:50px"> <strong>Defects csv File:</strong></label>
+        <input type="file" id="csvDefects" onchange="handleDefects(this.files)" accept=".csv">
+
+      </fieldset>
+    </form>
+    <div id="output">
+      <fieldset>
+        <button id="previous" style="width:100px;margin-left:200px;margin-right:5px">Previous</button>
+        <input id="plateId" value="0/0" size="5" align="middle" readonly>
+        <button id="next" style="width:100px;margin-left:5px">Next</button>
+        <br>
+        <canvas id="canvas" width="1400" height="600" style="margin-left:20px"></canvas>
+
+        <div style="position:absolute;left:1300px;top:300px">
+          <label><strong>id:</strong> ITEM_ID</label><br>
+          <label><strong>w:</strong> NODE_WIDTH</label><br>
+          <label><strong>h:</strong> NODE_HEIGHT</label><br>
+          <label><strong>stk:</strong> ITEM_STACK</label><br>
+          <label><strong>seq:</strong> ITEM_SEQUENCE</label><br>
+          <div style="background-color:rgb(50, 175, 229);margin-top:30px;width:20px;height:20px;border:1px solid #000"><label style="padding-left:30px"><strong>Item</strong></label></div>
+          <div style="background-color:rgb(188, 194, 197);margin-top:10px;width:20px;height:20px;border:1px solid #000"><label style="padding-left:30px"><strong>Waste</strong></label></div>
+          <div style="background-color:rgb(160, 160, 160);margin-top:10px;width:20px;height:20px;border:1px solid #000"><label style="padding-left:30px"><strong>Residual</strong></label></div>
+        </div>
+      </fieldset>
+    </div>
+  </div>
+  <br>
+  <br>
+  <footer>
+    <center>
+      <p>&copy; Saint-Gobain 2017</p>
+    </center>
+  </footer>
+
+  <!-- Le javascript
+    ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+  <script type="text/javascript" src="js/read-csv.js"></script>
+</body>
+</html>
