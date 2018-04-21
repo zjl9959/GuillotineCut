@@ -56,6 +56,7 @@
 | $\tau^{3}_{lmn}$ | L3 virtual bin $(l, m, n)$ is non-trivial by positive width | bool | $\{0, 1\} $ | bool variable to implement semi variable |
 | $e$ | there is residual in raw material | bool | $\{0, 1\}$ | bool variable to implement semi variable |
 | $e_{lmn}$ | there is waste in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\} $ | bool variable to implement semi variable |
+| $p$ | there are items placed in raw material | bool | $\{0, 1\} $ |  |
 | $p_{l}$ | there are items placed in L1 virtual bin $l$ | bool | $\{0, 1\}$ | |
 | $p_{lm}$ | there are items placed in L2 virtual bin $(l, m)$ | bool | $\{0, 1\}$ | |
 | $p_{lmn}$ | there are items placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
@@ -70,7 +71,7 @@
   - flaw position $X_{gf}, Y_{gf}, \Omega_{gf}, \Eta_{gf}$
   - virtual bin size $\omega^{1}_{gl}, \eta^{2}_{glm}, \omega^{3}_{glmn}$
   - trivial or empty bin $\tau^{2}_{glm}, \tau^{3}_{glmn}, e_{g}, e_{glmn}$
-  - item inclusion $p_{l}, p_{glm}, p_{glmn}, p_{glmni}$
+  - item inclusion $p_{g}, p_{gl}, p_{glm}, p_{glmn}, p_{glmni}$
   - flaw inclusion $c_{glmnf}, c^{k}_{glmnf}$
 - a trivial bin means a bin with 0 width or height, which is nothing.
 - an empty bin means a bin without item placed in, which could be waste or residual.
@@ -89,11 +90,11 @@
 
 ### minimize the wasted raw material OWG (wasted glass)
 
-reduce the geometrical loss of the cutting patterns.
+reduce the geometrical loss of the cutting patterns, i.e., reduce the used glass, as the area of items are fixed.
 only the glass at right of the last 1-cut performed in the last cutting pattern can be reused (regard as residual instead of waste).
 
 $$
-\min \sum_{l \in L^{1}} \omega_{l}
+\min W \cdot \sum_{g \in G} p_{g} - (W - \sum_{l \in L^{1}} \omega_{l})
 $$
 
 ### maximize the area of placed items OPI (placed items)
