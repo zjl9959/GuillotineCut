@@ -52,7 +52,7 @@
 | $\omega^{3}_{lmn}$ | width of the L3 virtual bin $n$ in L2 virtual bin $(l, m)$ | real | $[0, +\infty)$ |  |
 | $\eta^{4+}_{lmn}$ | height of the upper waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
 | $\eta^{4-}_{lmn}$ | height of the lower waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
-| $\gamma$ | width of the residual in the last used bin | real | $[0, +\infty)$ | |
+| $\gamma$ | width of the used area in the last used bin | real | $[0, +\infty)$ | |
 | $\tau^{2}_{lm}$ | L2 virtual bin $(l, m)$ is non-trivial by positive height | bool | $\{0, 1\} $ | bool variable to implement semi variable |
 | $\tau^{3}_{lmn}$ | L3 virtual bin $(l, m, n)$ is non-trivial by positive width | bool | $\{0, 1\} $ | bool variable to implement semi variable |
 | $\tau^{4+}_{lmn}$ | upper waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
@@ -161,7 +161,7 @@ $$
 |I| \cdot p_{lmn} \ge \sum_{i \in I} p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 
-- **HRP (residual position)** locating the residual on the last bin.
+- **HRP (residual position)** locating the residual on the last bin and get the width of the used area.
 $$
 \sum_{l \in L^{1}_{g}} \omega_{gl} - W \cdot (p_{g} - p_{g'}) \le \gamma \le \sum_{l \in L^{1}_{g}} \omega_{gl} + W \cdot (p_{g} - p_{g'}), \quad \forall g, g' \in G, g' = \textrm{next}(g)
 $$
