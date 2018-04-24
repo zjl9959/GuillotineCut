@@ -36,17 +36,41 @@ public:
             Length height;
         };
 
+        struct Param {
+            ID maxPlateNum;
+            Length plateWidth;
+            Length plateHeight;
+            Length minL1Width;
+            Length maxL1Width;
+            Length minL2Height;
+            Length minWasteWidth;
+            Length minWasteHeight;
+        };
+
         enum BatchColumn { ItemId, ItemWidth, ItemHeight, Stack, Seq };
         enum DefectsColumn { DefectId, PlateId, DefectX, DefectY, DefectWidth, DefectHeight };
 
+        void loadParam() {
+            // EXTEND[szx][9]: load from file when provided?
+            param.maxPlateNum = 100;
+            param.plateWidth = 6000;
+            param.plateHeight = 3210;
+            param.minL1Width = 100;
+            param.maxL1Width = 3500;
+            param.minL2Height = 100;
+            param.minWasteWidth = 20;
+            param.minWasteHeight = 20;
+        }
         bool loadBatch(const String &batchFilePath);
         bool loadDefects(const String &defectsFilePath);
         bool load(const String &batchFilePath, const String &defectsFilePath) {
+            loadParam();
             return (loadBatch(batchFilePath) && loadDefects(defectsFilePath));
         }
 
         List<Item> batch;
         List<Defect> defects;
+        Param param;
     };
 
     struct Output {

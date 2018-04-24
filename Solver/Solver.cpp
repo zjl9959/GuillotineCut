@@ -150,6 +150,7 @@ void Solver::solve() {
     List<thread> threadList;
     threadList.reserve(env.jobNum);
     for (int i = 0; i < env.jobNum; ++i) {
+        // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
         threadList.emplace_back([&]() { optimize(outputs[i], i); });
     }
     for (int i = 0; i < env.jobNum; ++i) { threadList.at(i).join(); }
@@ -205,7 +206,7 @@ bool Solver::checkObjective() const {
     return false;
 }
 
-void Solver::optimize(Problem::Output &output, ID workerId) {
+void Solver::optimize(Problem::Output &optimum, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
     // TODO[szx][0]: solve.

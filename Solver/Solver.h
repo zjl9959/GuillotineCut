@@ -87,6 +87,8 @@ public:
 
         void load(const String &filePath);
         void save(const String &filePath) const;
+
+        // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
     };
 
     // describe the requirements to the input and output data interface.
