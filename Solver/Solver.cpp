@@ -55,7 +55,7 @@ int Solver::Cli::run(int argc, char * argv[]) {
     Solver::Configuration cfg;
     cfg.load(env.cfgPath);
 
-    Log(LogSwitch::Szx::Cli) << "load instance." << endl;
+    Log(LogSwitch::Szx::Cli) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
@@ -144,6 +144,8 @@ void Solver::Configuration::save(const String &filePath) const {
 
 #pragma region Solver
 void Solver::solve() {
+    init();
+
     List<Problem::Output> outputs(env.jobNum);
 
     Log(LogSwitch::Szx::Framework) << "launch " << env.jobNum << "workers." << endl;
@@ -204,6 +206,47 @@ bool Solver::checkFeasibility() const {
 bool Solver::checkObjective() const {
     // TODO[szx][4]: check objective.
     return false;
+}
+
+void Solver::init() {
+    aux.items.reserve(input.batch.size());
+    aux.stacks.reserve(input.batch.size());
+
+    // assign internal id to items and stacks, then push items into stacks.
+    for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
+        ID itemId = idMap.item.toConsecutiveId(i->id);
+        aux.items.push_back(Rect(i->width, i->height));
+
+        ID stackId = idMap.stack.toConsecutiveId(i->stack);
+        if (aux.stacks.size() <= stackId) { // item in new stack.
+            aux.stacks.push_back(List<ID>());
+        }
+        List<ID> &stack(aux.stacks[stackId]);
+        if (stack.size() <= i->seq) {
+            // OPTIMIZE[szx][6]: what if the sequence number could be non-consecutive and very large?
+            stack.resize(i->seq + 1, Problem::InvalidItemId);
+        }
+        stack[i->seq] = itemId;
+    }
+    // clear invalid items in stacks.
+    for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
+        s->erase(remove(s->begin(), s->end(), Problem::InvalidItemId), s->end());
+    }
+
+    aux.defects.reserve(input.defects.size());
+    aux.plates.reserve(Problem::MaxPlateNum);
+
+    // map defects to plates.
+    for (auto d = input.defects.begin(); d != input.defects.end(); ++d) {
+        ID defectId = idMap.defect.toConsecutiveId(d->id);
+        aux.defects.push_back(RectArea(d->x, d->y, d->width, d->height));
+
+        ID plateId = idMap.plate.toConsecutiveId(d->plateId);
+        if (aux.plates.size() <= plateId) { // defect in new plate.
+            aux.plates.push_back(List<ID>());
+        }
+        aux.plates[plateId].push_back(defectId);
+    }
 }
 
 void Solver::optimize(Problem::Output &optimum, ID workerId) {

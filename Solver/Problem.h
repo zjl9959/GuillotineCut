@@ -37,7 +37,7 @@ public:
         };
 
         struct Param {
-            ID maxPlateNum;
+            ID plateNum;
             Length plateWidth;
             Length plateHeight;
             Length minL1Width;
@@ -52,7 +52,7 @@ public:
 
         void loadParam() {
             // EXTEND[szx][9]: load from file when provided?
-            param.maxPlateNum = 100;
+            param.plateNum = 100;
             param.plateWidth = 6000;
             param.plateHeight = 3210;
             param.minL1Width = 100;
@@ -101,6 +101,13 @@ public:
 
     #pragma region Constant
 public:
+    static constexpr ID MaxItemNum = 700;
+    static constexpr ID MaxStackNum = MaxItemNum;
+    static constexpr ID MaxPlateNum = 100;
+    static constexpr ID MaxDefectNumPerPlate = 8;
+    static constexpr ID MaxDefectNum = MaxPlateNum * MaxDefectNumPerPlate;
+
+    static constexpr ID InvalidItemId = -1;
     #pragma endregion Constant
 
     #pragma region Constructor

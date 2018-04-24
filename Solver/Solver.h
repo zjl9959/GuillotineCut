@@ -154,6 +154,21 @@ public:
         // auto-generated data.
         String localTime;
     };
+
+    struct Rect {
+        Rect() {}
+        Rect(Length width, Length height) : w(width), h(height) {}
+
+        Length w; // width.
+        Length h; // height.
+    };
+    struct RectArea : public Rect { // a rectangular area on the plate.
+        RectArea() {}
+        RectArea(Coord left, Coord bottom, Length width, Length height) : Rect(width, height), x(left), y(bottom) {}
+
+        Coord x; // left.
+        Coord y; // bottom.
+    };
     #pragma endregion Type
 
     #pragma region Constant
@@ -177,6 +192,7 @@ public:
     bool checkObjective() const;
 
 protected:
+    void init();
     void optimize(Problem::Output &output, ID workerId = 0); // optimize by a single worker.
     #pragma endregion Method
 
@@ -184,6 +200,21 @@ protected:
 public:
     Problem::Input input;
     Problem::Output output;
+
+    struct {
+        List<Rect> items;
+        List<RectArea> defects;
+
+        List<List<ID>> stacks;
+        List<List<ID>> plates;
+    } aux;
+
+    struct {
+        ZeroBasedConsecutiveIdMap<ID, ID, Problem::MaxItemNum> item;
+        ZeroBasedConsecutiveIdMap<ID, ID, Problem::MaxStackNum> stack;
+        ZeroBasedConsecutiveIdMap<ID, ID, Problem::MaxDefectNum> defect;
+        ZeroBasedConsecutiveIdMap<ID, ID, Problem::MaxPlateNum> plate;
+    } idMap;
 
     Environment env;
     Configuration cfg;
