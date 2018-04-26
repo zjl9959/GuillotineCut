@@ -215,7 +215,7 @@ void Solver::init() {
     // assign internal id to items and stacks, then push items into stacks.
     for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
         ID itemId = idMap.item.toConsecutiveId(i->id);
-        aux.items.push_back(Rect(i->width, i->height));
+        aux.items.push_back(Rect(max(i->width, i->height), min(i->width, i->height)));
 
         ID stackId = idMap.stack.toConsecutiveId(i->stack);
         if (aux.stacks.size() <= stackId) { // item in new stack.

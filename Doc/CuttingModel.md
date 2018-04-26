@@ -16,10 +16,10 @@
 
 | Set | Description                   | Size        | Element         | Remark                                                         |
 | ---- | ---------------------- | ----------- | ------------ | ------------------------------------------------------------ |
-| $I$  | (**i**tem) item set | $[1, 200]$  | $i, i'$ |               |
-| $S$ | (**s**tack) set of ordered list of items | $[1, 200]$  | $s$ |               |
-| $F$ | (**f**law) defect set | $[1, 200]$  | $f$ |               |
-| $G$ | (**g**lass) ordered list of raw material | $[1, 200]$ | $g$ | bins |
+| $I$ | (**i**tem) item set | $[1, 700]$ | $i, i'$ |               |
+| $S$ | (**s**tack) set of ordered list of items | $[1, |I|]$ | $s$ |               |
+| $G$ | (**g**lass) ordered list of raw material | $[1, 100]$ | $g$ | bins |
+| $F$ | (**f**law) defect set | $[0, 8 \cdot |G|]$ | $f$ |               |
 | $L^{1}$ | layer-1 virtual bin | need good estimation | $l, l'$ |  |
 | $L^{2}_{l}$ | layer-2 virtual bin | need good estimation | $m, m'$ |  |
 | $L^{3}_{lm}$ | layer-3 virtual bin |need good estimation  | $n, n'$ |  |
