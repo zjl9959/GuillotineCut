@@ -148,17 +148,26 @@ there are several notations about the constraints.
 
 all of the following constraints must be satisfied.
 
-- **HIP1.A (L1 item placement)** if there are items placed in L1 virtual bin $l$.
+- **HPU.A (plate used)** if there are items placed in the plate.
+the left side can be omitted if **OPI (placed items)** is disabled.
 $$
-|I| \cdot p_{l} \ge \sum_{i \in I} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni}, \quad \forall l \in L^{1}
+p \le \sum_{i \in I} \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} \le |I| \cdot p
+$$
+- **HIP1.A (L1 item placement)** if there are items placed in L1 virtual bin $l$.
+the left side can be omitted if **OPI (placed items)** is disabled.
+$$
+p_{l} \le \sum_{i \in I} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} \le |I| \cdot p_{l}, \quad \forall l \in L^{1}
 $$
 - **HIP2.A (L2 item placement)** if there are items placed in L2 virtual bin $(l, m)$.
+the left side can be omitted if **OPI (placed items)** is disabled.
 $$
-|I| \cdot p_{lm} \ge \sum_{i \in I} \sum_{n \in L^{3}_{lm}} p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
+p_{lm} \le \sum_{i \in I} \sum_{n \in L^{3}_{lm}} p_{lmni} \le |I| \cdot p_{lm}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
 $$
 - **HIP3.A (L3 item placement)** if there are items placed in L3 virtual bin $(l, m, n)$.
+the left side can be omitted if **OPI (placed items)** is disabled.
+$|I|$ on the right side can be 1 if **HEP (exclusive placement)** is enabled.
 $$
-|I| \cdot p_{lmn} \ge \sum_{i \in I} p_{lmni}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+p_{lmn} \le \sum_{i \in I} p_{lmni} \le |I| \cdot p_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
 $$
 
 - **HRP (residual position)** locating the residual on the last bin and get the width of the used area.
