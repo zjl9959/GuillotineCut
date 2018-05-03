@@ -151,7 +151,7 @@ void Solver::solve() {
 
     List<Problem::Output> outputs(env.jobNum);
 
-    Log(LogSwitch::Szx::Framework) << "launch " << env.jobNum << "workers." << endl;
+    Log(LogSwitch::Szx::Framework) << "launch " << env.jobNum << " workers." << endl;
     List<thread> threadList;
     threadList.reserve(env.jobNum);
     for (int i = 0; i < env.jobNum; ++i) {
@@ -221,14 +221,10 @@ void Solver::init() {
         aux.items.push_back(Rect(max(i->width, i->height), min(i->width, i->height)));
 
         ID stackId = idMap.stack.toConsecutiveId(i->stack);
-        if (aux.stacks.size() <= stackId) { // item in new stack.
-            aux.stacks.push_back(List<ID>());
-        }
+        if (aux.stacks.size() <= stackId) { aux.stacks.push_back(List<ID>()); } // create a new stack.
         List<ID> &stack(aux.stacks[stackId]);
-        if (stack.size() <= i->seq) {
-            // OPTIMIZE[szx][6]: what if the sequence number could be non-consecutive and very large?
-            stack.resize(i->seq + 1, Problem::InvalidItemId);
-        }
+        // OPTIMIZE[szx][6]: what if the sequence number could be negative or very large?
+        if (stack.size() <= i->seq) { stack.resize(i->seq + 1, Problem::InvalidItemId); }
         stack[i->seq] = itemId;
     }
     // clear invalid items in stacks.
@@ -237,7 +233,9 @@ void Solver::init() {
     }
 
     aux.defects.reserve(input.defects.size());
-    aux.plates.reserve(Problem::MaxPlateNum);
+    // EXTEND[szx][9]: make sure that the plate IDs are already zero-base consecutive numbers.
+    aux.plates.resize(Problem::MaxPlateNum);
+    for (ID p = 0; p < Problem::MaxPlateNum; ++p) { idMap.plate.toConsecutiveId(p); }
 
     // map defects to plates.
     for (auto d = input.defects.begin(); d != input.defects.end(); ++d) {
@@ -245,9 +243,7 @@ void Solver::init() {
         aux.defects.push_back(RectArea(d->x, d->y, d->width, d->height));
 
         ID plateId = idMap.plate.toConsecutiveId(d->plateId);
-        if (aux.plates.size() <= plateId) { // defect in new plate.
-            aux.plates.push_back(List<ID>());
-        }
+        if (aux.plates.size() <= plateId) { aux.plates.resize(plateId + 1); } // create new plates.
         aux.plates[plateId].push_back(defectId);
     }
 }
@@ -440,7 +436,7 @@ void Solver::optimizeSinglePlate() {
     // solve.
     if (mp.optimize()) {
         ID usedPlateNum = 0;
-        for (; (usedPlateNum < input.param.plateNum) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
+        for (; (usedPlateNum < maxBinNum[L0]) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
 
         Drawer draw("visc.html", input.param.plateWidth * usedPlateNum, input.param.plateHeight);
         draw.begin();
