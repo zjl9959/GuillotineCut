@@ -7,6 +7,9 @@
 #include <thread>
 #include <mutex>
 
+#include "MpSolver.h"
+#include "Visualizer.h"
+
 
 using namespace std;
 
@@ -252,7 +255,243 @@ void Solver::init() {
 void Solver::optimize(Problem::Output &optimum, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
-    // TODO[szx][0]: solve.
+    optimizeSinglePlate();
+}
+
+//  y ^
+//    |           w1
+//    |  +-----+-----+
+//    |  |     |     |
+//    |  |     +--+--+
+//    |  |     |  |  |h2
+//    |  +-----+--+--+
+//    |            w3
+// ---+------------------>
+//  O |                  x
+void Solver::optimizeSinglePlate() {
+    using Dvar = MpSolver::DecisionVar;
+    using Expr = MpSolver::LinearExpr;
+    using VarType = MpSolver::VariableType;
+
+    enum Layer { L0, L1, L2, L3 };
+    List<ID> maxBinNum({ 1, 12, 10, 8 });
+    bool flawless = false;
+    bool maxCoveredArea = true;
+
+    MpSolver mp;
+
+    Arr<Dvar> d(aux.items.size()); // direction (if i should rotate 90 degree).
+
+    Arr2D<Dvar> w1(maxBinNum[L0], maxBinNum[L1]); // width of L1 virtual bin.
+    Arr2D<Arr<Dvar>> h2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // height of L2 virtual bin.
+    Arr2D<Arr2D<Dvar>> w3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // width of L3 virtual bin.
+    Arr2D<Arr2D<Dvar>> h4u(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // height of upper waste in L3 virtual bin.
+    Arr2D<Arr2D<Dvar>> h4l(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // height of lower waste in L3 virtual bin.
+
+    Arr<Dvar> p(maxBinNum[L0]); // item placed in plate.
+    Arr2D<Dvar> p1(maxBinNum[L0], maxBinNum[L1]); // there are some items placed in L1 virtual bin.
+    Arr2D<Arr<Dvar>> p2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // there are some items placed in L2 virtual bin.
+    Arr2D<Arr2D<Dvar>> p3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // there are some items placed in L3 virtual bin.
+    Arr<Arr2D<Arr2D<Dvar>>> pi3(aux.items.size(), Arr2D<Arr2D<Dvar>>(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3]))); // item placed in L3 virtual bin.
+
+    Expr coveredArea; // the sum of placed items' area.
+
+    // decisions.
+    for (ID i = 0; i < aux.items.size(); ++i) {
+        d[i] = mp.makeVar(VarType::Bool, 0, 1);
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        pi3[i][g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
+                    }
+                }
+            }
+        }
+    }
+    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+        p[g] = mp.makeVar(VarType::Bool, 0, 1);
+        for (ID l = 0; l < maxBinNum[L1]; ++l) {
+            w1[g][l] = mp.makeVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+            p1[g][l] = mp.makeVar(VarType::Bool, 0, 1);
+            for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                h2[g][l][m] = mp.makeVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                p2[g][l][m] = mp.makeVar(VarType::Bool, 0, 1);
+                for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                    w3[g][l][m][n] = mp.makeVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                    h4u[g][l][m][n] = mp.makeVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                    h4l[g][l][m][n] = mp.makeVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                    p3[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
+                }
+            }
+        }
+    }
+
+    // constraints.
+    auto width = [&](ID itemId) {
+        return (aux.items[itemId].w * (1 - d[itemId]) + aux.items[itemId].h * d[itemId]);
+    };
+    auto height = [&](ID itemId) {
+        return (aux.items[itemId].h * (1 - d[itemId]) + aux.items[itemId].w * d[itemId]);
+    };
+    for (ID i = 0; i < aux.items.size(); ++i) {
+        Length itemLen = aux.items[i].w;
+        Expr putInBin;
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        putInBin += pi3[i][g][l][m][n];
+                        // horizontal fitting.
+                        mp.makeConstraint(width(i) - itemLen * (1 - pi3[i][g][l][m][n]) <= w3[g][l][m][n]);
+                        mp.makeConstraint(w3[g][l][m][n] <= width(i) + input.param.plateWidth * (1 - pi3[i][g][l][m][n]));
+                        // vertical fitting.
+                        mp.makeConstraint(height(i) - itemLen * (1 - pi3[i][g][l][m][n]) <= h2[g][l][m] - h4u[g][l][m][n] - h4l[g][l][m][n]);
+                        mp.makeConstraint(h2[g][l][m] - h4u[g][l][m][n] - h4l[g][l][m][n] <= height(i) + input.param.plateHeight * (1 - pi3[i][g][l][m][n]));
+                    }
+                }
+            }
+        }
+        // single placement.
+        mp.makeConstraint(maxCoveredArea ? (putInBin <= 1) : (putInBin == 1));
+        // covered area.
+        coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
+    }
+
+    // total width and height.
+    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+        Expr l1BinWidthSum;
+        for (ID l = 0; l < maxBinNum[L1]; ++l) {
+            l1BinWidthSum += w1[g][l];
+            Expr l2BinHeightSum;
+            for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                l2BinHeightSum += h2[g][l][m];
+                Expr l3BinWidthSum;
+                for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                    l3BinWidthSum += w3[g][l][m][n];
+                }
+                mp.makeConstraint(l3BinWidthSum == w1[g][l]);
+            }
+            mp.makeConstraint(l2BinHeightSum == input.param.plateHeight);
+        }
+        mp.makeConstraint(l1BinWidthSum <= input.param.plateWidth); // TODO[szx][2]: consider waste.
+    }
+
+    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+        Expr plateItems;
+        for (ID l = 0; l < maxBinNum[L1]; ++l) {
+            Expr l1BinItems;
+            for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                Expr l2BinItems;
+                for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                    Expr l3BinItems;
+                    for (ID i = 0; i < aux.items.size(); ++i) { l3BinItems += pi3[i][g][l][m][n]; }
+                    l2BinItems += l3BinItems;
+                    // exclusive placement.
+                    mp.makeConstraint(l3BinItems <= 1);
+                    // L3 item placement.
+                    mp.makeConstraint(l3BinItems == p3[g][l][m][n]); // OPTIMIZE[szx][5]: can be <= if the obj is not maximizing the area of placed items.
+                }
+                l1BinItems += l2BinItems;
+                // L2 item placement.
+                mp.makeConstraint(p2[g][l][m] <= l2BinItems); // OPTIMIZE[szx][5]: can be omitted if the obj is not maximizing the area of placed items.
+                mp.makeConstraint(l2BinItems <= aux.items.size() * p2[g][l][m]);
+            }
+            plateItems += l1BinItems;
+            // L1 item placement.
+            mp.makeConstraint(p1[g][l] <= l1BinItems); // OPTIMIZE[szx][5]: can be omitted if the obj is not maximizing the area of placed items.
+            mp.makeConstraint(l1BinItems <= aux.items.size() * p1[g][l]);
+        }
+        // plate used.
+        mp.makeConstraint(p[g] <= plateItems); // OPTIMIZE[szx][5]: can be omitted if the obj is not maximizing the area of placed items.
+        mp.makeConstraint(plateItems <= aux.items.size() * p[g]);
+    }
+
+    if (flawless) { // put larger bins to the left or bottom.
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                if (l + 1 < maxBinNum[L1]) { mp.makeConstraint(w1[g][l] >= w1[g][l + 1]); }
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    if (m + 1 < maxBinNum[L2]) { mp.makeConstraint(h2[g][l][m] >= h2[g][l][m + 1]); }
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        if (n + 1 < maxBinNum[L3]) { mp.makeConstraint(w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
+                    }
+                }
+            }
+        }
+    } else { // put all non-trivial bins to the left or bottom.
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                if (l + 1 < maxBinNum[L1]) { mp.makeConstraint(input.param.plateWidth * w1[g][l] >= w1[g][l + 1]); }
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    if (m + 1 < maxBinNum[L2]) { mp.makeConstraint(input.param.plateHeight * h2[g][l][m] >= h2[g][l][m + 1]); }
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        if (n + 1 < maxBinNum[L3]) { mp.makeConstraint(input.param.plateWidth * w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
+                    }
+                }
+            }
+        }
+    }
+
+    // objectives.
+    // maximize the area of placed items.
+    mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, 3600); // 
+
+    // solve.
+    if (mp.optimize()) {
+        ID usedPlateNum = 0;
+        for (; (usedPlateNum < input.param.plateNum) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
+
+        Drawer draw("visc.html", input.param.plateWidth * usedPlateNum, input.param.plateHeight);
+        draw.begin();
+
+        constexpr double PlateGap = 8;
+        const char fontColor[] = "000000";
+        const char fillColor[] = "ccffcc";
+        double offset = 0;
+        for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
+            double x1 = 0;
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                double y2 = offset;
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    double x3 = x1;
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        for (ID i = 0; i < aux.items.size(); ++i) {
+                            if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                            draw.rect(x3, y2, aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), to_string(i), fontColor, fillColor);
+                        }
+                        x3 += mp.getValue(w3[g][l][m][n]);
+                    }
+                    y2 += mp.getValue(h2[g][l][m]);
+                }
+                x1 += mp.getValue(w1[g][l]);
+            }
+            x1 = 0;
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                if (mp.getValue(w1[g][l]) == 0) { continue; }
+                double oldX1 = x1;
+                x1 += mp.getValue(w1[g][l]);
+                double y2 = offset;
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    if (mp.getValue(h2[g][l][m]) == 0) { continue; }
+                    double oldY2 = y2;
+                    y2 += mp.getValue(h2[g][l][m]);
+                    double x3 = oldX1;
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        if (mp.getValue(w3[g][l][m][n]) == 0) { continue; }
+                        x3 += mp.getValue(w3[g][l][m][n]);
+                        draw.line(x3, oldY2, x3, y2, L3);
+                    }
+                    draw.line(oldX1, y2, x1, y2, L2);
+                }
+                draw.line(x1, offset, x1, offset + input.param.plateHeight, L1);
+            }
+        }
+
+        draw.end();
+    } else {
+        //mp.computeIIS("iis.ilp");
+    }
 }
 #pragma endregion Solver
 

@@ -66,6 +66,9 @@
     <ClInclude Include="..\Solver\CsvReader.h">
       <Filter>Solver\Utility</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\Visualizer.h">
+      <Filter>Solver\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">

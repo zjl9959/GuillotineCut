@@ -29,6 +29,20 @@ public:
     };
 
 
+    struct Name {
+        static constexpr char Delimiter = '_';
+
+
+        std::string str(const char *obj) { return std::string(obj); }
+
+        template<typename T>
+        std::string str(const T &obj) { return std::to_string(obj); }
+
+        template<typename T, typename ... Ts>
+        std::string str(const T &obj, Ts ... objs) { return str(obj) + Delimiter + str(objs ...); }
+    };
+
+
     static bool isTrue(double value) { return (value > 0.5); }
 };
 

@@ -194,6 +194,8 @@ public:
 protected:
     void init();
     void optimize(Problem::Output &output, ID workerId = 0); // optimize by a single worker.
+
+    void optimizeSinglePlate();
     #pragma endregion Method
 
     #pragma region Field
