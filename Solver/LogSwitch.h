@@ -23,6 +23,7 @@ struct LogSwitch {
         Preprocess = Log::Level::On,
         Output = Log::Level::On,
         MpSolver = Log::Level::On,
+        Model = Log::Level::On,
     };
 };
 

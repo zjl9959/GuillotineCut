@@ -252,6 +252,8 @@ void Solver::optimize(Problem::Output &optimum, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
     optimizeSinglePlate();
+
+    Log(LogSwitch::Szx::Framework) << "worker " << workerId << " ends." << endl;
 }
 
 //  y ^
@@ -292,7 +294,7 @@ void Solver::optimizeSinglePlate() {
 
     Expr coveredArea; // the sum of placed items' area.
 
-    // decisions.
+    Log(LogSwitch::Szx::Model) << "add decisions variables." << endl;
     for (ID i = 0; i < aux.items.size(); ++i) {
         d[i] = mp.makeVar(VarType::Bool, 0, 1);
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
@@ -323,7 +325,7 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
-    // constraints.
+    Log(LogSwitch::Szx::Model) << "add constraints." << endl;
     auto width = [&](ID itemId) {
         return (aux.items[itemId].w * (1 - d[itemId]) + aux.items[itemId].h * d[itemId]);
     };
@@ -429,7 +431,7 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
-    // objectives.
+    Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
     mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, 3600); // 
 

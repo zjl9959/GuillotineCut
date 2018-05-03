@@ -37,8 +37,8 @@ struct RandColor {
 };
 
 struct Drawer {
-    static constexpr double W = 800;
-    static constexpr double H = 800;
+    static constexpr double W = 1200;
+    static constexpr double H = 642;
 
 
     Drawer(std::string path, double width, double height) : ofs(path), wx(W / width), hx(H / height) {}
