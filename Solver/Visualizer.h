@@ -41,10 +41,12 @@ struct Drawer {
     static constexpr double H = 642;
 
 
-    Drawer(std::string path, double width, double height) : ofs(path), wx(W / width), hx(H / height) {}
-
-
-    void begin() {
+    void begin(std::string path, double plateWidth, double plateHeight, double plateNum, double plateGap) {
+        wx = W / plateWidth;
+        hx = H / plateHeight;
+        int width = static_cast<int>(wx * plateWidth + 1);
+        int height = static_cast<int>(hx * (plateHeight * plateNum + plateGap * (plateNum - 1)) + 1);
+        ofs.open(path);
         ofs << "<!DOCTYPE html>" << std::endl
             << "<html>" << std::endl
             << "  <head>" << std::endl
@@ -52,7 +54,7 @@ struct Drawer {
             << "    <title>2D Packing/Cutting Visualization</title>" << std::endl
             << "  </head>" << std::endl
             << "  <body>" << std::endl // style='text-align:center;'
-            << "    <svg width='" << W << "' height='" << H << "' viewBox='0 0 " << W << " " << H << "'>" << std::endl;
+            << "    <svg width='" << width << "' height='" << height << "' viewBox='0 0 " << width << " " << height << "'>" << std::endl;
     }
     void end() {
         ofs << "    </svg>" << std::endl
@@ -71,17 +73,21 @@ struct Drawer {
         rc.next();
         rect(x, y, w, h, d, label, rc.fcolor, rc.bcolor);
     }
+    void rect(double x, double y, double w, double h) {
+        x *= wx; y *= hx; w *= wx; h *= hx;
+        ofs << "      <rect x='" << x << "' y='" << y << "' width='" << w << "' height='" << h << "' style='fill:#FFFFFF; stroke:black; stroke-width:12'/>" << std::endl << std::endl;
+    }
 
     void line(double x1, double y1, double x2, double y2, int layer) {
-        static int cutWidth[] = { 16, 8, 8, 6 };
+        static int cutWidth[] = { 10, 8, 8, 6 };
         static std::string cutColor[] = { "cyan", "red", "blue", "orange" };
         x1 *= wx; y1 *= hx; x2 *= wx; y2 *= hx;
         ofs << "      <line x1='" << x1 << "' y1='" << y1 << "' x2='" << x2 << "' y2='" << y2 << "' stroke-dasharray='12, 4' stroke='" << cutColor[layer] << "' stroke-width='" << cutWidth[layer] << "'/>" << std::endl << std::endl;
     }
 
 
-    double wx;
-    double hx;
+    double wx; // width expansion.
+    double hx; // height expansion.
     std::ofstream ofs;
     RandColor rc;
 };

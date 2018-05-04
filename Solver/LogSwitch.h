@@ -20,10 +20,11 @@ struct LogSwitch {
         Cli = Log::Level::Debug,
         Framework = Log::Level::Debug,
         Input = Log::Level::On,
-        Preprocess = Log::Level::On,
         Output = Log::Level::On,
-        MpSolver = Log::Level::On,
+        Preprocess = Log::Level::On,
+        Postprocess = Log::Level::On,
         Model = Log::Level::On,
+        MpSolver = Log::Level::On,
     };
 };
 

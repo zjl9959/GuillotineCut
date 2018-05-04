@@ -272,7 +272,7 @@ void Solver::optimizeSinglePlate() {
     using VarType = MpSolver::VariableType;
 
     enum Layer { L0, L1, L2, L3 };
-    List<ID> maxBinNum({ 1, 12, 10, 8 });
+    List<ID> maxBinNum({ 2, 12, 10, 8 });
     bool flawless = false;
     bool maxCoveredArea = true;
 
@@ -431,23 +431,42 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
+    // user cut for covered area should be less than the plate.
+    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+        Expr area;
+        for (ID i = 0; i < aux.items.size(); ++i) {
+            Expr putInBin;
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        putInBin += pi3[i][g][l][m][n];
+                    }
+                }
+            }
+            area += (aux.items[i].w * aux.items[i].h * putInBin);
+        }
+        mp.makeConstraint(area <= input.param.plateWidth * input.param.plateHeight);
+    }
+
     Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
-    mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, 3600); // 
+    mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds()); // 
 
     // solve.
     if (mp.optimize()) {
         ID usedPlateNum = 0;
         for (; (usedPlateNum < maxBinNum[L0]) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
+        Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used." << endl;
 
-        Drawer draw("visc.html", input.param.plateWidth * usedPlateNum, input.param.plateHeight);
-        draw.begin();
+        constexpr double PlateGap = 100;
+        const char FontColor[] = "000000";
+        const char FillColor[] = "CCFFCC";
+        Drawer draw;
+        draw.begin("visc.html", input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
 
-        constexpr double PlateGap = 8;
-        const char fontColor[] = "000000";
-        const char fillColor[] = "ccffcc";
         double offset = 0;
         for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
+            draw.rect(0, offset, input.param.plateWidth, input.param.plateHeight);
             double x1 = 0;
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
                 double y2 = offset;
@@ -456,7 +475,7 @@ void Solver::optimizeSinglePlate() {
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
                         for (ID i = 0; i < aux.items.size(); ++i) {
                             if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
-                            draw.rect(x3, y2, aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), to_string(i), fontColor, fillColor);
+                            draw.rect(x3, y2, aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), to_string(i), FontColor, FillColor);
                         }
                         x3 += mp.getValue(w3[g][l][m][n]);
                     }

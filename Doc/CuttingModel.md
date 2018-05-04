@@ -105,6 +105,7 @@ this leads to more bins to be considered in the width/height bounding constraint
 - define function $\textrm{seq}(g, l, m, n) = |L^{3}_{lm}| \cdot (|L^{2}_{l}| \cdot (|L^{1}| \cdot g + l) + m) + n$ to indicate the produced order of L3 virtual bin $(l, m, n)$ in bin $g$.
 - define function $\textrm{next}(i)$ to indicate the next item of $i$ in its stack.
 - define function $\textrm{next}(g)$ to indicate the next bin of $g$ in the queue $G$.
+- define function $\textrm{p}(i) = \sum\limits_{l \in L^{1}} \sum\limits_{m \in L^{2}_{l}} \sum\limits_{n \in L^{3}_{lm}} p_{lmni}$ to indicate whether item $i$ is placed in the plate.
 
 
 ## Objective
@@ -121,7 +122,7 @@ $$
 ### maximize the area of placed items OPI (placed items)
 
 $$
-\max \sum_{i \in I} \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} w_{i} \cdot h_{i} \cdot p_{lmni}
+\max \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
 $$
 
 
@@ -309,4 +310,9 @@ $$
 set $W = 1$ to make the wider virtual bins comes first if there is no defect.
 $$
 W \cdot \omega^{3}_{lmn} \ge \omega^{3}_{l'm'n'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
+$$
+
+- **HAB.O (area bound)** user cut for covered area that it should be less than the area of the plate.
+$$
+\sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i) \le W \cdot H
 $$
