@@ -35,8 +35,8 @@
 | $H^{-}_{2}$ | the min height of every non-trivial L2 virtual bin | real | $(0, H]$ | 100 in challenge |
 | $W^{-}_{3}$ | the min width of every non-trivial empty L3 virtual bin | real | $(0, W]$ | 20 in challenge |
 | $H^{-}_{4}$ | the min height of every non-trivial empty L4 virtual bin | real | $(0, H]$ | 20 in challenge |
-| $\Omega_{i}, \Omega_{f}$ | the width of the item $i$ or flaw $f$ | real | $(0, W]$    |  |
-| $\Eta_{i}, \Eta_{f}$ | the height of the item $i$ or flaw $f$ | real | $(0, H]$    |        |
+| $\Omega_{i}, \Omega_{f}$ | the width of the item $i$ or flaw $f$ | real | $[0, W]$  | $\Omega_{i} \ne 0$ |
+| $\Eta_{i}, \Eta_{f}$ | the height of the item $i$ or flaw $f$ | real | $[0, H]$ | $\Eta_{i} \ne 0$ |
 | $X_{f}$     | horizontal position of the flaw $f$'s left bottom                        | real | $[0, W - \Omega_{f}]$ | in Cartesian coordinate system |
 | $Y_{f}$ | vertical position of the flaw $f$'s left bottom | real | $[0, H - \Eta_{f}]$ | in Cartesian coordinate system |
 | $L$ | the total number of L3 virtual bins | int | $[0, 10000]$ | $L = |G| \cdot |L^{1}| \cdot |L^{2}_{l}| \cdot |L^{3}_{lm}|$ |
@@ -47,22 +47,22 @@
 | Variable     | Description                                                | Type | Domain     | Remark                                                     |
 | -------------- | ------------------------------------------------------------ | ---- | ------------- | ------------------------------------------------------------ |
 | $d_{i}$       | item $i$ is rotated 90 degree            | bool  | $\{0, 1\}$ |  |
-| $\omega^{1}_{l}$ | width of the L1 virtual bin $l$ | real | $[0, +\infty)$ | |
-| $\eta^{2}_{lm}$ | height of the L2 virtual bin $m$ in L1 virtual bin $l$ | real | $[0, +\infty)$ | |
-| $\omega^{3}_{lmn}$ | width of the L3 virtual bin $n$ in L2 virtual bin $(l, m)$ | real | $[0, +\infty)$ |  |
-| $\eta^{4+}_{lmn}$ | height of the upper waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
-| $\eta^{4-}_{lmn}$ | height of the lower waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
-| $\gamma$ | width of the used area in the last used bin | real | $[0, +\infty)$ | |
-| $\tau^{2}_{lm}$ | L2 virtual bin $(l, m)$ is non-trivial by positive height | bool | $\{0, 1\} $ | bool variable to implement semi variable |
-| $\tau^{3}_{lmn}$ | L3 virtual bin $(l, m, n)$ is non-trivial by positive width | bool | $\{0, 1\} $ | bool variable to implement semi variable |
-| $\tau^{4+}_{lmn}$ | upper waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
-| $\tau^{4-}_{lmn}$ | lower waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
-| $e$ | there is residual in raw material | bool | $\{0, 1\}$ | bool variable to implement semi variable |
 | $p$ | there are items placed in raw material | bool | $\{0, 1\} $ |  |
 | $p_{l}$ | there are items placed in L1 virtual bin $l$ | bool | $\{0, 1\}$ | |
 | $p_{lm}$ | there are items placed in L2 virtual bin $(l, m)$ | bool | $\{0, 1\}$ | |
 | $p_{lmn}$ | there are items placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
 | $p_{lmni}$ | item $i$ is placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
+| $\omega^{1}_{l}$ | width of the L1 virtual bin $l$ | real | $[0, +\infty)$ | |
+| $\eta^{2}_{lm}$ | height of the L2 virtual bin $m$ in L1 virtual bin $l$ | real | $[0, +\infty)$ | |
+| $\omega^{3}_{lmn}$ | width of the L3 virtual bin $n$ in L2 virtual bin $(l, m)$ | real | $[0, +\infty)$ |  |
+| $\eta^{4+}_{lmn}$ | height of the upper waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
+| $\eta^{4-}_{lmn}$ | height of the lower waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
+| $\tau^{2}_{lm}$ | L2 virtual bin $(l, m)$ is non-trivial by positive height | bool | $\{0, 1\} $ | bool variable to implement semi variable |
+| $\tau^{3}_{lmn}$ | L3 virtual bin $(l, m, n)$ is non-trivial by positive width | bool | $\{0, 1\} $ | bool variable to implement semi variable |
+| $\tau^{4+}_{lmn}$ | upper waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
+| $\tau^{4-}_{lmn}$ | lower waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
+| $\gamma$ | width of the used area in the last used bin | real | $[0, +\infty)$ | |
+| $e$ | there is residual in raw material | bool | $\{0, 1\}$ | bool variable to implement semi variable |
 | $c_{lmnf}$ | L3 virtual bin $(l, m, n)$ contains flaw $f$ | bool | $\{0, 1\}$ | |
 | $c^{k}_{lmnf}$ | L3 virtual bin $(l, m, n)$ is not on the $k^\textrm{th}$ side of flaw $f$ | bool | $\{0, 1\}$ | $k \in \{1\textrm{:right}, 2\textrm{:left}, 3\textrm{:up}, 4\textrm{:down}\}$ |
 | $o_{i}$ | the sequence number of item $i$ to be produced | real | $[0, +\infty)$ |  |
@@ -172,8 +172,9 @@ p_{lmn} \le \sum_{i \in I} p_{lmni} \le |I| \cdot p_{lmn}, \quad \forall l \in L
 $$
 
 - **HRP (residual position)** locating the residual on the last bin and get the width of the used area.
+if $g$ is the last plate, then replace $p_{g'}$ with 0 since the past-the-last plate can never be used.
 $$
-\sum_{l \in L^{1}_{g}} \omega_{gl} - W \cdot (p_{g} - p_{g'}) \le \gamma \le \sum_{l \in L^{1}_{g}} \omega_{gl} + W \cdot (p_{g} - p_{g'}), \quad \forall g, g' \in G, g' = \textrm{next}(g)
+\sum_{l \in L^{1}_{g}} \omega_{gl} - W \cdot (1 - p_{g} + p_{g'}) \le \gamma \le \sum_{l \in L^{1}_{g}} \omega_{gl} + W \cdot (1 - p_{g} + p_{g'}), \quad \forall g, g' \in G, g' = \textrm{next}(g)
 $$
 
 - **HTW1 (L1 total width)** the sum of all L1 virtual bin's width should be equal to the width of the raw material or leave enough width for the waste.
@@ -291,7 +292,7 @@ $$
 o_{i} + 1 \le o_{i'}, \quad \forall i, i' \in I, i' = \textrm{next}(i)
 $$
 
-- **HGO (glass order)** the bins should used one by one without skipping some bins.
+- **HGO.O (glass order)** the bins should used one by one without skipping some bins.
 $$
 p_{g} \ge p_{g'}, \quad \forall g, g' \in G, g' = \textrm{next}(g)
 $$
