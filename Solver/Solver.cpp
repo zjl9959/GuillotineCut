@@ -451,7 +451,7 @@ void Solver::optimizeSinglePlate() {
                 for (ID n = 0; n < maxBinNum[L3]; ++n) {
                     // L3 min width.
                     mp.makeConstraint(input.param.minWasteWidth * t3[g][l][m][n] - input.param.plateWidth * p3[g][l][m][n] <= w3[g][l][m][n]);
-                    mp.makeConstraint(w3[g][l][m][n] <= input.param.minWasteWidth * t3[g][l][m][n] + input.param.plateWidth * p3[g][l][m][n]);
+                    mp.makeConstraint(w3[g][l][m][n] <= input.param.plateWidth * t3[g][l][m][n] + input.param.plateWidth * p3[g][l][m][n]);
                     // L4 min height.
                     mp.makeConstraint(input.param.minWasteHeight * t4u[g][l][m][n] <= h4u[g][l][m][n]);
                     mp.makeConstraint(h4u[g][l][m][n] <= input.param.plateHeight * t4u[g][l][m][n]);

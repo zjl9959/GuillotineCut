@@ -37,13 +37,14 @@ struct RandColor {
 };
 
 struct Drawer {
-    static constexpr double W = 1200;
-    static constexpr double H = 642;
+    static constexpr double Scale = 1; // set to 0.2 to get 100% zoom on modern screen.
+    static constexpr double CanvasWidth = 6000 * Scale;
+    static constexpr double CanvasHeight = 3210 * Scale;
 
 
     void begin(std::string path, double plateWidth, double plateHeight, double plateNum, double plateGap) {
-        wx = W / plateWidth;
-        hx = H / plateHeight;
+        wx = CanvasWidth / plateWidth;
+        hx = CanvasHeight / plateHeight;
         int width = static_cast<int>(wx * plateWidth + 1);
         int height = static_cast<int>(hx * (plateHeight * plateNum + plateGap * (plateNum - 1)) + 1);
         ofs.open(path);
