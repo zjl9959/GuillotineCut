@@ -259,18 +259,18 @@ c_{lmnf} \ge \bigwedge^{4}_{k = 1} c^{k}_{lmnf}
 \ \Leftrightarrow\ 
 3 + c_{lmnf} \ge \sum^{4}_{k = 1} c^{k}_{lmnf}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
-- **HDD (defect direction)** L3 virtual bin $(l, m, n)​$ is on some sides of flaw $f​$.
+- **HDD (defect direction)** L3 virtual bin $(l, m, n)$ is on some sides of flaw $f$.
 $$
 \textrm{x}(l, m, n) + W \cdot c^{1}_{lmnf} \ge X_{f} + \Omega_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 $$
-\textrm{x}(l, m, n) + \omega^{3}_{lmn} + W \cdot c^{2}_{lmnf} \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+\textrm{x}(l, m, n) + \omega^{3}_{lmn} - W \cdot c^{2}_{lmnf} \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 $$
 \textrm{y}(l, m, n) + H \cdot c^{3}_{lmnf} \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 $$
-\textrm{y}(l, m, n) + \omega^{2}_{lm} + H \cdot c^{4}_{lmnf} \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+\textrm{y}(l, m, n) + \eta^{2}_{lm} - H \cdot c^{4}_{lmnf} \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
 $$
 
 - **HIO (item order)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its next item in stack should only be in L3 virtual bin $(l', m', n')$ where $\textrm{seq}(l, m, n) < \textrm{seq}(l', m', n')$.
@@ -306,7 +306,7 @@ $$
 - **HVO2.O (L2 vertical order)** put all trivial bins to the upmost.
 set $H = 1$ to make the higher virtual bins comes first if there is no defect.
 $$
-H \cdot \omega^{2}_{lm} \ge \omega^{2}_{l'm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
+H \cdot \eta^{2}_{lm} \ge \eta^{2}_{l'm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
 $$
 - **HHO3.O (L3 horizontal order)** put all trivial bins to the rightmost.
 set $W = 1$ to make the wider virtual bins comes first if there is no defect.

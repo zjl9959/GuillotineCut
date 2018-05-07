@@ -273,6 +273,7 @@ void Solver::optimizeSinglePlate() {
 
     enum Layer { L0, L1, L2, L3 };
     constexpr ID maxBinNum[] = { 2, 12, 10, 8 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
     constexpr bool flawless = false; // EXTEND[szx][5]: parameterize the constant!
     constexpr bool maxCoveredArea = true; // EXTEND[szx][5]: parameterize the constant!
 
@@ -300,6 +301,15 @@ void Solver::optimizeSinglePlate() {
 
     Arr<Dvar> e(maxBinNum[L0]); // there is residual on plate.
     Dvar r; // width of the used area in the last plate.
+
+    Arr2D<Arr2D<Arr<Dvar>>> c; // L3 virtual bin is contains flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cr; // L3 virtual bin is not on the right side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cl; // L3 virtual bin is not on the left side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cu; // L3 virtual bin is not on the up side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cd; // L3 virtual bin is not on the down side of flaw.
+
+    //Arr<Dvar> o; // the sequence number of item to be produced.
+    //o[i] = mp.makeVar(VarType::Real, 0, binNum);
 
     Expr coveredArea; // the sum of placed items' area.
     Expr coveredWidth;
@@ -335,6 +345,13 @@ void Solver::optimizeSinglePlate() {
                     t3[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
                     t4u[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
                     t4l[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
+                    for (ID f = 0; f < aux.defects.size(); ++f) {
+                        c[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
+                        cr[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
+                        cl[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
+                        cu[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
+                        cd[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
+                    }
                 }
             }
         }
@@ -353,7 +370,7 @@ void Solver::optimizeSinglePlate() {
                     for (ID i = 0; i < aux.items.size(); ++i) { l3BinItems += pi3[i][g][l][m][n]; }
                     l2BinItems += l3BinItems;
                     // exclusive placement.
-                    mp.makeConstraint(l3BinItems <= 1);
+                    if (aux.plates[g].empty()) { mp.makeConstraint(l3BinItems <= 1); } // in case there is no defect on this plate and the defect free constraint is not added.
                     // L3 item placement.
                     mp.makeConstraint(l3BinItems == p3[g][l][m][n]); // OPTIMIZE[szx][5]: can be <= if the obj is not maximizing the area of placed items.
                 }
@@ -475,6 +492,33 @@ void Solver::optimizeSinglePlate() {
                             mp.makeConstraint(1 - pi3[*i][g][l][m][n] >= putInBin); // OPTIMIZE[szx][9]: skip the very first one where g=l=m=n=0.
                             putInBin += pi3[*j][g][l][m][n];
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // defects.
+    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+        for (ID l = 0; l < maxBinNum[L1]; ++l) {
+            for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                    for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
+                        // defect free.
+                        mp.makeConstraint(p3[g][l][m][n] <= 1 - c[g][l][m][n][*f]);
+                        // defect containing.
+                        mp.makeConstraint(3 + c[g][l][m][n][*f] >= cr[g][l][m][n][*f] + cl[g][l][m][n][*f] + cu[g][l][m][n][*f] + cd[g][l][m][n][*f]);
+                        // defect direction.
+                        Expr fx;
+                        for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
+                        for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
+                        Expr fy;
+                        for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
+                        fy += h4l[g][l][m][n];
+                        mp.makeConstraint(fx + input.param.plateWidth * cr[g][l][m][n][*f] >= aux.defects[*f].x + aux.defects[*f].w);
+                        mp.makeConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][*f] <= aux.defects[*f].x);
+                        mp.makeConstraint(fy + input.param.plateHeight * cu[g][l][m][n][*f] >= aux.defects[*f].y + aux.defects[*f].h);
+                        mp.makeConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][*f] <= aux.defects[*f].y);
                     }
                 }
             }
