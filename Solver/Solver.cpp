@@ -272,9 +272,9 @@ void Solver::optimizeSinglePlate() {
     using VarType = MpSolver::VariableType;
 
     enum Layer { L0, L1, L2, L3 };
-    constexpr ID maxBinNum[] = { 2, 12, 10, 8 };
-    constexpr bool flawless = false;
-    constexpr bool maxCoveredArea = true;
+    constexpr ID maxBinNum[] = { 2, 12, 10, 8 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr bool flawless = false; // EXTEND[szx][5]: parameterize the constant!
+    constexpr bool maxCoveredArea = true; // EXTEND[szx][5]: parameterize the constant!
 
     MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
     MpSolver mp(mpcfg);
@@ -464,6 +464,23 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
+    // item order.
+    for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
+        for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
+            Expr putInBin;
+            for (ID g = 0; g < maxBinNum[L0]; ++g) {
+                for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                            mp.makeConstraint(1 - pi3[*i][g][l][m][n] >= putInBin); // OPTIMIZE[szx][9]: skip the very first one where g=l=m=n=0.
+                            putInBin += pi3[*j][g][l][m][n];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     if (flawless) { // put larger bins to the left or bottom.
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
@@ -512,9 +529,10 @@ void Solver::optimizeSinglePlate() {
 
     Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
-    mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, 3000);
+    // TODO[szx][0]: this is not the obj for the original problem, remove it.
+    mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); // EXTEND[szx][5]: parameterize the constant!
     // minimize the width of used plates.
-    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, 0);
+    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever);
 
     // solve.
     if (mp.optimize()) {

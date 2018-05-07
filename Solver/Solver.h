@@ -207,8 +207,8 @@ public:
         List<Rect> items;
         List<RectArea> defects;
 
-        List<List<ID>> stacks;
-        List<List<ID>> plates;
+        List<List<ID>> stacks; // stacks[s][i] is the itemId of the i_th item in the stack s.
+        List<List<ID>> plates; // plates[p][i] is the defectId of the i_th defect on plate p.
     } aux;
 
     struct {

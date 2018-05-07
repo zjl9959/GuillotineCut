@@ -275,10 +275,11 @@ $$
 
 - **HIO (item order)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its next item in stack should only be in L3 virtual bin $(l', m', n')$ where $\textrm{seq}(l, m, n) < \textrm{seq}(l', m', n')$.
 it will make **HIL (item label)**, **HLO (label order)** trivial constraints.
+the right side can be $\sum p_{l'm'n'i'}$ where $(l', m', n') \in \{ (l', m', n') | \textrm{seq}(l, m, n) < \textrm{seq}(l', m', n') \}$ to reduce the number of constraints.
 $$
 \begin{split}
 1 - p_{lmni} \ge p_{l'm'n'i'}, \quad &\forall l, l' \in L^{1}, \forall m, m' \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, \forall i, i' \in I, i' = \textrm{next}(i),\\
-&(l' \le l - 1) \vee ((l' = l) \wedge ((m' \le m - 1) \vee ((m = m') \wedge (n' \le n - 1))
+&(l' \le l - 1) \vee ((l' = l) \wedge ((m' \le m - 1) \vee ((m = m') \wedge (n' \le n - 1))))
 \end{split}
 $$
 - **HIL (item label)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its ordinal number is $\textrm{seq}(l, m, n)$.

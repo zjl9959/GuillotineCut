@@ -40,6 +40,7 @@ struct Drawer {
     static constexpr double Scale = 1; // set to 0.2 to get 100% zoom on modern screen.
     static constexpr double CanvasWidth = 6000 * Scale;
     static constexpr double CanvasHeight = 3210 * Scale;
+    static constexpr int FontSize = 60 * Scale;
 
 
     void begin(std::string path, double plateWidth, double plateHeight, double plateNum, double plateGap) {
@@ -68,7 +69,7 @@ struct Drawer {
         if (d) { std::swap(w, h); }
         x *= wx; y *= hx; w *= wx; h *= hx;
         ofs << "      <rect x='" << x << "' y='" << y << "' width='" << w << "' height='" << h << "' style='fill:#" << bcolor << "; stroke:black; stroke-width:2'/>" << std::endl
-            << "      <text x='" << x + w / 2 << "' y='" << y + h / 2 << "' text-anchor='middle' alignment-baseline='middle' style='fill:#" << fcolor << "'>" << label << "</text>" << std::endl << std::endl;
+            << "      <text x='" << x + w / 2 << "' y='" << y + h / 2 << "' text-anchor='middle' alignment-baseline='middle' style='fill:#" << fcolor << ";font-size:" << FontSize << "'>" << label << "</text>" << std::endl << std::endl;
     }
     void rect(double x, double y, double w, double h, bool d, const std::string &label) {
         rc.next();
