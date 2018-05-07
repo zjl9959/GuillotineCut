@@ -13,8 +13,8 @@ GRBEnv MpSolverGurobi::globalEnv;
 MpSolverGurobi::MpSolverGurobi() : model(globalEnv), status(ResultStatus::Ready),
     timer(Timer::toMillisecond(cfg.timeoutInSecond)), subObjTimer(0ms) {}
 
-MpSolverGurobi::MpSolverGurobi(Configuration &cfg) : model(globalEnv), status(ResultStatus::Ready),
-    timer(Timer::toMillisecond(cfg.timeoutInSecond)), subObjTimer(0ms) {
+MpSolverGurobi::MpSolverGurobi(Configuration &config) : model(globalEnv), cfg(config),
+    status(ResultStatus::Ready), timer(Timer::toMillisecond(config.timeoutInSecond)), subObjTimer(0ms) {
     if (cfg.timeoutInSecond > Configuration::Forever) { setTimeLimitInSecond(cfg.timeoutInSecond); }
     setOutput(cfg.enableOutput);
 }
@@ -104,18 +104,19 @@ bool MpSolverGurobi::optimizeWithManualMultiObjective() {
     sort(objOrders.begin(), objOrders.end(),
         [this](int l, int r) { return (objectives[l].priority < objectives[r].priority); });
 
-    bool isSolved = true; // in case all objectives are constant which will be skipped.
+    bool isSolved = false; // in case all objectives are constant which will be skipped.
     for (auto o = objOrders.begin(); o != objOrders.end(); ++o) {
         SubObjective &subObj(objectives[*o]);
         if (isConstant(subObj.expr)) {
             Log(LogSwitch::Szx::MpSolver) << "obj[" << subObj.priority << "].opt = " << subObj.expr.getValue() << endl;
             continue;
         }
-        isSolved = false;
-        setObjective(subObj.expr, subObj.optimaOrientation);
         double restSeconds = (subObj.timeoutInSecond > 0) ? subObj.timeoutInSecond : (cfg.timeoutInSecond - getDurationInSecond());
+        if (restSeconds <= 0) { return reportStatus(status); }
         setTimeLimitInSecond(restSeconds);
         subObjTimer = Timer(Timer::toMillisecond(restSeconds));
+        isSolved = true;
+        setObjective(subObj.expr, subObj.optimaOrientation);
         if (subObj.preprocess) { subObj.preprocess(); }
 
         if (!reportStatus(solve())) { return (o != objOrders.begin()); }
@@ -135,7 +136,7 @@ bool MpSolverGurobi::optimizeWithManualMultiObjective() {
             makeConstraint(subObj.expr <= optimalValue + tolerance);
         }
     }
-    if (isSolved) { return reportStatus(solve()); }
+    if (!isSolved) { return reportStatus(solve()); }
     return true;
 }
 

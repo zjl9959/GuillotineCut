@@ -155,7 +155,7 @@ public:
     #pragma region Constructor
 public:
     MpSolverGurobi();
-    MpSolverGurobi(Configuration &cfg);
+    MpSolverGurobi(Configuration &config);
 
     void loadModel(const String &inputPath) { model.read(inputPath); }
     void saveModel(const String &outputPath) {
