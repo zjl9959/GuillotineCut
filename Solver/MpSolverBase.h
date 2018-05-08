@@ -11,6 +11,7 @@
 #include "Config.h"
 
 #include <exception>
+#include <string>
 
 
 namespace szx {

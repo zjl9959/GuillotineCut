@@ -293,23 +293,29 @@ $$
 o_{i} + 1 \le o_{i'}, \quad \forall i, i' \in I, i' = \textrm{next}(i)
 $$
 
+- **HPO.O (placement order)** an item can not be placed if its preceding item is not placed.
+it can be omitted if **OPI (placed items)** is disabled.
+$$
+\sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} \ge \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni'}, \quad \forall i, i' \in I, i' = \textrm{next}(i)
+$$
+
 - **HGO.O (glass order)** the bins should used one by one without skipping some bins.
 $$
 p_{g} \ge p_{g'}, \quad \forall g, g' \in G, g' = \textrm{next}(g)
 $$
 
 - **HHO1.O (L1 horizontal order)** put all trivial bins to the rightmost.
-set $W = 1$ to make the wider virtual bins comes first if there is no defect.
+set $W = 1$ to make the wider virtual bins comes first if there is no defect and order.
 $$
 W \cdot \omega^{1}_{l} \ge \omega^{1}_{l'}, \quad \forall l, l' \in L^{1}, l' = l + 1
 $$
 - **HVO2.O (L2 vertical order)** put all trivial bins to the upmost.
-set $H = 1$ to make the higher virtual bins comes first if there is no defect.
+set $H = 1$ to make the higher virtual bins comes first if there is no defect and order.
 $$
 H \cdot \eta^{2}_{lm} \ge \eta^{2}_{l'm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
 $$
 - **HHO3.O (L3 horizontal order)** put all trivial bins to the rightmost.
-set $W = 1$ to make the wider virtual bins comes first if there is no defect.
+set $W = 1$ to make the wider virtual bins comes first if there is no defect and order.
 $$
 W \cdot \omega^{3}_{lmn} \ge \omega^{3}_{l'm'n'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
 $$

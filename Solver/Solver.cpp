@@ -274,8 +274,13 @@ void Solver::optimizeSinglePlate() {
     enum Layer { L0, L1, L2, L3 };
     constexpr ID maxBinNum[] = { 2, 12, 10, 8 }; // EXTEND[szx][5]: parameterize the constant!
     constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
-    constexpr bool flawless = false; // EXTEND[szx][5]: parameterize the constant!
-    constexpr bool maxCoveredArea = true; // EXTEND[szx][5]: parameterize the constant!
+    constexpr bool flawless = false; // there are defects on the plate.
+    constexpr bool ordered = true; // the items should be produced in given order.
+    // TODO[szx][0]: this is not the obj for the original problem, remove it.
+    constexpr bool maxCoveredArea = true; // not all items must be placed and the obj is to maximize the area of placed items.
+    constexpr bool addBinSizeCut = false;
+    constexpr bool addGlassOrderCut = true;
+    constexpr bool addCoveredAreaCut = true;
 
     MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
     MpSolver mp(mpcfg);
@@ -359,6 +364,7 @@ void Solver::optimizeSinglePlate() {
     r = mp.makeVar(VarType::Real, 0, input.param.plateWidth);
 
     Log(LogSwitch::Szx::Model) << "add constraints." << endl;
+    Log(LogSwitch::Szx::Model) << "add placement constraints." << endl;
     for (ID g = 0; g < maxBinNum[L0]; ++g) {
         Expr plateItems;
         for (ID l = 0; l < maxBinNum[L1]; ++l) {
@@ -392,6 +398,7 @@ void Solver::optimizeSinglePlate() {
     }
     coveredWidth += r;
 
+    Log(LogSwitch::Szx::Model) << "add fitting constraints." << endl;
     auto width = [&](ID itemId) {
         return (aux.items[itemId].w * (1 - d[itemId]) + aux.items[itemId].h * d[itemId]);
     };
@@ -422,7 +429,7 @@ void Solver::optimizeSinglePlate() {
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
     }
 
-    // total width and height.
+    Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
     for (ID g = 0; g < maxBinNum[L0]; ++g) {
         Expr l1BinWidthSum;
         for (ID l = 0; l < maxBinNum[L1]; ++l) {
@@ -454,7 +461,7 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
-    // width and height bound.
+    Log(LogSwitch::Szx::Model) << "add bounding constraints." << endl;
     for (ID g = 0; g < maxBinNum[L0]; ++g) {
         for (ID l = 0; l < maxBinNum[L1]; ++l) {
             // L1 width bound.
@@ -481,24 +488,47 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
-    // item order.
-    for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
-        for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
-            Expr putInBin;
-            for (ID g = 0; g < maxBinNum[L0]; ++g) {
-                for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                            mp.makeConstraint(1 - pi3[*i][g][l][m][n] >= putInBin); // OPTIMIZE[szx][9]: skip the very first one where g=l=m=n=0.
-                            putInBin += pi3[*j][g][l][m][n];
+    Log(LogSwitch::Szx::Model) << "add ordering constraints." << endl;
+    if (ordered) {
+        for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
+            for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
+                Expr putInBin;
+                for (ID g = 0; g < maxBinNum[L0]; ++g) {
+                    for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                mp.makeConstraint(1 - pi3[*i][g][l][m][n] >= putInBin); // OPTIMIZE[szx][9]: skip the very first one where g=l=m=n=0.
+                                putInBin += pi3[*j][g][l][m][n];
+                            }
                         }
                     }
                 }
             }
         }
+
+        // an item can not be placed if its preceding item is not placed.
+        if (maxCoveredArea) { // not all items are placed.
+            for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
+                Expr prevPutInBin;
+                for (auto i = s->begin(); i != s->end(); ++i) {
+                    Expr nextPutInBin;
+                    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+                        for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                            for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                                for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                    nextPutInBin += pi3[*i][g][l][m][n];
+                                }
+                            }
+                        }
+                    }
+                    if (i > s->begin()) { mp.makeConstraint(prevPutInBin >= nextPutInBin); }
+                    prevPutInBin = nextPutInBin;
+                }
+            }
+        }
     }
 
-    // defects.
+    Log(LogSwitch::Szx::Model) << "add defect constraints." << endl;
     for (ID g = 0; g < maxBinNum[L0]; ++g) {
         for (ID l = 0; l < maxBinNum[L1]; ++l) {
             for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -525,56 +555,50 @@ void Solver::optimizeSinglePlate() {
         }
     }
 
-    if (flawless) { // put larger bins to the left or bottom.
+    Log(LogSwitch::Szx::Model) << "add user cuts." << endl;
+    if (addBinSizeCut) {
+        // if there is no defect and order, put larger bins to the left or bottom.
+        // else put all non-trivial bins to the left or bottom.
+        Length wCoef = (flawless && !ordered) ? 1 : input.param.plateWidth;
+        Length hCoef = (flawless && !ordered) ? 1 : input.param.plateHeight;
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                if (l + 1 < maxBinNum[L1]) { mp.makeConstraint(w1[g][l] >= w1[g][l + 1]); }
+                if (l + 1 < maxBinNum[L1]) { mp.makeConstraint(wCoef * w1[g][l] >= w1[g][l + 1]); }
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    if (m + 1 < maxBinNum[L2]) { mp.makeConstraint(h2[g][l][m] >= h2[g][l][m + 1]); }
+                    if (m + 1 < maxBinNum[L2]) { mp.makeConstraint(hCoef * h2[g][l][m] >= h2[g][l][m + 1]); }
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        if (n + 1 < maxBinNum[L3]) { mp.makeConstraint(w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
-                    }
-                }
-            }
-        }
-    } else { // put all non-trivial bins to the left or bottom.
-        for (ID g = 0; g < maxBinNum[L0]; ++g) {
-            for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                if (l + 1 < maxBinNum[L1]) { mp.makeConstraint(input.param.plateWidth * w1[g][l] >= w1[g][l + 1]); }
-                for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    if (m + 1 < maxBinNum[L2]) { mp.makeConstraint(input.param.plateHeight * h2[g][l][m] >= h2[g][l][m + 1]); }
-                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        if (n + 1 < maxBinNum[L3]) { mp.makeConstraint(input.param.plateWidth * w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
+                        if (n + 1 < maxBinNum[L3]) { mp.makeConstraint(wCoef * w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
                     }
                 }
             }
         }
     }
 
-    // user cut for glass order.
-    for (ID g = 1; g < maxBinNum[L0]; ++g) { mp.makeConstraint(p[g - 1] >= p[g]); }
+    if (addGlassOrderCut) { // user cut for glass order.
+        for (ID g = 1; g < maxBinNum[L0]; ++g) { mp.makeConstraint(p[g - 1] >= p[g]); }
+    }
 
-    // user cut for covered area should be less than the plate.
-    for (ID g = 0; g < maxBinNum[L0]; ++g) {
-        Expr area;
-        for (ID i = 0; i < aux.items.size(); ++i) {
-            Expr putInBin;
-            for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        putInBin += pi3[i][g][l][m][n];
+    if (addCoveredAreaCut) { // user cut for covered area should be less than the plate.
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            Expr area;
+            for (ID i = 0; i < aux.items.size(); ++i) {
+                Expr putInBin;
+                for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                            putInBin += pi3[i][g][l][m][n];
+                        }
                     }
                 }
+                area += (aux.items[i].w * aux.items[i].h * putInBin);
             }
-            area += (aux.items[i].w * aux.items[i].h * putInBin);
+            mp.makeConstraint(area <= input.param.plateWidth * input.param.plateHeight);
         }
-        mp.makeConstraint(area <= input.param.plateWidth * input.param.plateHeight);
     }
 
     Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
-    // TODO[szx][0]: this is not the obj for the original problem, remove it.
-    mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); // EXTEND[szx][5]: parameterize the constant!
+    if (maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
     // minimize the width of used plates.
     mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever);
 
@@ -595,7 +619,7 @@ void Solver::optimizeSinglePlate() {
                 }
             }
         }
-        Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << " items." << endl;
+        Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << aux.items.size() << " items." << endl;
 
         // visualization.
         constexpr double PlateGap = 100;
