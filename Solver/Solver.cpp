@@ -529,26 +529,28 @@ void Solver::optimizeSinglePlate() {
     }
 
     Log(LogSwitch::Szx::Model) << "add defect constraints." << endl;
-    for (ID g = 0; g < maxBinNum[L0]; ++g) {
-        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                    for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
-                        // defect free.
-                        mp.makeConstraint(p3[g][l][m][n] <= 1 - c[g][l][m][n][*f]);
-                        // defect containing.
-                        mp.makeConstraint(3 + c[g][l][m][n][*f] >= cr[g][l][m][n][*f] + cl[g][l][m][n][*f] + cu[g][l][m][n][*f] + cd[g][l][m][n][*f]);
-                        // defect direction.
-                        Expr fx;
-                        for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
-                        for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
-                        Expr fy;
-                        for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
-                        fy += h4l[g][l][m][n];
-                        mp.makeConstraint(fx + input.param.plateWidth * cr[g][l][m][n][*f] >= aux.defects[*f].x + aux.defects[*f].w);
-                        mp.makeConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][*f] <= aux.defects[*f].x);
-                        mp.makeConstraint(fy + input.param.plateHeight * cu[g][l][m][n][*f] >= aux.defects[*f].y + aux.defects[*f].h);
-                        mp.makeConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][*f] <= aux.defects[*f].y);
+    if (!flawless) {
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
+                            // defect free.
+                            mp.makeConstraint(p3[g][l][m][n] <= 1 - c[g][l][m][n][*f]);
+                            // defect containing.
+                            mp.makeConstraint(3 + c[g][l][m][n][*f] >= cr[g][l][m][n][*f] + cl[g][l][m][n][*f] + cu[g][l][m][n][*f] + cd[g][l][m][n][*f]);
+                            // defect direction.
+                            Expr fx;
+                            for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
+                            for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
+                            Expr fy;
+                            for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
+                            fy += h4l[g][l][m][n];
+                            mp.makeConstraint(fx + input.param.plateWidth * cr[g][l][m][n][*f] >= aux.defects[*f].x + aux.defects[*f].w);
+                            mp.makeConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][*f] <= aux.defects[*f].x);
+                            mp.makeConstraint(fy + input.param.plateHeight * cu[g][l][m][n][*f] >= aux.defects[*f].y + aux.defects[*f].h);
+                            mp.makeConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][*f] <= aux.defects[*f].y);
+                        }
                     }
                 }
             }
@@ -630,7 +632,12 @@ void Solver::optimizeSinglePlate() {
 
         double offset = 0;
         for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
+            // draw plate.
             draw.rect(0, offset, input.param.plateWidth, input.param.plateHeight);
+            for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
+                draw.rect(aux.defects[*f].x, aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h, 0, "", FontColor, FontColor);
+            }
+            // draw items.
             double x1 = 0;
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
                 double y2 = offset;
@@ -647,6 +654,7 @@ void Solver::optimizeSinglePlate() {
                 }
                 x1 += mp.getValue(w1[g][l]);
             }
+            // draw cuts.
             x1 = 0;
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
                 if (mp.getValue(w1[g][l]) == 0) { continue; }
