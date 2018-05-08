@@ -307,13 +307,13 @@ void Solver::optimizeSinglePlate() {
     Arr<Dvar> e(maxBinNum[L0]); // there is residual on plate.
     Dvar r; // width of the used area in the last plate.
 
-    Arr2D<Arr2D<Arr<Dvar>>> c; // L3 virtual bin is contains flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cr; // L3 virtual bin is not on the right side of flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cl; // L3 virtual bin is not on the left side of flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cu; // L3 virtual bin is not on the up side of flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cd; // L3 virtual bin is not on the down side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> c(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is contains flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cr(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the right side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cl(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the left side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cu(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the up side of flaw.
+    Arr2D<Arr2D<Arr<Dvar>>> cd(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the down side of flaw.
 
-    //Arr<Dvar> o; // the sequence number of item to be produced.
+    //Arr<Dvar> o(aux.items.size()); // the sequence number of item to be produced.
     //o[i] = mp.makeVar(VarType::Real, 0, binNum);
 
     Expr coveredArea; // the sum of placed items' area.
@@ -350,7 +350,13 @@ void Solver::optimizeSinglePlate() {
                     t3[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
                     t4u[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
                     t4l[g][l][m][n] = mp.makeVar(VarType::Bool, 0, 1);
-                    for (ID f = 0; f < aux.defects.size(); ++f) {
+                    ID defectNum = static_cast<ID>(aux.plates[g].size());
+                    c[g][l][m][n].init(defectNum);
+                    cr[g][l][m][n].init(defectNum);
+                    cl[g][l][m][n].init(defectNum);
+                    cu[g][l][m][n].init(defectNum);
+                    cd[g][l][m][n].init(defectNum);
+                    for (ID f = 0; f < defectNum; ++f) {
                         c[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
                         cr[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
                         cl[g][l][m][n][f] = mp.makeVar(VarType::Bool, 0, 1);
@@ -396,7 +402,7 @@ void Solver::optimizeSinglePlate() {
 
         coveredWidth += input.param.plateWidth * p[g];
     }
-    coveredWidth += r;
+    coveredWidth += (r - input.param.plateWidth);
 
     Log(LogSwitch::Szx::Model) << "add fitting constraints." << endl;
     auto width = [&](ID itemId) {
@@ -625,6 +631,7 @@ void Solver::optimizeSinglePlate() {
 
         // visualization.
         constexpr double PlateGap = 100;
+        constexpr double DefectHintRadius = 32;
         const char FontColor[] = "000000";
         const char FillColor[] = "CCFFCC";
         Drawer draw;
@@ -634,9 +641,6 @@ void Solver::optimizeSinglePlate() {
         for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
             // draw plate.
             draw.rect(0, offset, input.param.plateWidth, input.param.plateHeight);
-            for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
-                draw.rect(aux.defects[*f].x, aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h, 0, "", FontColor, FontColor);
-            }
             // draw items.
             double x1 = 0;
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
@@ -674,6 +678,13 @@ void Solver::optimizeSinglePlate() {
                     draw.line(oldX1, y2, x1, y2, L2);
                 }
                 draw.line(x1, offset, x1, offset + input.param.plateHeight, L1);
+            }
+            // draw defects.
+            for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
+                if ((aux.defects[*f].w < (2 * DefectHintRadius)) || (aux.defects[*f].h < (2 * DefectHintRadius))) {
+                    draw.circle(aux.defects[*f].x + aux.defects[*f].w * 0.5, offset + aux.defects[*f].y + aux.defects[*f].h * 0.5, DefectHintRadius);
+                }
+                draw.rect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h, 0, "", FontColor, FontColor);
             }
         }
 

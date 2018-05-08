@@ -87,6 +87,10 @@ struct Drawer {
         ofs << "      <line x1='" << x1 << "' y1='" << y1 << "' x2='" << x2 << "' y2='" << y2 << "' stroke-dasharray='12, 4' stroke='" << cutColor[layer] << "' stroke-width='" << cutWidth[layer] << "'/>" << std::endl << std::endl;
     }
 
+    void circle(double x, double y, double r) {
+        ofs << "      <circle cx='" << x << "' cy='" << y << "' r='" << r << "' style='fill-opacity:0; stroke:#000000; stroke-width:2'/>" << std::endl;
+    }
+
 
     double wx; // width expansion.
     double hx; // height expansion.
