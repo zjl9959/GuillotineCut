@@ -7,6 +7,8 @@
 #include <thread>
 #include <mutex>
 
+#include <cmath>
+
 #include "MpSolver.h"
 #include "Visualizer.h"
 
@@ -619,40 +621,48 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
             Bin &plate(sln.bins.back());
             Coord x1 = 0;
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                Length l1BinWidth = static_cast<Length>(mp.getValue(w1[g][l]));
+                Length l1BinWidth = lround(mp.getValue(w1[g][l]));
                 if (Math::weakLess(l1BinWidth, 0)) { continue; }
                 plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
                 Bin &l1Bin(plate.children.back());
                 Coord y2 = 0;
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    Length l2BinHeight = static_cast<Length>(mp.getValue(h2[g][l][m]));
+                    Length l2BinHeight = lround(mp.getValue(h2[g][l][m]));
                     if (Math::weakLess(l2BinHeight, 0)) { continue; }
                     l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
                     Bin &l2Bin(l1Bin.children.back());
                     Coord x3 = x1;
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        Length l3BinWidth = static_cast<Length>(mp.getValue(w3[g][l][m][n]));
+                        Length l3BinWidth = lround(mp.getValue(w3[g][l][m][n]));
                         if (Math::weakLess(l3BinWidth, 0)) { continue; }
                         l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
                         Bin &l3Bin(l2Bin.children.back());
                         for (ID i = 0; i < itemNum; ++i) {
                             if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                            l1Bin.type = l2Bin.type = l3Bin.type = Node::SpecialType::Branch;
+
                             Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                             Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                            Length lowerWasteHeight = static_cast<Length>(mp.getValue(h4l[g][l][m][n]));
-                            Length upperWasteHeight = static_cast<Length>(mp.getValue(h4u[g][l][m][n]));
+                            Length lowerWasteHeight = lround(mp.getValue(h4l[g][l][m][n]));
+                            Length upperWasteHeight = lround(mp.getValue(h4u[g][l][m][n]));
                             bool lowerWaste = (lowerWasteHeight > 0);
                             bool upperWaste = (upperWasteHeight > 0);
-                            #if SZX_DEBUG
+                            if (lowerWaste) { 
+                                l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste));
+                                l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
+                            } else if (upperWaste) {
+                                l3Bin.children.push_back(Bin(RectArea(x3, y2, w, h), i));
+                                l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste));
+                            } else {
+                                l3Bin.rect = RectArea(x3, y2, w, h);
+                                l3Bin.type = i;
+                            }
+                            // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
+                            //if (lowerWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste)); }
+                            //l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
+                            //if (upperWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste)); }
                             if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
                             if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
-                            #endif // SZX_DEBUG
-                            if (lowerWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste)); }
-                            l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
-                            if (upperWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste)); }
-
-                            l1Bin.type = l2Bin.type = l3Bin.type = Node::SpecialType::Branch;
-                            //l3Bin.type = (lowerWaste || upperWaste) ? Node::SpecialType::Branch : i; // OPTIMIZE[szx][5]: mark type of items here?
                             break;
                         }
                         x3 += l3BinWidth;
@@ -786,6 +796,7 @@ Solver::Solution::operator Problem::Output() {
 
 void Solver::Solution::traverse(Bin &bin, ID depth, ID parent, OnNode onNode) {
     ID id = onNode(bin, depth, parent);
+    if (bin.children.empty()) { return; }
 
     bool horizontal = Math::isOdd(++depth);
     Length dx = 0;

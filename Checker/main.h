@@ -2,7 +2,8 @@
 #define MAIN_H_INCLUDED
 
 // Static Path to global_parameters, X_batch, X_defects and X_solution files
-#define PATH_TO_INSTANCES           "instances_checker\\"
+#define PATH_TO_INSTANCES           "Instance/"
+#define PATH_TO_SOLUTIONS           "Solution/"
 
 // Plates number limit
 #define PLATES_NBR_LIMIT            100

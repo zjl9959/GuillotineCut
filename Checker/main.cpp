@@ -150,7 +150,7 @@ int main (void)
     cout << "\tPlease enter your USED BATCH file Index: ";
     cin >> file_idx;
     batchPath =     PATH_TO_INSTANCES + file_idx + "_batch.csv";
-    solutionPath =  PATH_TO_INSTANCES + file_idx + "_solution.csv";
+    solutionPath =  PATH_TO_SOLUTIONS + file_idx + "_solution.csv";
     defectsPath =   PATH_TO_INSTANCES + file_idx + "_defects.csv";
     optParamsPath = PATH_TO_INSTANCES "global_param.csv";
 
