@@ -673,11 +673,22 @@ public:
 
 class Math {
 public:
-    static constexpr double DefaultTolerance = 1E4;
+    static constexpr double DefaultTolerance = 1E-4;
 
     static bool weakEqual(double l, double r, double tolerance = DefaultTolerance) {
         return (std::abs(l - r) < tolerance);
     }
+    static bool weakLess(double l, double r, double tolerance = DefaultTolerance) { // operator<=().
+        return ((l - r) < tolerance);
+    }
+    static bool strongLess(double l, double r, double tolerance = DefaultTolerance) { // operator<().
+        return ((l - r) < -tolerance);
+    }
+
+    template<typename T>
+    static bool isOdd(T integer) { return ((integer % 2) == 1); }
+    template<typename T>
+    static bool isEven(T integer) { return ((integer % 2) == 0); }
 
     template<typename T>
     static T bound(T num, T lb, T ub) {

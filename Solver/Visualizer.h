@@ -40,7 +40,7 @@ struct Drawer {
     static constexpr double Scale = 1; // set to 0.2 to get 100% zoom on modern screen.
     static constexpr double CanvasWidth = 6000 * Scale;
     static constexpr double CanvasHeight = 3210 * Scale;
-    static constexpr int FontSize = 60 * Scale;
+    static constexpr int FontSize = static_cast<int>(60 * Scale);
 
 
     void begin(std::string path, double plateWidth, double plateHeight, double plateNum, double plateGap) {

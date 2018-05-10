@@ -11,6 +11,7 @@
 #include "Config.h"
 
 #include <chrono>
+#include <functional>
 
 #include "Common.h"
 #include "Utility.h"
@@ -169,6 +170,28 @@ public:
         Coord x; // left.
         Coord y; // bottom.
     };
+
+    struct Bin {
+        Bin() {}
+        Bin(const RectArea &rectArea, Problem::Output::Node::Type nodeType = Problem::Output::Node::SpecialType::Waste)
+            : rect(rectArea), type(nodeType) {}
+
+        Problem::Output::Node::Type type;
+        RectArea rect;
+        List<Bin> children;
+    };
+
+    struct Solution { // cutting patterns.
+        using OnNode = std::function<ID(Bin &bin, ID depth, ID parent)>; // return the node id.
+
+        Solution() : totalWidth(0) {}
+        operator Problem::Output();
+
+        void traverse(Bin &bin, ID depth, ID parent, OnNode onNode);
+
+        Length totalWidth; // objective value.
+        List<Bin> bins; // solution vector.
+    };
     #pragma endregion Type
 
     #pragma region Constant
@@ -193,9 +216,9 @@ public:
 
 protected:
     void init();
-    void optimize(Problem::Output &output, ID workerId = 0); // optimize by a single worker.
+    void optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
 
-    void optimizeSinglePlate();
+    void optimizeCompleteModel(Solution &sln, bool maxCoveredArea = false, bool addBinSizeCut = false, bool addGlassOrderCut = true, bool addCoveredAreaCut = true);
     #pragma endregion Method
 
     #pragma region Field

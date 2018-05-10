@@ -16,7 +16,7 @@ namespace szx {
 bool Problem::Input::loadBatch(const String &batchFilePath) {
     ifstream ifs(batchFilePath);
     if (!ifs.is_open()) {
-        Log(LogSwitch::Szx::Input) << "fail to open batch file." << endl;
+        Log(Log::Fatal) << "fail to open batch file." << endl;
         return false;
     }
 
@@ -39,7 +39,7 @@ bool Problem::Input::loadBatch(const String &batchFilePath) {
 bool Problem::Input::loadDefects(const String &defectsFilePath) {
     ifstream ifs(defectsFilePath);
     if (!ifs.is_open()) {
-        Log(LogSwitch::Szx::Input) << "fail to open batch file." << endl;
+        Log(Log::Fatal) << "fail to open batch file." << endl;
         return false;
     }
 
@@ -65,7 +65,7 @@ bool Problem::Input::loadDefects(const String &defectsFilePath) {
 void Problem::Output::load(const String &filePath) {
     ifstream ifs(filePath);
     if (!ifs.is_open()) {
-        Log(LogSwitch::Szx::Input) << "fail to open solution file." << endl;
+        Log(Log::Error) << "fail to open solution file." << endl;
         return;
     }
 
@@ -99,8 +99,9 @@ void Problem::Output::save(const String &filePath) const {
             << n->width << CsvReader::CommaChar
             << n->height << CsvReader::CommaChar
             << n->type << CsvReader::CommaChar
-            << n->cut << CsvReader::CommaChar
-            << n->parent << CsvReader::CommaChar << endl;
+            << n->cut << CsvReader::CommaChar;
+        if (n->parent >= 0) { ofs << n->parent; }
+        ofs << endl;
     }
 }
 #pragma endregion Problem::Output

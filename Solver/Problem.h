@@ -75,7 +75,9 @@ public:
 
     struct Output {
         struct Node {
-            enum Type { Residual = -3, Branch = -2, Waste = -1, ItemBegin = 0 };
+            using Type = int;
+
+            enum SpecialType { Residual = -3, Branch = -2, Waste = -1, ItemBegin = 0 };
 
             ID plateId;
             ID id;
@@ -83,7 +85,7 @@ public:
             Coord y;
             Length width;
             Length height;
-            int type; // Item.id or Type.
+            Type type; // Item.id or Type.
             int cut; // 0 for plate. 1, 2, 3, 4 for real cuts.
             ID parent;
         };
@@ -93,9 +95,8 @@ public:
         void load(const String &filePath);
         void save(const String &filePath) const;
 
-        Length totalWidth; // the objective value.
-        // OPTIMIZE[szx][0]: optimize the solution representation!
-        List<Node> nodes; // the solution vector.
+        Length totalWidth; // objective value.
+        List<Node> nodes; // solution vector.
     };
     #pragma endregion Type
 
