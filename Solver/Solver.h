@@ -212,7 +212,7 @@ public:
     void record() const; // save running log.
 
     bool checkFeasibility() const;
-    bool checkObjective() const;
+    Length checkObjective() const;
 
 protected:
     void init();

@@ -131,9 +131,9 @@ bool MpSolverGurobi::optimizeWithManualMultiObjective() {
         if (isObjCutOffAdded) { continue; }
         double tolerance = max(abs(optimalValue * subObj.relTolerance), subObj.absTolerance);
         if (subObj.optimaOrientation == Maximize) {
-            makeConstraint(subObj.expr >= optimalValue - tolerance);
+            addConstraint(subObj.expr >= optimalValue - tolerance);
         } else if (subObj.optimaOrientation == Minimize) {
-            makeConstraint(subObj.expr <= optimalValue + tolerance);
+            addConstraint(subObj.expr <= optimalValue + tolerance);
         }
     }
     if (!isSolved) { return reportStatus(solve()); }

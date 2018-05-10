@@ -76,12 +76,35 @@ public:
     enum PoolingMode {
         Incidental = 0, // only keeps solutions found along the way to the optimum incidentally.
         Good = 1,       // keep searching for high quality solutions after the optimum is found.
-        Top = 2         // search top K solutions in a systematic way.
+        Top = 2,        // search top K solutions in a systematic way.
+        DefaultPoolingMode = Incidental
+    };
+
+    enum MipFocusMode {
+        ImproveFeasibleSolution = 1, // find sub-optima as fast as possible.
+        ProveOptimality = 2,         // reach and prove the optima is mandatory.
+        ImproveBound = 3,            // improve the bound as much as possible.
+        DefaultFocus = 0             // balance between modes.
+    };
+
+    enum SymmetryDetectionMode {
+        NoDetection = 0,
+        ConservativeDetection = 1,
+        AggressiveDetection = 2,
+        DefaultDetectionMode = -1
+    };
+
+    enum PresolveLevel {
+        NoPresolve = 0,
+        ConservativePresolve = 1,
+        AggressivePresolve = 2,
+        DefaultPresolveMode = -1
     };
 
     static constexpr double Infinity = GRB_INFINITY;
-    /// default thread number to let Gurobi make the decision.
-    static constexpr int AutoThreading = 0;
+    static constexpr double Undefined = GRB_UNDEFINED;
+
+    static constexpr int AutoThreading = 0; // default thread number to let Gurobi make the decision.
 
     static constexpr int DefaultObjectivePriority = 0;
     static constexpr OptimaOrientation DefaultObjectiveOptimaOrientation = Maximize;
@@ -203,8 +226,8 @@ public:
     double getDurationInSecond() const { return timer.elapsedSeconds(); }
 
     // decisions.
-    DecisionVar makeVar(VariableType type, double lb, double ub, const String &name) { return model.addVar(lb, ub, 0, static_cast<char>(type), name); }
-    DecisionVar makeVar(VariableType type, double lb = 0, double ub = 1.0) { return makeVar(type, lb, ub, ""); }
+    DecisionVar addVar(VariableType type, double lb, double ub, const String &name) { return model.addVar(lb, ub, 0, static_cast<char>(type), name); }
+    DecisionVar addVar(VariableType type, double lb = 0, double ub = 1.0) { return addVar(type, lb, ub, ""); }
 
     double getValue(const LinearExpr &expr) const { return expr.getValue(); }
     double getValue(const DecisionVar &var) const { return var.get(GRB_DoubleAttr_X); }
@@ -213,11 +236,13 @@ public:
         return var.get(GRB_DoubleAttr_Xn);
     }
 
-    // use the given value as the initial solution in MIP.
+    // [Tune] use the given value as the initial solution in MIP.
     void setInitValue(DecisionVar &var, double value) { var.set(GRB_DoubleAttr_Start, value); }
-
+    // [Tune] guide the solver to prefer certain value on certain variable.
     void setHintValue(DecisionVar &var, double value) { var.set(GRB_DoubleAttr_VarHintVal, value); }
     void setHintPrioriy(DecisionVar &var, int priority) { var.set(GRB_IntAttr_VarHintPri, priority); }
+    // [Tune] guide the solver to prefer certain variable for branching.
+    void setBranchPriority(DecisionVar &var, int priority) { var.set(GRB_IntAttr_BranchPriority, priority); }
 
     using MpSolverBase::isTrue;
     bool isTrue(DecisionVar var) const { return isTrue(getValue(var)); }
@@ -241,7 +266,7 @@ public:
     double getPoolObjBound() const { return model.get(GRB_DoubleAttr_PoolObjBound); }
 
     // constraints.
-    Constraint makeConstraint(const LinearRange &r, const String &name = "") { return model.addConstr(r, name); }
+    Constraint addConstraint(const LinearRange &r, const String &name = "") { return model.addConstr(r, name); }
     void removeConstraint(Constraint constraint) { model.remove(constraint); }
     int getConstraintCount() const { return model.get(GRB_IntAttr_NumConstrs); }
 
@@ -282,6 +307,13 @@ public:
         model.set(GRB_IntParam_LazyConstraints, 1);
         model.setCallback(callback);
     }
+
+    // [Tune] prefer finding good feasible solutions, proving optimality or improving bound.
+    void setMipFocus(MipFocusMode mode) { model.set(GRB_IntParam_MIPFocus, mode); }
+    // [Tune] the effort on symmetry detection.
+    void setSymmetryDetectionMode(SymmetryDetectionMode mode) { model.set(GRB_IntParam_Symmetry, mode); }
+    // [Tune] the effort on presolve.
+    void setPresolveLevel(PresolveLevel level) { model.set(GRB_IntParam_Presolve, level); }
 
 protected:
     bool optimizeWithGurobiMultiObjective();
