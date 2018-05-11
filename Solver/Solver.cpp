@@ -151,7 +151,7 @@ void Solver::Configuration::save(const String &filePath) const {
 void Solver::solve() {
     init();
 
-    List<Solution> solutions(env.jobNum);
+    List<Solution> solutions(env.jobNum, Solution(this));
 
     Log(LogSwitch::Szx::Framework) << "launch " << env.jobNum << " workers." << endl;
     List<thread> threadList;
@@ -221,6 +221,9 @@ void Solver::init() {
     for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
         ID itemId = idMap.item.toConsecutiveId(i->id);
         aux.items.push_back(Rect(max(i->width, i->height), min(i->width, i->height)));
+        if (itemId != i->id) {
+            Log(LogSwitch::Szx::Preprocess) << "map item " << i->id << " to " << itemId << endl;
+        }
 
         ID stackId = idMap.stack.toConsecutiveId(i->stack);
         if (aux.stacks.size() <= stackId) { aux.stacks.push_back(List<ID>()); } // create a new stack.
@@ -786,7 +789,7 @@ Solver::Solution::operator Problem::Output() {
             node.y = bin.rect.y;
             node.width = bin.rect.w;
             node.height = bin.rect.h;
-            node.type = bin.type; // TODO[szx][0]: merge nodes if an item is put in this L1/L2 bin directly and solely.
+            node.type = ((bin.type < 0) ? bin.type : solver->idMap.item.toArbitraryId(bin.type)); // TODO[szx][0]: merge nodes if an item is put in this L1/L2 bin directly and solely.
             node.cut = depth;
             node.parent = parent;
             output.nodes.push_back(node);

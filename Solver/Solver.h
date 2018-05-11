@@ -195,13 +195,15 @@ public:
     struct Solution { // cutting patterns.
         using OnNode = std::function<ID(Bin &bin, ID depth, ID parent)>; // return the node id.
 
-        Solution() : totalWidth(Problem::Output::MaxWidth) {}
+        Solution(Solver *pSolver = nullptr) : totalWidth(Problem::Output::MaxWidth), solver(pSolver) {}
         operator Problem::Output();
 
         void traverse(Bin &bin, ID depth, ID parent, OnNode onNode);
 
         Length totalWidth; // objective value.
         List<Bin> bins; // solution vector.
+
+        Solver *solver;
     };
     #pragma endregion Type
 
