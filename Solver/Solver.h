@@ -89,7 +89,7 @@ public:
             bool addGlassOrderCut = true;
             bool addPlacementOrderCut = false;
             bool addCoveredAreaOnEachPlateCut = true;
-            bool addTotalCoveredAreaCut = true;
+            bool addTotalCoveredAreaCut = false; // seems no significant difference between true/false.
         };
 
         Configuration() {}
@@ -195,7 +195,7 @@ public:
     struct Solution { // cutting patterns.
         using OnNode = std::function<ID(Bin &bin, ID depth, ID parent)>; // return the node id.
 
-        Solution() : totalWidth(0) {}
+        Solution() : totalWidth(Problem::Output::MaxWidth) {}
         operator Problem::Output();
 
         void traverse(Bin &bin, ID depth, ID parent, OnNode onNode);

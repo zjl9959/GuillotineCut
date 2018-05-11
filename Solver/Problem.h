@@ -92,6 +92,9 @@ public:
 
         enum SlnColumn { PlateId, NodeId, NodeX, NodeY, NodeWidth, NodeHeight, NodeType, CutNum, Parent };
 
+        static constexpr Length MaxWidth = 6000 * 100;
+
+        Output() : totalWidth(MaxWidth) {}
         void load(const String &filePath);
         void save(const String &filePath) const;
 
