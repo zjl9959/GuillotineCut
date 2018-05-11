@@ -82,6 +82,16 @@ public:
 
     // controls the I/O data format, exported contents and general usage of the solver.
     struct Configuration {
+        struct CompleteModel {
+            bool maxCoveredArea = false;
+
+            bool addBinSizeOrderCut = false;
+            bool addGlassOrderCut = true;
+            bool addPlacementOrderCut = false;
+            bool addCoveredAreaOnEachPlateCut = true;
+            bool addTotalCoveredAreaCut = true;
+        };
+
         Configuration() {}
 
         String toBriefStr() const { return ""; }
@@ -89,6 +99,7 @@ public:
         void load(const String &filePath);
         void save(const String &filePath) const;
 
+        CompleteModel cm;
         // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
     };
 
@@ -218,7 +229,7 @@ protected:
     void init();
     void optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
 
-    void optimizeCompleteModel(Solution &sln, bool maxCoveredArea = false, bool addBinSizeCut = false, bool addGlassOrderCut = true, bool addCoveredAreaCut = true);
+    void optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg); // make a copy intentionally for the convenience of multi-threading.
     #pragma endregion Method
 
     #pragma region Field

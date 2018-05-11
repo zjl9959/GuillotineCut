@@ -255,7 +255,8 @@ void Solver::optimize(Solution &sln, ID workerId) {
 
     // TODO[szx][0]: this is not the obj for the original problem, remove it.
     // not all items must be placed and the obj is to maximize the area of placed items.
-    optimizeCompleteModel(sln, true);
+    cfg.cm.maxCoveredArea = true;
+    optimizeCompleteModel(sln, cfg.cm);
 
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " ends." << endl;
 }
@@ -270,7 +271,7 @@ void Solver::optimize(Solution &sln, ID workerId) {
 //    |            w3
 // ---+------------------>
 //  O |                  x
-void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addBinSizeCut, bool addGlassOrderCut, bool addCoveredAreaCut) {
+void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg) {
     using Dvar = MpSolver::DecisionVar;
     using Expr = MpSolver::LinearExpr;
     using VarType = MpSolver::VariableType;
@@ -282,6 +283,7 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
     constexpr bool ordered = true; // the items should be produced in given order.
 
     ID itemNum = static_cast<ID>(aux.items.size());
+    Length totalItemArea = 0;
 
     MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
     MpSolver mp(mpcfg);
@@ -431,9 +433,10 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
             }
         }
         // single placement.
-        mp.addConstraint(maxCoveredArea ? (putInBin <= 1) : (putInBin == 1));
+        mp.addConstraint(cfg.maxCoveredArea ? (putInBin <= 1) : (putInBin == 1));
         // covered area.
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
+        totalItemArea += (aux.items[i].w * aux.items[i].h);
     }
 
     Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
@@ -514,7 +517,7 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
         }
 
         // an item can not be placed if its preceding item is not placed.
-        if (maxCoveredArea) { // not all items are placed.
+        if (cfg.maxCoveredArea || cfg.addPlacementOrderCut) { // not all items are placed.
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 Expr prevPutInBin;
                 for (auto i = s->begin(); i != s->end(); ++i) {
@@ -566,7 +569,7 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
     }
 
     Log(LogSwitch::Szx::Model) << "add user cuts." << endl;
-    if (addBinSizeCut) {
+    if (cfg.addBinSizeOrderCut) {
         // if there is no defect and order, put larger bins to the left or bottom.
         // else put all non-trivial bins to the left or bottom.
         Length wCoef = (flawless && !ordered) ? 1 : input.param.plateWidth;
@@ -584,11 +587,11 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
         }
     }
 
-    if (addGlassOrderCut) { // user cut for glass order.
+    if (cfg.addGlassOrderCut) { // user cut for glass order.
         for (ID g = 1; g < maxBinNum[L0]; ++g) { mp.addConstraint(p[g - 1] >= p[g]); }
     }
 
-    if (addCoveredAreaCut) { // user cut for covered area should be less than the plate.
+    if (cfg.addCoveredAreaOnEachPlateCut) { // user cut for covered area should be less than the plate.
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             Expr area;
             for (ID i = 0; i < itemNum; ++i) {
@@ -606,9 +609,13 @@ void Solver::optimizeCompleteModel(Solution &sln, bool maxCoveredArea, bool addB
         }
     }
 
+    if (cfg.addTotalCoveredAreaCut && !cfg.maxCoveredArea) {
+        mp.addConstraint(coveredArea == totalItemArea);
+    }
+
     Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
-    if (maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
+    if (cfg.maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
     // minimize the width of used plates.
     mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever);
 
@@ -787,7 +794,8 @@ Solver::Solution::operator Problem::Output() {
         });
     }
     // mark the last residual as real residual.
-    if ((output.nodes.back().cut == 1) && (output.nodes.back().type == Problem::Output::Node::SpecialType::Waste)) {
+    if (!output.nodes.empty() && (output.nodes.back().cut == 1)
+        && (output.nodes.back().type == Problem::Output::Node::SpecialType::Waste)) {
         output.nodes.back().type = Problem::Output::Node::SpecialType::Residual;
     }
 
