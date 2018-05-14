@@ -1,34 +1,69 @@
 #ifndef GLASSITEM_H
 #define GLASSITEM_H
 
+#include <ostream>
 
 /* This class is created
  * to model a batch item instance with its all attributes 
-**/
-class GlassItem
-{
-    public:
-        GlassItem();
-        virtual ~GlassItem();
-        int Getitem_id() { return item_id; }
-        unsigned int Getitem_w() { return item_w; }
-        unsigned int Getitem_h() { return item_h; }
-        unsigned int Getitem_stack() { return item_stack; }
-        unsigned int Getitem_seq() { return item_seq; }
+ **/
 
-        void Setitem_id(int val) { item_id = val; }
-        void Setitem_w(unsigned int val) { item_w = val; }
-        void Setitem_h(unsigned int val) { item_h = val; }
-        void Setitem_stack(unsigned int val) { item_stack = val; }
-        void Setitem_seq(unsigned int val) { item_seq = val; }
+class GlassItem {
+public:
+    GlassItem();
 
-    protected:
-    private:
-        int item_id; // Item's Id.
-        unsigned int item_w; // Item's width.
-        unsigned int item_h; // Item's height.
-        unsigned int item_stack; // Item's stack Id
-        unsigned int item_seq; // Item's stack sequence.
+    virtual ~GlassItem();
+
+    int id() {
+        return _id;
+    }
+
+    unsigned int w() {
+        return _w;
+    }
+
+    unsigned int h() {
+        return _h;
+    }
+
+    unsigned int stackId() {
+        return _stackId;
+    }
+
+    unsigned int position() {
+        return _position;
+    }
+
+    void id(int val) {
+        _id = val;
+    }
+
+    void w(const unsigned int& val) {
+        _w = val;
+    }
+
+    void h(const unsigned int& val) {
+        _h = val;
+    }
+
+    void stackId(unsigned int val) {
+        _stackId = val;
+    }
+
+    void position(unsigned int val) {
+        _position = val;
+    }
+
+    friend std::ostream & operator<<(std::ostream& os, GlassItem item) {
+        os << "Item (id,w,h,s,p) = (" << item._id << "," << item._w << "," << item._h << "," << item._stackId << "," << item._position << ")";
+        return os;
+    }
+
+private:
+    int _id; // Item's Id.
+    unsigned int _w; // Item's width.
+    unsigned int _h; // Item's height.
+    unsigned int _stackId; // Item's stack Id
+    unsigned int _position; // Item's stack sequence.
 };
 
 #endif // GLASSITEM_H

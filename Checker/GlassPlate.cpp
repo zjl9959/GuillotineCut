@@ -7,8 +7,8 @@ GlassPlate::GlassPlate()
     useful = 0.0;
     successor_nbr = 0;
     defect_nbr = 0;
-    residual.Setwidth(0);
-    residual.Setheight(0);
+    residual.w(0);
+    residual.h(0);
 }
 
 GlassPlate::~GlassPlate()
