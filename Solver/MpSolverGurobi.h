@@ -130,7 +130,7 @@ public:
     using OnSolveBegin = std::function<void(void)>;
     // after solving single objective during multi-objective optimization.
     // returns true if obj cut-off is already added.
-    using OnOptimalFound = std::function<bool(MpSolverGurobi&, std::function<bool(void)>)>;
+    using OnOptimaFound = std::function<bool(MpSolverGurobi&, std::function<bool(void)>)>;
 
     struct Configuration {
         static constexpr InternalSolver DefaultSolver = InternalSolver::GurobiMip;
@@ -170,7 +170,7 @@ public:
         double relTolerance;
         double absTolerance;
         double timeoutInSecond; // this will overwrite total timeout if it is greater than 0.
-        OnOptimalFound postprocess; // invoked after this sub-objective is solved in priority mode.
+        OnOptimaFound postprocess; // invoked after this sub-objective is solved in priority mode.
         OnSolveBegin preprocess; // invoked before this sub-objective begin solving in priority mode.
     };  
     #pragma endregion Type
@@ -273,7 +273,7 @@ public:
     // objectives.
     void addObjective(const LinearExpr &expr, OptimaOrientation orientation, int priority = DefaultObjectivePriority,
         double relTolerance = Configuration::DefaultObjectiveRelativeTolerance, double absTolerance = Configuration::DefaultObjectiveAbsoluteTolerance,
-        double timeoutInSecond = Configuration::Forever, OnOptimalFound postprocess = OnOptimalFound(), OnSolveBegin preprocess = OnSolveBegin()) {
+        double timeoutInSecond = Configuration::Forever, OnOptimaFound postprocess = OnOptimaFound(), OnSolveBegin preprocess = OnSolveBegin()) {
         int index = getObjectiveCount();
         objectives.push_back({ expr, orientation, index, priority, relTolerance, absTolerance, timeoutInSecond, postprocess, preprocess });
     }

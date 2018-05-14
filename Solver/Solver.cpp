@@ -324,6 +324,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
     Expr coveredArea; // the sum of placed items' area.
     Expr coveredWidth;
+    Expr placedItem;
 
     Log(LogSwitch::Szx::Model) << "add decisions variables." << endl;
     for (ID i = 0; i < itemNum; ++i) {
@@ -440,6 +441,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         // covered area.
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
         totalItemArea += (aux.items[i].w * aux.items[i].h);
+        placedItem += putInBin;
     }
 
     Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
@@ -620,7 +622,20 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     // maximize the area of placed items.
     if (cfg.maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
     // minimize the width of used plates.
-    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever);
+    MpSolver::OnOptimaFound onOptimaFound;
+    if (!cfg.maxCoveredArea) {
+        onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
+            ID itemToPlaceNum = 0;
+            for (; itemToPlaceNum < itemNum; itemToPlaceNum += 4) { // EXTEND[szx][5]: parameterize the constant!
+                mpSolver.addConstraint(placedItem >= itemToPlaceNum);
+                reOptimize();
+            }
+            itemToPlaceNum = itemNum;
+            reOptimize();
+            return true;
+        };
+    }
+    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever, onOptimaFound);
 
     // solve.
     if (mp.optimize()) {

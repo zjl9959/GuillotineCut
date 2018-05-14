@@ -244,4 +244,6 @@ ModelManifest.xml
 # user files
 /Deploy/Solver.exe
 /Deploy/Simulator.exe
+/Deploy/Checker.exe
 /Deploy/Instance/*.csv
+/Deploy/Solution/*.csv
