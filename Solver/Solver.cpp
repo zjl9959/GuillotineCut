@@ -437,7 +437,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             }
         }
         // single placement.
-        mp.addConstraint(cfg.maxCoveredArea ? (putInBin <= 1) : (putInBin == 1));
+        mp.addConstraint((cfg.placeAllItems && !cfg.constructive) ? (putInBin == 1) : (putInBin <= 1));
         // covered area.
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
         totalItemArea += (aux.items[i].w * aux.items[i].h);
@@ -503,8 +503,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    Log(LogSwitch::Szx::Model) << "add ordering constraints." << endl;
     if (ordered) {
+        Log(LogSwitch::Szx::Model) << "add ordering constraints." << endl;
         for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
             for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
                 Expr putInBin;
@@ -522,7 +522,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
 
         // an item can not be placed if its preceding item is not placed.
-        if (cfg.maxCoveredArea || cfg.addPlacementOrderCut) { // not all items are placed.
+        if (!cfg.placeAllItems || cfg.addPlacementOrderCut) {
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 Expr prevPutInBin;
                 for (auto i = s->begin(); i != s->end(); ++i) {
@@ -543,8 +543,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    Log(LogSwitch::Szx::Model) << "add defect constraints." << endl;
     if (!flawless) {
+        Log(LogSwitch::Szx::Model) << "add defect constraints." << endl;
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -573,8 +573,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    Log(LogSwitch::Szx::Model) << "add user cuts." << endl;
     if (cfg.addBinSizeOrderCut) {
+        Log(LogSwitch::Szx::Model) << "add bin size order cuts." << endl;
         // if there is no defect and order, put larger bins to the left or bottom.
         // else put all non-trivial bins to the left or bottom.
         Length wCoef = (flawless && !ordered) ? 1 : input.param.plateWidth;
@@ -593,10 +593,12 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     }
 
     if (cfg.addGlassOrderCut) { // user cut for glass order.
+        Log(LogSwitch::Szx::Model) << "add glass order cuts." << endl;
         for (ID g = 1; g < maxBinNum[L0]; ++g) { mp.addConstraint(p[g - 1] >= p[g]); }
     }
 
     if (cfg.addCoveredAreaOnEachPlateCut) { // user cut for covered area should be less than the plate.
+        Log(LogSwitch::Szx::Model) << "add covered area on each plate cuts." << endl;
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             Expr area;
             for (ID i = 0; i < itemNum; ++i) {
@@ -614,7 +616,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    if (cfg.addTotalCoveredAreaCut && !cfg.maxCoveredArea) {
+    if (cfg.addTotalCoveredAreaCut && cfg.placeAllItems) {
+        Log(LogSwitch::Szx::Model) << "add total covered area cut." << endl;
         mp.addConstraint(coveredArea == totalItemArea);
     }
 
@@ -623,7 +626,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     if (cfg.maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
     // minimize the width of used plates.
     MpSolver::OnOptimaFound onOptimaFound;
-    if (!cfg.maxCoveredArea) {
+    if (cfg.constructive) {
         onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
             ID itemToPlaceNum = 0;
             for (; itemToPlaceNum < itemNum; itemToPlaceNum += 4) { // EXTEND[szx][5]: parameterize the constant!

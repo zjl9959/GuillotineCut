@@ -83,8 +83,16 @@ public:
     // controls the I/O data format, exported contents and general usage of the solver.
     struct Configuration {
         struct CompleteModel {
-            bool maxCoveredArea = false;
+            // strategy.
+            bool constructive = true;
 
+            // constraint.
+            bool placeAllItems = false;
+
+            // objective.
+            bool maxCoveredArea = false && !placeAllItems;
+
+            // user cut.
             bool addBinSizeOrderCut = false;
             bool addGlassOrderCut = true;
             bool addPlacementOrderCut = false;
@@ -94,7 +102,16 @@ public:
 
         Configuration() {}
 
-        String toBriefStr() const { return ""; }
+        String toBriefStr() const {
+            return "sc=" + std::to_string(cm.constructive)
+                + ";cp=" + std::to_string(cm.placeAllItems)
+                + ";oc=" + std::to_string(cm.maxCoveredArea)
+                + ";ub=" + std::to_string(cm.addBinSizeOrderCut)
+                + ";ug=" + std::to_string(cm.addGlassOrderCut)
+                + ";up=" + std::to_string(cm.addPlacementOrderCut)
+                + ";uc=" + std::to_string(cm.addCoveredAreaOnEachPlateCut)
+                + ";ut=" + std::to_string(cm.addTotalCoveredAreaCut);
+        }
 
         void load(const String &filePath);
         void save(const String &filePath) const;
