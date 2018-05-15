@@ -285,6 +285,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     constexpr bool flawless = false; // there are defects on the plate.
     constexpr bool ordered = true; // the items should be produced in given order.
 
+    ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
     Length totalItemArea = 0;
 
@@ -618,23 +619,19 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    if (cfg.addTotalCoveredAreaCut && cfg.placeAllItems) {
-        Log(LogSwitch::Szx::Model) << "add total covered area cut." << endl;
-        mp.addConstraint(coveredArea == totalItemArea);
-    }
-
     if (cfg.addL1BinWidthSumCut) {
-        Expr l1BinWidthSum;
-        for (ID g = 0; g < maxBinNum[L0]; ++g) {
-            for (ID l = 0; l < maxBinNum[L1]; ++l) { l1BinWidthSum += w1[g][l]; }
-        }
+        // OPTIMIZE[szx][6]: tighter bound didn't give better performance?
+        //Expr l1BinWidthSum;
+        //for (ID g = 0; g < maxBinNum[L0]; ++g) {
+        //    for (ID l = 0; l < maxBinNum[L1]; ++l) { l1BinWidthSum += w1[g][l]; }
+        //}
 
         Log(LogSwitch::Szx::Model) << "add min L1 width sum cut." << endl;
         if (cfg.placeAllItems && !cfg.constructive) {
-            mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= totalItemArea);
+            //mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= totalItemArea);
             mp.addConstraint(input.param.plateHeight * coveredWidth >= totalItemArea);
         } else {
-            mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= coveredArea);
+            //mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= coveredArea);
             mp.addConstraint(input.param.plateHeight * coveredWidth >= coveredArea);
         }
     }
@@ -643,18 +640,39 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     // maximize the area of placed items.
     if (cfg.maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
     // minimize the width of used plates.
+    struct StackIndex {
+        ID id;
+        size_t top;
+    };
+    Arr<StackIndex> stackIndex(stackNum);
+    for (auto s = 0; s < stackNum; ++s) {
+        stackIndex[s].id = s;
+        stackIndex[s].top = 0;
+    }
     MpSolver::OnOptimaFound onOptimaFound;
     if (cfg.constructive) {
         onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
-            constexpr ID ItemToPlaceNumInc = 4; // EXTEND[szx][5]: parameterize the constant!
-            for (ID itemToPlaceNum = 0; itemToPlaceNum < itemNum; itemToPlaceNum += ItemToPlaceNumInc) {
+            for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
                 if (timer.isTimeOut()) { return false; }
-                mpSolver.addConstraint(placedItem >= itemToPlaceNum);
-                mpSolver.setTimeLimitInSecond(timer.restSeconds() * ItemToPlaceNumInc / itemNum);
+                if (cfg.fixItemsToPlace) {
+                    shuffle(stackIndex.begin(), stackIndex.end(), rand.rgen); // OPTIMIZE[szx][9]: record the non-empty ones and consider them only.
+                    for (ID i = 0, s = 0; i < cfg.itemToPlaceNumInc; (++s) %= stackNum) {
+                        if (stackIndex[s].top >= aux.stacks[stackIndex[s].id].size()) { continue; }
+                        ID itemId = aux.stacks[stackIndex[s].id][stackIndex[s].top];
+                        ++stackIndex[s].top;
+                        ++i;
+                        mpSolver.addConstraint(pi[itemId] >= 1);
+                    }
+                } else {
+                    mpSolver.addConstraint(placedItem >= itemToPlaceNum);
+                }
+                mpSolver.setTimeLimitInSecond(timer.restSeconds() * cfg.itemToPlaceNumInc / itemNum);
+                Log(LogSwitch::Szx::Model) << "[callback] place " << itemToPlaceNum << "/" << itemNum << " items at least." << endl;
                 reOptimize();
             }
-            mpSolver.addConstraint(placedItem >= itemNum);
+            for (ID i = 0; i < itemNum; ++i) { mpSolver.addConstraint(pi[i] >= 1); }
             mpSolver.setTimeLimitInSecond(timer.restSeconds());
+            Log(LogSwitch::Szx::Model) << "[callback] place all " << itemNum << " items." << endl;
             reOptimize();
             return true;
         };
@@ -665,6 +683,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     if (mp.optimize()) {
         // record solution.
         using Node = Problem::Output::Node;
+        sln.totalWidth = 0;
         for (ID g = 0; ; ) {
             sln.bins.push_back(Bin(RectArea(0, 0, input.param.plateWidth, input.param.plateHeight), Node::SpecialType::Branch));
             Bin &plate(sln.bins.back());

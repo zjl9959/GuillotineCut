@@ -320,7 +320,13 @@ $$
 W \cdot \omega^{3}_{lmn} \ge \omega^{3}_{l'm'n'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
 $$
 
-- **HAB.O (area bound)** user cut for covered area that it should be less than the area of the plate.
+- **HAB.O (area bound)** covered area should be less than the area of the plate.
 $$
 \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i) \le W \cdot H
+$$
+
+- **HMW.O (min width)** the total width of used area multiplies the plate height should be not less than the total covered area.
+the left side can be replaced with $H \cdot \sum\limits_{l \in L^{1}} \omega^{1}_{l}$ to tighten the bound, but it may not improve the performance.
+$$
+H \cdot (W \cdot \sum_{g \in G} p_{g} - (W - \gamma)) \ge \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
 $$

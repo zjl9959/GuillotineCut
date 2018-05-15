@@ -84,10 +84,12 @@ public:
     struct Configuration {
         struct CompleteModel {
             // strategy.
-            bool constructive = true;
+            bool constructive = true; // there may be some items that are not placed before finishing.
+            bool fixItemsToPlace = true; // set which items should be placed at each construction iteration.
+            ID itemToPlaceNumInc = 4; // number of items to be placed at each construction iteration.
 
             // constraint.
-            bool placeAllItems = false;
+            bool placeAllItems = false; // all items must be placed finally.
 
             // objective.
             bool maxCoveredArea = false && !placeAllItems;
@@ -97,7 +99,6 @@ public:
             bool addGlassOrderCut = true;
             bool addPlacementOrderCut = false;
             bool addCoveredAreaOnEachPlateCut = true;
-            bool addTotalCoveredAreaCut = false; // seems no significant difference between true/false.
             bool addL1BinWidthSumCut = true;
         };
 
@@ -105,13 +106,14 @@ public:
 
         String toBriefStr() const {
             return "sc=" + std::to_string(cm.constructive)
+                + ";sf=" + std::to_string(cm.fixItemsToPlace)
+                + ";sn=" + std::to_string(cm.itemToPlaceNumInc)
                 + ";cp=" + std::to_string(cm.placeAllItems)
                 + ";oc=" + std::to_string(cm.maxCoveredArea)
                 + ";ub=" + std::to_string(cm.addBinSizeOrderCut)
                 + ";ug=" + std::to_string(cm.addGlassOrderCut)
                 + ";up=" + std::to_string(cm.addPlacementOrderCut)
                 + ";uc=" + std::to_string(cm.addCoveredAreaOnEachPlateCut)
-                + ";ut=" + std::to_string(cm.addTotalCoveredAreaCut)
                 + ";uw=" + std::to_string(cm.addL1BinWidthSumCut);
         }
 
