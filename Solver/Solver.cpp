@@ -655,6 +655,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
                 if (timer.isTimeOut()) { return false; }
                 if (cfg.fixItemsToPlace) {
+                    // OPTIMIZE[szx][2]: fix the position of the placed items?
                     shuffle(stackIndex.begin(), stackIndex.end(), rand.rgen); // OPTIMIZE[szx][9]: record the non-empty ones and consider them only.
                     for (ID i = 0, s = 0; i < cfg.itemToPlaceNumInc; (++s) %= stackNum) {
                         if (stackIndex[s].top >= aux.stacks[stackIndex[s].id].size()) { continue; }
@@ -673,8 +674,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             for (ID i = 0; i < itemNum; ++i) { mpSolver.addConstraint(pi[i] >= 1); }
             mpSolver.setTimeLimitInSecond(timer.restSeconds());
             Log(LogSwitch::Szx::Model) << "[callback] place all " << itemNum << " items." << endl;
-            reOptimize();
-            return true;
+            return reOptimize();
         };
     }
     mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever, onOptimaFound);
