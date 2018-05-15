@@ -325,6 +325,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     Expr coveredArea; // the sum of placed items' area.
     Expr coveredWidth;
     Expr placedItem;
+    Arr<Expr> pi(itemNum);
 
     Log(LogSwitch::Szx::Model) << "add decisions variables." << endl;
     for (ID i = 0; i < itemNum; ++i) {
@@ -442,6 +443,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
         totalItemArea += (aux.items[i].w * aux.items[i].h);
         placedItem += putInBin;
+        pi[i] = putInBin;
     }
 
     Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
@@ -621,6 +623,22 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         mp.addConstraint(coveredArea == totalItemArea);
     }
 
+    if (cfg.addL1BinWidthSumCut) {
+        Expr l1BinWidthSum;
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) { l1BinWidthSum += w1[g][l]; }
+        }
+
+        Log(LogSwitch::Szx::Model) << "add min L1 width sum cut." << endl;
+        if (cfg.placeAllItems && !cfg.constructive) {
+            mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= totalItemArea);
+            mp.addConstraint(input.param.plateHeight * coveredWidth >= totalItemArea);
+        } else {
+            mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= coveredArea);
+            mp.addConstraint(input.param.plateHeight * coveredWidth >= coveredArea);
+        }
+    }
+
     Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
     if (cfg.maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
@@ -628,12 +646,15 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     MpSolver::OnOptimaFound onOptimaFound;
     if (cfg.constructive) {
         onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
-            ID itemToPlaceNum = 0;
-            for (; itemToPlaceNum < itemNum; itemToPlaceNum += 4) { // EXTEND[szx][5]: parameterize the constant!
+            constexpr ID ItemToPlaceNumInc = 4; // EXTEND[szx][5]: parameterize the constant!
+            for (ID itemToPlaceNum = 0; itemToPlaceNum < itemNum; itemToPlaceNum += ItemToPlaceNumInc) {
+                if (timer.isTimeOut()) { return false; }
                 mpSolver.addConstraint(placedItem >= itemToPlaceNum);
+                mpSolver.setTimeLimitInSecond(timer.restSeconds() * ItemToPlaceNumInc / itemNum);
                 reOptimize();
             }
-            itemToPlaceNum = itemNum;
+            mpSolver.addConstraint(placedItem >= itemNum);
+            mpSolver.setTimeLimitInSecond(timer.restSeconds());
             reOptimize();
             return true;
         };

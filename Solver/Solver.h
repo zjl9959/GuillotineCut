@@ -98,6 +98,7 @@ public:
             bool addPlacementOrderCut = false;
             bool addCoveredAreaOnEachPlateCut = true;
             bool addTotalCoveredAreaCut = false; // seems no significant difference between true/false.
+            bool addL1BinWidthSumCut = true;
         };
 
         Configuration() {}
@@ -110,7 +111,8 @@ public:
                 + ";ug=" + std::to_string(cm.addGlassOrderCut)
                 + ";up=" + std::to_string(cm.addPlacementOrderCut)
                 + ";uc=" + std::to_string(cm.addCoveredAreaOnEachPlateCut)
-                + ";ut=" + std::to_string(cm.addTotalCoveredAreaCut);
+                + ";ut=" + std::to_string(cm.addTotalCoveredAreaCut)
+                + ";uw=" + std::to_string(cm.addL1BinWidthSumCut);
         }
 
         void load(const String &filePath);
