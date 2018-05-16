@@ -98,6 +98,7 @@ public:
 
             // user cut.
             bool addBinSizeOrderCut = false;
+            bool addEmptyBinMergingCut = false;
             bool addGlassOrderCut = true;
             bool addPlacementOrderCut = false;
             bool addCoveredAreaOnEachPlateCut = true;

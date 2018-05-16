@@ -580,23 +580,42 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         Log(LogSwitch::Szx::Model) << "add bin size order cuts." << endl;
         // if there is no defect and order, put larger bins to the left or bottom.
         // else put all non-trivial bins to the left or bottom.
-        Length wCoef = (flawless && !ordered) ? 1 : input.param.plateWidth;
-        Length hCoef = (flawless && !ordered) ? 1 : input.param.plateHeight;
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
                 if (l + 1 < maxBinNum[L1]) {
-                    mp.addConstraint(wCoef * w1[g][l] >= w1[g][l + 1]);
-                    //mp.addConstraint(t3[g][l][0][0] >= t3[g][l + 1][0][0]);
+                    mp.addConstraint(t3[g][l][0][0] >= t3[g][l + 1][0][0]);
+                    if (flawless && !ordered) { mp.addConstraint(w1[g][l] >= w1[g][l + 1]); }
                 }
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
                     if (m + 1 < maxBinNum[L2]) {
-                        mp.addConstraint(hCoef * h2[g][l][m] >= h2[g][l][m + 1]);
-                        //mp.addConstraint(t2[g][l][m] >= t2[g][l][m + 1]);
+                        mp.addConstraint(t2[g][l][m] >= t2[g][l][m + 1]);
+                        if (flawless && !ordered) { mp.addConstraint(h2[g][l][m] >= h2[g][l][m + 1]); }
                     }
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
                         if (n + 1 < maxBinNum[L3]) {
-                            mp.addConstraint(wCoef * w3[g][l][m][n] >= w3[g][l][m][n + 1]);
-                            //mp.addConstraint(t3[g][l][m][n] >= t3[g][l][m][n + 1]);
+                            mp.addConstraint(t3[g][l][m][n] >= t3[g][l][m][n + 1]);
+                            if (flawless && !ordered) { mp.addConstraint(w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (cfg.addEmptyBinMergingCut) {
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                if (l + 1 < maxBinNum[L1]) {
+                    // OPTIMIZE[szx][0]: make sure adding this will not cut the optima!
+                    //mp.addConstraint(p1[g][l] + p1[g][l + 1] >= t3[g][l + 1][0][0]);
+                }
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    if (m + 1 < maxBinNum[L2]) {
+                        mp.addConstraint(p2[g][l][m] + p2[g][l][m + 1] >= t2[g][l][m + 1]);
+                    }
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        if (n + 1 < maxBinNum[L3]) {
+                            mp.addConstraint(p3[g][l][m][n] + p3[g][l][m][n + 1] >= t3[g][l][m][n + 1]);
                         }
                     }
                 }
@@ -672,7 +691,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             double timeoutPerIteration = timer.restSeconds() * cfg.itemToPlaceNumInc / itemNum;
             for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
                 if (timer.isTimeOut()) { return false; }
-                if (cfg.fixItemsPlacedItems) {
+                if (cfg.fixItemsPlacedItems) { // OPTIMIZE[szx][5]: solution from previous iteration may use the top/right bins but leave the bottom/left bins empty.
                     for (ID g = 0; g < maxBinNum[L0]; ++g) {
                         if (!mp.isTrue(p[g])) { continue; }
                         for (ID l = 0; l < maxBinNum[L1]; ++l) {
@@ -684,8 +703,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
                                     for (ID i = 0; i < itemNum; ++i) {
                                         if (!mpSolver.isTrue(pi3[i][g][l][m][n])) { continue; }
                                         mpSolver.addConstraint(pi3[i][g][l][m][n] == 1);
-                                        // OPTIMIZE[szx][6]: fix direction?
-                                        //mpSolver.addConstraint(d[i] == mpSolver.isTrue(d[i]));
+                                        //mpSolver.addConstraint(d[i] == mpSolver.isTrue(d[i])); // OPTIMIZE[szx][6]: fix direction?
                                         break;
                                     }
                                 }
