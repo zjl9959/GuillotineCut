@@ -245,5 +245,6 @@ ModelManifest.xml
 /Deploy/Solver.exe
 /Deploy/Simulator.exe
 /Deploy/Checker.exe
+/Deploy/Analyzer.exe
 /Deploy/Instance/*.csv
 /Deploy/Solution/*.csv

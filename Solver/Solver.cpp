@@ -525,7 +525,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
 
         // an item can not be placed if its preceding item is not placed.
-        if (!cfg.placeAllItems || cfg.addPlacementOrderCut) {
+        if (!cfg.placeAllItems || cfg.constructive || cfg.addPlacementOrderCut) {
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 Expr prevPutInBin;
                 for (auto i = s->begin(); i != s->end(); ++i) {
@@ -576,7 +576,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    if (cfg.addBinSizeOrderCut) {
+    if (cfg.addBinSizeOrderCut || (cfg.constructive && cfg.fixItemsPlacedItems)) {
         Log(LogSwitch::Szx::Model) << "add bin size order cuts." << endl;
         // if there is no defect and order, put larger bins to the left or bottom.
         // else put all non-trivial bins to the left or bottom.
@@ -584,11 +584,20 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         Length hCoef = (flawless && !ordered) ? 1 : input.param.plateHeight;
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                if (l + 1 < maxBinNum[L1]) { mp.addConstraint(wCoef * w1[g][l] >= w1[g][l + 1]); }
+                if (l + 1 < maxBinNum[L1]) {
+                    mp.addConstraint(wCoef * w1[g][l] >= w1[g][l + 1]);
+                    //mp.addConstraint(t3[g][l][0][0] >= t3[g][l + 1][0][0]);
+                }
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    if (m + 1 < maxBinNum[L2]) { mp.addConstraint(hCoef * h2[g][l][m] >= h2[g][l][m + 1]); }
+                    if (m + 1 < maxBinNum[L2]) {
+                        mp.addConstraint(hCoef * h2[g][l][m] >= h2[g][l][m + 1]);
+                        //mp.addConstraint(t2[g][l][m] >= t2[g][l][m + 1]);
+                    }
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        if (n + 1 < maxBinNum[L3]) { mp.addConstraint(wCoef * w3[g][l][m][n] >= w3[g][l][m][n + 1]); }
+                        if (n + 1 < maxBinNum[L3]) {
+                            mp.addConstraint(wCoef * w3[g][l][m][n] >= w3[g][l][m][n + 1]);
+                            //mp.addConstraint(t3[g][l][m][n] >= t3[g][l][m][n + 1]);
+                        }
                     }
                 }
             }
@@ -660,6 +669,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     MpSolver::OnOptimaFound onOptimaFound;
     if (cfg.constructive) {
         onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
+            double timeoutPerIteration = timer.restSeconds() * cfg.itemToPlaceNumInc / itemNum;
             for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
                 if (timer.isTimeOut()) { return false; }
                 if (cfg.fixItemsPlacedItems) {
@@ -674,6 +684,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
                                     for (ID i = 0; i < itemNum; ++i) {
                                         if (!mpSolver.isTrue(pi3[i][g][l][m][n])) { continue; }
                                         mpSolver.addConstraint(pi3[i][g][l][m][n] == 1);
+                                        // OPTIMIZE[szx][6]: fix direction?
+                                        //mpSolver.addConstraint(d[i] == mpSolver.isTrue(d[i]));
                                         break;
                                     }
                                 }
@@ -693,7 +705,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
                 } else {
                     mpSolver.addConstraint(placedItem >= itemToPlaceNum);
                 }
-                mpSolver.setTimeLimitInSecond(timer.restSeconds() * cfg.itemToPlaceNumInc / itemNum);
+                mpSolver.setTimeLimitInSecond(timeoutPerIteration);
                 Log(LogSwitch::Szx::Model) << "[callback] place " << itemToPlaceNum << "/" << itemNum << " items at least." << endl;
                 reOptimize();
             }

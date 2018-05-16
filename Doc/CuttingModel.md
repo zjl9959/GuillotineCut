@@ -317,15 +317,24 @@ set $W = 1$ to make the wider virtual bins comes first if there is no defect and
 $$
 W \cdot \omega^{1}_{l} \ge \omega^{1}_{l'}, \quad \forall l, l' \in L^{1}, l' = l + 1
 $$
+$$
+\tau^{3}_{lmn} \ge \tau^{3}_{l'mn}, \quad \forall l, l' \in L^{1}, l' = l + 1, m = 0, n = 0
+$$
 - **HVO2.O (L2 vertical order)** put all trivial bins to the upmost.
 set $H = 1$ to make the higher virtual bins comes first if there is no defect and order.
 $$
-H \cdot \eta^{2}_{lm} \ge \eta^{2}_{l'm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
+H \cdot \eta^{2}_{lm} \ge \eta^{2}_{lm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
+$$
+$$
+\tau^{2}_{lm} \ge \tau^{2}_{lm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
 $$
 - **HHO3.O (L3 horizontal order)** put all trivial bins to the rightmost.
 set $W = 1$ to make the wider virtual bins comes first if there is no defect and order.
 $$
-W \cdot \omega^{3}_{lmn} \ge \omega^{3}_{l'm'n'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
+W \cdot \omega^{3}_{lmn} \ge \omega^{3}_{lmn'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
+$$
+$$
+\tau^{3}_{lmn} \ge \tau^{3}_{lmn'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
 $$
 
 - **HAB.O (area bound)** covered area should be less than the area of the plate.
