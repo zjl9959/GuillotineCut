@@ -638,8 +638,16 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
     Log(LogSwitch::Szx::Model) << "add objectives." << endl;
     // maximize the area of placed items.
-    if (cfg.maxCoveredArea) { mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75); } // EXTEND[szx][5]: parameterize the constant!
-    // minimize the width of used plates.
+    if (cfg.maxCoveredArea && !cfg.placeAllItems) { // EXTEND[szx][5]: parameterize the constant!
+        mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75);
+    }
+
+    // minimize the wasted area.
+    if (cfg.minWastedArea) {
+        mp.addObjective(input.param.plateHeight * coveredWidth - coveredArea, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, timer.restSeconds() * 0.75);
+    }
+
+    // minimize the width of used plates (the original objective).
     struct StackIndex {
         ID id;
         size_t top;
@@ -654,8 +662,26 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
             for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
                 if (timer.isTimeOut()) { return false; }
+                if (cfg.fixItemsPlacedItems) {
+                    for (ID g = 0; g < maxBinNum[L0]; ++g) {
+                        if (!mp.isTrue(p[g])) { continue; }
+                        for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                            if (!mp.isTrue(p1[g][l])) { continue; }
+                            for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                                if (!mp.isTrue(p2[g][l][m])) { continue; }
+                                for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                    if (!mp.isTrue(p3[g][l][m][n])) { continue; }
+                                    for (ID i = 0; i < itemNum; ++i) {
+                                        if (!mpSolver.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                        mpSolver.addConstraint(pi3[i][g][l][m][n] == 1);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (cfg.fixItemsToPlace) {
-                    // OPTIMIZE[szx][2]: fix the position of the placed items?
                     shuffle(stackIndex.begin(), stackIndex.end(), rand.rgen); // OPTIMIZE[szx][9]: record the non-empty ones and consider them only.
                     for (ID i = 0, s = 0; i < cfg.itemToPlaceNumInc; (++s) %= stackNum) {
                         if (stackIndex[s].top >= aux.stacks[stackIndex[s].id].size()) { continue; }
@@ -677,7 +703,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             return reOptimize();
         };
     }
-    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever, onOptimaFound);
+    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 2, 0, 0, MpSolver::Configuration::Forever, onOptimaFound);
 
     // solve.
     if (mp.optimize()) {
@@ -751,12 +777,18 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         ID usedPlateNum = 0;
         for (; (usedPlateNum < maxBinNum[L0]) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
         ID placedItemNum = 0;
-        for (ID i = 0; i < itemNum; ++i) {
-            for (ID g = 0; g < maxBinNum[L0]; ++g) {
-                for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                            if (mp.isTrue(pi3[i][g][l][m][n])) { ++placedItemNum; }
+        for (ID g = 0; g < maxBinNum[L0]; ++g) {
+            if (!mp.isTrue(p[g])) { continue; }
+            for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                if (!mp.isTrue(p1[g][l])) { continue; }
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    if (!mp.isTrue(p2[g][l][m])) { continue; }
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        if (!mp.isTrue(p3[g][l][m][n])) { continue; }
+                        for (ID i = 0; i < itemNum; ++i) {
+                            if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                            ++placedItemNum;
+                            break;
                         }
                     }
                 }

@@ -110,19 +110,27 @@ this leads to more bins to be considered in the width/height bounding constraint
 
 ## Objective
 
-### minimize the wasted raw material OWG (wasted glass)
+### minimize the width of used glass **OGW (glass width)**
 
-reduce the geometrical loss of the cutting patterns, i.e., reduce the used glass, as the area of items are fixed.
+the original objective of the problem.
 only the glass at right of the last 1-cut performed in the last cutting pattern can be reused (regard as residual instead of waste).
 
 $$
 \min W \cdot \sum_{g \in G} p_{g} - (W - \gamma)
 $$
 
-### maximize the area of placed items OPI (placed items)
+### maximize the area of placed items **OPI (placed items)**
 
 $$
 \max \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
+$$
+
+### minimize the wasted glass **OWG (wasted glass)**
+
+if every item must be placed (**HSP (single placement)** takes the $=$ form), it is the same as **OGW (glass width)**
+
+$$
+\min W \cdot \sum_{g \in G} p_{g} - (W - \gamma) - \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
 $$
 
 

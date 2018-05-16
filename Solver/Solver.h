@@ -85,14 +85,16 @@ public:
         struct CompleteModel {
             // strategy.
             bool constructive = true; // there may be some items that are not placed before finishing.
-            bool fixItemsToPlace = true; // set which items should be placed at each construction iteration.
-            ID itemToPlaceNumInc = 4; // number of items to be placed at each construction iteration.
+            bool fixItemsPlacedItems = true; // (only work when (constructive == true)) set the position of placed items before each construction iteration.
+            bool fixItemsToPlace = true; // (only work when (constructive == true)) set which items should be placed at each construction iteration.
+            ID itemToPlaceNumInc = 4; // (only work when (constructive == true)) number of items to be placed at each construction iteration.
 
             // constraint.
             bool placeAllItems = false; // all items must be placed finally.
 
             // objective.
-            bool maxCoveredArea = false && !placeAllItems;
+            bool maxCoveredArea = false; // (only work when (!placeAllItems == true)).
+            bool minWastedArea = false;
 
             // user cut.
             bool addBinSizeOrderCut = false;
@@ -106,6 +108,7 @@ public:
 
         String toBriefStr() const {
             return "sc=" + std::to_string(cm.constructive)
+                + ";sp=" + std::to_string(cm.fixItemsPlacedItems)
                 + ";sf=" + std::to_string(cm.fixItemsToPlace)
                 + ";sn=" + std::to_string(cm.itemToPlaceNumInc)
                 + ";cp=" + std::to_string(cm.placeAllItems)
