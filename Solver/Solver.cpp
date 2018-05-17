@@ -256,10 +256,15 @@ void Solver::init() {
 void Solver::optimize(Solution &sln, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
-    // TODO[szx][0]: this is not the obj for the original problem, remove it.
-    // not all items must be placed and the obj is to maximize the area of placed items.
-    cfg.cm.maxCoveredArea = true;
-    optimizeCompleteModel(sln, cfg.cm);
+    cfg.alg = Configuration::Algorithm::IteratedMp;
+    switch (cfg.alg) {
+    case Configuration::Algorithm::CompleteMp:
+        cfg.cm.maxCoveredArea = true;
+        optimizeCompleteModel(sln, cfg.cm); break;
+    case Configuration::Algorithm::IteratedMp:
+        //cfg.im.minWastedArea = false;
+        optimizeIteratedModel(sln, cfg.im); break;
+    }
 
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " ends." << endl;
 }
@@ -411,7 +416,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
         coveredWidth += input.param.plateWidth * p[g];
     }
-    coveredWidth += (r - input.param.plateWidth);
+    coveredWidth -= (input.param.plateWidth - r);
 
     Log(LogSwitch::Szx::Model) << "add fitting constraints." << endl;
     auto width = [&](ID itemId) {
@@ -603,6 +608,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     }
 
     if (cfg.addEmptyBinMergingCut) {
+        Log(LogSwitch::Szx::Model) << "add empty bin merging cuts." << endl;
         for (ID g = 0; g < maxBinNum[L0]; ++g) {
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
                 if (l + 1 < maxBinNum[L1]) {
@@ -672,7 +678,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
     // minimize the wasted area.
     if (cfg.minWastedArea) {
-        mp.addObjective(input.param.plateHeight * coveredWidth - coveredArea, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, timer.restSeconds() * 0.75);
+        mp.addConstraint(placedItem >= 1);
+        mp.addObjective(input.param.plateHeight * coveredWidth - coveredArea, MpSolver::OptimaOrientation::Minimize, 1, 0, 0, MpSolver::Configuration::Forever);
     }
 
     // minimize the width of used plates (the original objective).
@@ -771,7 +778,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
                             Length upperWasteHeight = lround(mp.getValue(h4u[g][l][m][n]));
                             bool lowerWaste = (lowerWasteHeight > 0);
                             bool upperWaste = (upperWasteHeight > 0);
-                            if (lowerWaste) { 
+                            if (lowerWaste) {
                                 l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste));
                                 l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
                             } else if (upperWaste) {
@@ -807,23 +814,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         ID usedPlateNum = 0;
         for (; (usedPlateNum < maxBinNum[L0]) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
         ID placedItemNum = 0;
-        for (ID g = 0; g < maxBinNum[L0]; ++g) {
-            if (!mp.isTrue(p[g])) { continue; }
-            for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                if (!mp.isTrue(p1[g][l])) { continue; }
-                for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    if (!mp.isTrue(p2[g][l][m])) { continue; }
-                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        if (!mp.isTrue(p3[g][l][m][n])) { continue; }
-                        for (ID i = 0; i < itemNum; ++i) {
-                            if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
-                            ++placedItemNum;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        for (ID i = 0; i < itemNum; ++i) { placedItemNum += mp.isTrue(pi[i]); }
         Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
 
         // visualization.

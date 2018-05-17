@@ -83,6 +83,23 @@ public:
     // controls the I/O data format, exported contents and general usage of the solver.
     struct Configuration {
         struct CompleteModel {
+            String toBriefStr() const {
+                return "sc=" + std::to_string(constructive)
+                    + ";sp=" + std::to_string(fixItemsPlacedItems)
+                    + ";sf=" + std::to_string(fixItemsToPlace)
+                    + ";sn=" + std::to_string(itemToPlaceNumInc)
+                    + ";cp=" + std::to_string(placeAllItems)
+                    + ";oc=" + std::to_string(maxCoveredArea)
+                    + ";ow=" + std::to_string(minWastedArea)
+                    + ";ub=" + std::to_string(addBinSizeOrderCut)
+                    + ";ue=" + std::to_string(addEmptyBinMergingCut)
+                    + ";ug=" + std::to_string(addGlassOrderCut)
+                    + ";up=" + std::to_string(addPlacementOrderCut)
+                    + ";uc=" + std::to_string(addCoveredAreaOnEachPlateCut)
+                    + ";uw=" + std::to_string(addL1BinWidthSumCut);
+            }
+
+
             // strategy.
             bool constructive = true; // there may be some items that are not placed before finishing.
             bool fixItemsPlacedItems = true; // (only work when (constructive == true)) set the position of placed items before each construction iteration.
@@ -105,27 +122,53 @@ public:
             bool addL1BinWidthSumCut = true;
         };
 
-        Configuration() {}
+        struct IteratedModel {
+            String toBriefStr() const {
+                return "ub=" + std::to_string(addBinSizeOrderCut)
+                    + ";ue=" + std::to_string(addEmptyBinMergingCut)
+                    + ";uc=" + std::to_string(addCoveredAreaOnEachPlateCut)
+                    + ";uw=" + std::to_string(addL1BinWidthSumCut);
+            }
 
-        String toBriefStr() const {
-            return "sc=" + std::to_string(cm.constructive)
-                + ";sp=" + std::to_string(cm.fixItemsPlacedItems)
-                + ";sf=" + std::to_string(cm.fixItemsToPlace)
-                + ";sn=" + std::to_string(cm.itemToPlaceNumInc)
-                + ";cp=" + std::to_string(cm.placeAllItems)
-                + ";oc=" + std::to_string(cm.maxCoveredArea)
-                + ";ub=" + std::to_string(cm.addBinSizeOrderCut)
-                + ";ug=" + std::to_string(cm.addGlassOrderCut)
-                + ";up=" + std::to_string(cm.addPlacementOrderCut)
-                + ";uc=" + std::to_string(cm.addCoveredAreaOnEachPlateCut)
-                + ";uw=" + std::to_string(cm.addL1BinWidthSumCut);
-        }
+
+            // strategy.
+
+            // constraint.
+
+            // objective.
+
+            // user cut.
+            bool addBinSizeOrderCut = false;
+            bool addEmptyBinMergingCut = false;
+            bool addCoveredAreaOnEachPlateCut = true;
+            bool addL1BinWidthSumCut = true;
+        };
+
+
+        enum Algorithm { CompleteMp, IteratedMp };
+
+
+        Configuration() {}
 
         void load(const String &filePath);
         void save(const String &filePath) const;
 
+
+        String toBriefStr() const {
+            switch (alg) {
+            case Algorithm::CompleteMp:
+                return cm.toBriefStr();
+            case Algorithm::IteratedMp:
+                return im.toBriefStr();
+            default:
+                return "";
+            }
+        }
+
+
+        Algorithm alg; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
         CompleteModel cm;
-        // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
+        IteratedModel im;
     };
 
     // describe the requirements to the input and output data interface.
@@ -256,7 +299,8 @@ protected:
     void init();
     void optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
 
-    void optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg); // make a copy intentionally for the convenience of multi-threading.
+    void optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
+    void optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
     #pragma endregion Method
 
     #pragma region Field

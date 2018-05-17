@@ -245,6 +245,7 @@ public:
     void setBranchPriority(DecisionVar &var, int priority) { var.set(GRB_IntAttr_BranchPriority, priority); }
 
     using MpSolverBase::isTrue;
+    bool isTrue(LinearExpr expr) const { return isTrue(getValue(expr)); }
     bool isTrue(DecisionVar var) const { return isTrue(getValue(var)); }
     int getVariableCount() const { return model.get(GRB_IntAttr_NumVars); }
 
