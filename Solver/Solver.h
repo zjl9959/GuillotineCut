@@ -85,11 +85,12 @@ public:
         struct CompleteModel {
             String toBriefStr() const {
                 return "sc=" + std::to_string(constructive)
-                    + ";sp=" + std::to_string(fixItemsPlacedItems)
+                    + ";sp=" + std::to_string(fixPlacedItems)
                     + ";sf=" + std::to_string(fixItemsToPlace)
                     + ";sn=" + std::to_string(itemToPlaceNumInc)
                     + ";cp=" + std::to_string(placeAllItems)
                     + ";oc=" + std::to_string(maxCoveredArea)
+                    + ";or=" + std::to_string(maxCoveredRatio)
                     + ";ow=" + std::to_string(minWastedArea)
                     + ";ub=" + std::to_string(addBinSizeOrderCut)
                     + ";ue=" + std::to_string(addEmptyBinMergingCut)
@@ -101,8 +102,8 @@ public:
 
 
             // strategy.
-            bool constructive = true; // there may be some items that are not placed before finishing.
-            bool fixItemsPlacedItems = true; // (only work when (constructive == true)) set the position of placed items before each construction iteration.
+            bool constructive = false; // there may be some items that are not placed before finishing.
+            bool fixPlacedItems = false; // (only work when (constructive == true)) set the position of placed items before each construction iteration.
             bool fixItemsToPlace = true; // (only work when (constructive == true)) set which items should be placed at each construction iteration.
             ID itemToPlaceNumInc = 4; // (only work when (constructive == true)) number of items to be placed at each construction iteration.
 
@@ -110,11 +111,12 @@ public:
             bool placeAllItems = false; // all items must be placed finally.
 
             // objective.
-            bool maxCoveredArea = false; // (only work when (!placeAllItems == true)).
+            bool maxCoveredArea = true; // (only work when (!placeAllItems == true)).
+            bool maxCoveredRatio = false;
             bool minWastedArea = false;
 
             // user cut.
-            bool addBinSizeOrderCut = false;
+            bool addBinSizeOrderCut = true;
             bool addEmptyBinMergingCut = false;
             bool addGlassOrderCut = true;
             bool addPlacementOrderCut = false;
@@ -124,7 +126,9 @@ public:
 
         struct IteratedModel {
             String toBriefStr() const {
-                return "ub=" + std::to_string(addBinSizeOrderCut)
+                return "or=" + std::to_string(maxCoverRatio)
+                    + ";ow=" + std::to_string(minWasteArea)
+                    + ";ub=" + std::to_string(addBinSizeOrderCut)
                     + ";ue=" + std::to_string(addEmptyBinMergingCut)
                     + ";uc=" + std::to_string(addCoveredAreaOnEachPlateCut)
                     + ";uw=" + std::to_string(addL1BinWidthSumCut);
@@ -136,9 +140,11 @@ public:
             // constraint.
 
             // objective.
+            bool maxCoverRatio = true;
+            bool minWasteArea = false;
 
             // user cut.
-            bool addBinSizeOrderCut = false;
+            bool addBinSizeOrderCut = true;
             bool addEmptyBinMergingCut = false;
             bool addCoveredAreaOnEachPlateCut = true;
             bool addL1BinWidthSumCut = true;

@@ -449,7 +449,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
         totalItemArea += (aux.items[i].w * aux.items[i].h);
         placedItem += putInBin;
-        pi[i] = putInBin;
+        pi[i] += putInBin;
     }
 
     Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
@@ -570,7 +570,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
                             Expr fy;
                             for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
                             fy += h4l[g][l][m][n];
-                            mp.addConstraint(fx + input.param.plateWidth * cr[g][l][m][n][f] >= aux.defects[*gf].x + aux.defects[g*f].w);
+                            mp.addConstraint(fx + input.param.plateWidth * cr[g][l][m][n][f] >= aux.defects[*gf].x + aux.defects[*gf].w);
                             mp.addConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][f] <= aux.defects[*gf].x);
                             mp.addConstraint(fy + input.param.plateHeight * cu[g][l][m][n][f] >= aux.defects[*gf].y + aux.defects[*gf].h);
                             mp.addConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][f] <= aux.defects[*gf].y);
@@ -581,7 +581,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    if (cfg.addBinSizeOrderCut || (cfg.constructive && cfg.fixItemsPlacedItems)) {
+    if (cfg.addBinSizeOrderCut || (cfg.constructive && cfg.fixPlacedItems)) {
         Log(LogSwitch::Szx::Model) << "add bin size order cuts." << endl;
         // if there is no defect and order, put larger bins to the left or bottom.
         // else put all non-trivial bins to the left or bottom.
@@ -676,6 +676,16 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         mp.addObjective(coveredArea, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75);
     }
 
+    // maximize the area utilization.
+    if (cfg.maxCoveredRatio) {
+        // TODO[szx][4]: what if the optimal ratio is below optRatio? then the optima of this transformed obj will be 0 and nothing will be placed!
+        // TODO[szx][0]: parameterize the constant.
+        // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
+        //mp.addConstraint(placedItem >= 1);
+        double optRatio = 0.8; // OPTIMIZE[szx][0]: parameterize the constant.
+        mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timer.restSeconds() * 0.75);
+    }
+
     // minimize the wasted area.
     if (cfg.minWastedArea) {
         mp.addConstraint(placedItem >= 1);
@@ -698,7 +708,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             double timeoutPerIteration = timer.restSeconds() * cfg.itemToPlaceNumInc / itemNum;
             for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
                 if (timer.isTimeOut()) { return false; }
-                if (cfg.fixItemsPlacedItems) { // OPTIMIZE[szx][5]: solution from previous iteration may use the top/right bins but leave the bottom/left bins empty.
+                if (cfg.fixPlacedItems) { // OPTIMIZE[szx][5]: solution from previous iteration may use the top/right bins but leave the bottom/left bins empty.
                     for (ID g = 0; g < maxBinNum[L0]; ++g) {
                         if (!mp.isTrue(p[g])) { continue; }
                         for (ID l = 0; l < maxBinNum[L1]; ++l) {
@@ -1058,7 +1068,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
             totalItemArea += (aux.items[i].w * aux.items[i].h);
             placedItem += putInBin;
-            pi[i] = putInBin;
+            pi[i] += putInBin;
         }
 
         Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
@@ -1177,7 +1187,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                 Expr fy;
                                 for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
                                 fy += h4l[g][l][m][n];
-                                mp.addConstraint(fx + input.param.plateWidth * cr[g][l][m][n][f] >= aux.defects[*gf].x + aux.defects[g*f].w);
+                                mp.addConstraint(fx + input.param.plateWidth * cr[g][l][m][n][f] >= aux.defects[*gf].x + aux.defects[*gf].w);
                                 mp.addConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][f] <= aux.defects[*gf].x);
                                 mp.addConstraint(fy + input.param.plateHeight * cu[g][l][m][n][f] >= aux.defects[*gf].y + aux.defects[*gf].h);
                                 mp.addConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][f] <= aux.defects[*gf].y);
