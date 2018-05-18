@@ -278,6 +278,7 @@ public:
         int index = getObjectiveCount();
         objectives.push_back({ expr, orientation, index, priority, relTolerance, absTolerance, timeoutInSecond, postprocess, preprocess });
     }
+    void clearObjectives() { objectives.clear(); }
 
     double getObjectiveValue() const { return model.get(GRB_DoubleAttr_ObjVal); }
     double getAltObjectiveValue(int solutionIndex) {
