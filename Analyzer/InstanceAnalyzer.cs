@@ -25,8 +25,8 @@ namespace Analyzer {
                 h = height;
             }
 
-            Length w; // width.
-            Length h; // height.
+            public Length w; // width.
+            public Length h; // height.
         }
 
         public class RectArea : Rect { // a rectangular area on the plate.
@@ -37,8 +37,8 @@ namespace Analyzer {
                 y = bottom;
             }
 
-            Coord x; // left.
-            Coord y; // bottom.
+            public Coord x; // left.
+            public Coord y; // bottom.
         }
 
 
@@ -87,6 +87,15 @@ namespace Analyzer {
             Console.Write("  itemNum=" + items.Count);
             Console.Write("  stackNum=" + stacks.Count);
             Console.WriteLine("  defectNum=" + defects.Count);
+            ID hNum = 0, vNum = 0;
+            Length length = 0;
+            foreach (var l in items.OrderBy(i => i.Value.h)) {
+                length += l.Value.h;
+                if (length < input.param.plateWidth) { ++hNum; }
+                if (length < input.param.plateHeight) { ++vNum; }
+            }
+            Console.Write("  minLength=" + items.Min(o => o.Value.h) + "  maxLength=" + items.Max(o => o.Value.w));
+            Console.WriteLine("  max|L1|*|L3|=" + hNum + "  max|L2|=" + vNum);
         }
 
 
