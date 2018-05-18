@@ -899,113 +899,113 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     using VarType = MpSolver::VariableType;
 
     enum Layer { L0, L1, L2, L3 };
-    constexpr ID maxBinNum[] = { 2, 12, 10, 8 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr ID maxBinNum[] = { 1, 1, 8, 8 }; // EXTEND[szx][5]: parameterize the constant!
     constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
     constexpr bool flawless = false; // there are defects on the plate.
     constexpr bool ordered = true; // the items should be produced in given order.
 
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
-    Length totalItemArea = 0;
-
-    MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
-    MpSolver mp(mpcfg);
-
-    Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
-
-    Arr<Dvar> p(maxBinNum[L0]); // item placed in plate.
-    Arr2D<Dvar> p1(maxBinNum[L0], maxBinNum[L1]); // there are some items placed in L1 virtual bin.
-    Arr2D<Arr<Dvar>> p2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // there are some items placed in L2 virtual bin.
-    Arr2D<Arr2D<Dvar>> p3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // there are some items placed in L3 virtual bin.
-    Arr<Arr2D<Arr2D<Dvar>>> pi3(itemNum, Arr2D<Arr2D<Dvar>>(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3]))); // item placed in L3 virtual bin.
-
-    Arr2D<Dvar> w1(maxBinNum[L0], maxBinNum[L1]); // width of L1 virtual bin.
-    Arr2D<Arr<Dvar>> h2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // height of L2 virtual bin.
-    Arr2D<Arr2D<Dvar>> w3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // width of L3 virtual bin.
-    Arr2D<Arr2D<Dvar>> h4u(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // height of upper waste in L3 virtual bin.
-    Arr2D<Arr2D<Dvar>> h4l(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // height of lower waste in L3 virtual bin.
-
-    Arr2D<Arr<Dvar>> t2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // L2 virtual bin is non-trivial.
-    Arr2D<Arr2D<Dvar>> t3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is non-trivial.
-    Arr2D<Arr2D<Dvar>> t4u(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // upper waste in L3 virtual bin is non-trivial.
-    Arr2D<Arr2D<Dvar>> t4l(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // lower waste in L3 virtual bin is non-trivial.
-
-    Arr<Dvar> e(maxBinNum[L0]); // there is residual on plate.
-    Dvar r; // width of the used area in the last plate.
-
-    Arr2D<Arr2D<Arr<Dvar>>> c(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is contains flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cr(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the right side of flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cl(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the left side of flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cu(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the up side of flaw.
-    Arr2D<Arr2D<Arr<Dvar>>> cd(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the down side of flaw.
-
-    //Arr<Dvar> o(itemNum); // the sequence number of item to be produced.
-    //o[i] = mp.addVar(VarType::Real, 0, binNum);
-
-    Expr coveredArea; // the sum of placed items' area.
-    Expr coveredWidth;
-    Expr placedItem;
-    Arr<Expr> pi(itemNum);
-
-    Log(LogSwitch::Szx::Model) << "add decisions variables." << endl;
-    for (ID i = 0; i < itemNum; ++i) {
-        d[i] = mp.addVar(VarType::Bool, 0, 1);
-        for (ID g = 0; g < maxBinNum[L0]; ++g) {
-            for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        pi3[i][g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
-                    }
-                }
-            }
-        }
-    }
-    for (ID g = 0; g < maxBinNum[L0]; ++g) {
-        p[g] = mp.addVar(VarType::Bool, 0, 1);
-        e[g] = mp.addVar(VarType::Bool, 0, 1);
-        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-            p1[g][l] = mp.addVar(VarType::Bool, 0, 1);
-            w1[g][l] = mp.addVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
-            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                p2[g][l][m] = mp.addVar(VarType::Bool, 0, 1);
-                h2[g][l][m] = mp.addVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
-                t2[g][l][m] = mp.addVar(VarType::Bool, 0, 1);
-                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                    p3[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
-                    w3[g][l][m][n] = mp.addVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
-                    h4u[g][l][m][n] = mp.addVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
-                    h4l[g][l][m][n] = mp.addVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
-                    t3[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
-                    t4u[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
-                    t4l[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
-                    ID defectNum = static_cast<ID>(aux.plates[g].size());
-                    c[g][l][m][n].init(defectNum);
-                    cr[g][l][m][n].init(defectNum);
-                    cl[g][l][m][n].init(defectNum);
-                    cu[g][l][m][n].init(defectNum);
-                    cd[g][l][m][n].init(defectNum);
-                    for (ID f = 0; f < defectNum; ++f) {
-                        c[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
-                        cr[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
-                        cl[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
-                        cu[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
-                        cd[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
-                    }
-                }
-            }
-        }
-    }
-    r = mp.addVar(VarType::Real, 0, input.param.plateWidth);
 
     ID prevPlate = 0;
     ID nextPlate = 1;
     ID prevL1Bin = 0;
     ID nextL1Bin = 1;
-    for (ID itemToPlaceNum = 1; !timer.isTimeOut() && (prevPlate < maxBinNum[L0]); ) {
+    ID usedPlateNum = 1;
+    ID placedItemNum = 0;
+    Length xOffset = 0;
+    List<bool> isItemPlaced(itemNum, false);
+    double timeoutPerIteration = timer.restSeconds() / (itemNum / 4); // TODO[szx][0]: parameterize the constant!
+    Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
+    while (!timer.isTimeOut()) {
+        MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
+        MpSolver mp(mpcfg);
+
+        Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
+
+        Arr2D<Dvar> p1(maxBinNum[L0], maxBinNum[L1]); // there are some items placed in L1 virtual bin.
+        Arr2D<Arr<Dvar>> p2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // there are some items placed in L2 virtual bin.
+        Arr2D<Arr2D<Dvar>> p3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // there are some items placed in L3 virtual bin.
+        Arr<Arr2D<Arr2D<Dvar>>> pi3(itemNum, Arr2D<Arr2D<Dvar>>(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3]))); // item placed in L3 virtual bin.
+
+        Arr2D<Dvar> w1(maxBinNum[L0], maxBinNum[L1]); // width of L1 virtual bin.
+        Arr2D<Arr<Dvar>> h2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // height of L2 virtual bin.
+        Arr2D<Arr2D<Dvar>> w3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // width of L3 virtual bin.
+        Arr2D<Arr2D<Dvar>> h4u(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // height of upper waste in L3 virtual bin.
+        Arr2D<Arr2D<Dvar>> h4l(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // height of lower waste in L3 virtual bin.
+
+        Arr2D<Arr<Dvar>> t2(maxBinNum[L0], maxBinNum[L1], Arr<Dvar>(maxBinNum[L2])); // L2 virtual bin is non-trivial.
+        Arr2D<Arr2D<Dvar>> t3(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is non-trivial.
+        Arr2D<Arr2D<Dvar>> t4u(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // upper waste in L3 virtual bin is non-trivial.
+        Arr2D<Arr2D<Dvar>> t4l(maxBinNum[L0], maxBinNum[L1], Arr2D<Dvar>(maxBinNum[L2], maxBinNum[L3])); // lower waste in L3 virtual bin is non-trivial.
+
+        Arr<Dvar> e(maxBinNum[L0]); // there is residual on plate.
+
+        Arr2D<Arr2D<Arr<Dvar>>> c(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is contains flaw.
+        Arr2D<Arr2D<Arr<Dvar>>> cr(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the right side of flaw.
+        Arr2D<Arr2D<Arr<Dvar>>> cl(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the left side of flaw.
+        Arr2D<Arr2D<Arr<Dvar>>> cu(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the up side of flaw.
+        Arr2D<Arr2D<Arr<Dvar>>> cd(maxBinNum[L0], maxBinNum[L1], Arr2D<Arr<Dvar>>(maxBinNum[L2], maxBinNum[L3])); // L3 virtual bin is not on the down side of flaw.
+
+        Expr coveredArea; // the sum of placed items' area.
+        Expr coveredWidth;
+        Expr placedItem;
+        Arr<Expr> pi(itemNum);
+
+        Log(LogSwitch::Szx::Model) << "add decisions variables." << endl;
+        for (ID i = 0; i < itemNum; ++i) {
+            if (isItemPlaced[i]) { continue; }
+            d[i] = mp.addVar(VarType::Bool, 0, 1);
+            for (ID g = prevPlate; g < nextPlate; ++g) {
+                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                            pi3[i][g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
+                        }
+                    }
+                }
+            }
+        }
+        for (ID g = prevPlate; g < nextPlate; ++g) {
+            e[g] = mp.addVar(VarType::Bool, 0, 1);
+            for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                p1[g][l] = mp.addVar(VarType::Bool, 0, 1);
+                w1[g][l] = mp.addVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                    p2[g][l][m] = mp.addVar(VarType::Bool, 0, 1);
+                    h2[g][l][m] = mp.addVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                    t2[g][l][m] = mp.addVar(VarType::Bool, 0, 1);
+                    for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                        p3[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
+                        w3[g][l][m][n] = mp.addVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                        h4u[g][l][m][n] = mp.addVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                        h4l[g][l][m][n] = mp.addVar(VarType::Real, 0, input.param.plateHeight); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
+                        t3[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
+                        t4u[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
+                        t4l[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
+                        ID defectNum = static_cast<ID>(aux.plates[g].size());
+                        c[g][l][m][n].init(defectNum);
+                        cr[g][l][m][n].init(defectNum);
+                        cl[g][l][m][n].init(defectNum);
+                        cu[g][l][m][n].init(defectNum);
+                        cd[g][l][m][n].init(defectNum);
+                        for (ID f = 0; f < defectNum; ++f) {
+                            c[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
+                            cr[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
+                            cl[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
+                            cu[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
+                            cd[g][l][m][n][f] = mp.addVar(VarType::Bool, 0, 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        coveredWidth = w1[prevPlate][prevL1Bin];
+
         Log(LogSwitch::Szx::Model) << "add constraints." << endl;
         Log(LogSwitch::Szx::Model) << "add placement constraints." << endl;
         for (ID g = prevPlate; g < nextPlate; ++g) {
-            Expr plateItems;
             for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
                 Expr l1BinItems;
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -1024,18 +1024,11 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     mp.addConstraint(p2[g][l][m] <= l2BinItems); // OPTIMIZE[szx][5]: can be omitted if the obj is not maximizing the area of placed items.
                     mp.addConstraint(l2BinItems <= itemNum * p2[g][l][m]);
                 }
-                plateItems += l1BinItems;
                 // L1 item placement.
                 mp.addConstraint(p1[g][l] <= l1BinItems); // OPTIMIZE[szx][5]: can be omitted if the obj is not maximizing the area of placed items.
                 mp.addConstraint(l1BinItems <= itemNum * p1[g][l]);
             }
-            // plate used.
-            mp.addConstraint(p[g] <= plateItems); // OPTIMIZE[szx][5]: can be omitted if the obj is not maximizing the area of placed items.
-            mp.addConstraint(plateItems <= itemNum * p[g]);
-
-            coveredWidth += input.param.plateWidth * p[g];
         }
-        coveredWidth -= (input.param.plateWidth - r);
 
         Log(LogSwitch::Szx::Model) << "add fitting constraints." << endl;
         auto width = [&](ID itemId) {
@@ -1045,6 +1038,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             return (aux.items[itemId].h * (1 - d[itemId]) + aux.items[itemId].w * d[itemId]);
         };
         for (ID i = 0; i < itemNum; ++i) {
+            if (isItemPlaced[i]) { continue; }
             Length itemLen = aux.items[i].w;
             Expr putInBin;
             for (ID g = prevPlate; g < nextPlate; ++g) {
@@ -1066,7 +1060,6 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             mp.addConstraint(putInBin <= 1);
             // covered area.
             coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
-            totalItemArea += (aux.items[i].w * aux.items[i].h);
             placedItem += putInBin;
             pi[i] += putInBin;
         }
@@ -1090,17 +1083,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 mp.addConstraint(l2BinHeightSum == input.param.plateHeight);
             }
             // L1 total width.
-            mp.addConstraint(input.param.plateWidth * (1 - e[g]) <= l1BinWidthSum);
-            mp.addConstraint(l1BinWidthSum <= input.param.plateWidth - input.param.minWasteWidth * e[g]);
-
-            // residual position.
-            if (g + 1 < maxBinNum[L0]) {
-                mp.addConstraint(l1BinWidthSum - input.param.plateWidth * (1 - p[g] + p[g + 1]) <= r);
-                mp.addConstraint(r <= l1BinWidthSum + input.param.plateWidth * (1 - p[g] + p[g + 1]));
-            } else {
-                mp.addConstraint(l1BinWidthSum - input.param.plateWidth * (1 - p[g]) <= r);
-                mp.addConstraint(r <= l1BinWidthSum + input.param.plateWidth * (1 - p[g]));
-            }
+            mp.addConstraint(input.param.plateWidth * (1 - e[g]) <= xOffset + l1BinWidthSum);
+            mp.addConstraint(xOffset + l1BinWidthSum <= input.param.plateWidth - input.param.minWasteWidth * e[g]);
         }
 
         Log(LogSwitch::Szx::Model) << "add bounding constraints." << endl;
@@ -1134,6 +1118,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Model) << "add ordering constraints." << endl;
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
+                    if (isItemPlaced[*i] || isItemPlaced[*j]) { continue; }
                     Expr putInBin;
                     for (ID g = prevPlate; g < nextPlate; ++g) {
                         for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1152,6 +1137,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 Expr prevPutInBin;
                 for (auto i = s->begin(); i != s->end(); ++i) {
+                    if (isItemPlaced[*i]) { continue; }
                     Expr nextPutInBin;
                     for (ID g = prevPlate; g < nextPlate; ++g) {
                         for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1181,7 +1167,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                 // defect containing.
                                 mp.addConstraint(3 + c[g][l][m][n][f] >= cr[g][l][m][n][f] + cl[g][l][m][n][f] + cu[g][l][m][n][f] + cd[g][l][m][n][f]);
                                 // defect direction.
-                                Expr fx;
+                                Expr fx = xOffset;
                                 for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
                                 for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
                                 Expr fy;
@@ -1251,6 +1237,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             for (ID g = prevPlate; g < nextPlate; ++g) {
                 Expr area;
                 for (ID i = 0; i < itemNum; ++i) {
+                    if (isItemPlaced[i]) { continue; }
                     Expr putInBin;
                     for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
                         for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -1261,7 +1248,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     }
                     area += (aux.items[i].w * aux.items[i].h * putInBin);
                 }
-                mp.addConstraint(area <= input.param.plateWidth * input.param.plateHeight);
+                mp.addConstraint(area <= input.param.maxL1Width * input.param.plateHeight);
             }
         }
 
@@ -1277,168 +1264,182 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             mp.addConstraint(input.param.plateHeight * coveredWidth >= coveredArea);
         }
 
-        mp.addConstraint(placedItem >= itemToPlaceNum);
-
         Log(LogSwitch::Szx::Model) << "add objectives." << endl;
-        // TODO[szx][0]: how to optimize the ratio of wasted area?
         // minimize the wasted area.
-        mp.addObjective(input.param.plateHeight * coveredWidth - coveredArea, MpSolver::OptimaOrientation::Minimize, 0, 0, 0, timer.restSeconds() / (maxBinNum[L0] * maxBinNum[L1]));
+        // TODO[szx][4]: what if the optimal ratio is below optRatio? then the optima of this transformed obj will be 0 and nothing will be placed!
+        // TODO[szx][0]: parameterize the constant.
+        // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
+        //mp.addConstraint(placedItem >= 1);
+        double optRatio = 0.8;
+        mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
         // solve.
         bool feasible = mp.optimize();
         if (feasible) {
-            itemToPlaceNum = 1;
-            for (ID i = 0; i < itemNum; ++i) { itemToPlaceNum += mp.isTrue(pi[i]); }
-            if (itemToPlaceNum > itemNum) { break; }
+            // statistics.
+            xOffset += mp.getValue(w1[prevPlate][prevL1Bin]);
+            Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
+            Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
+            for (ID i = 0; i < itemNum; ++i) {
+                if (!mp.isTrue(pi[i])) { continue; }
+                ++placedItemNum;
+                isItemPlaced[i] = true;
+            }
+            Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
+
+            if (placedItemNum >= itemNum) {
+                // record solution.
+                using Node = Problem::Output::Node;
+                sln.totalWidth = input.param.plateWidth * (usedPlateNum - 1) + xOffset;
+                for (ID g = 0; g < 0; ) {
+                    sln.bins.push_back(Bin(RectArea(0, 0, input.param.plateWidth, input.param.plateHeight), Node::SpecialType::Branch));
+                    Bin &plate(sln.bins.back());
+                    Coord x1 = 0;
+                    for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                        Length l1BinWidth = lround(mp.getValue(w1[g][l]));
+                        if (Math::weakLess(l1BinWidth, 0)) { continue; }
+                        plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
+                        Bin &l1Bin(plate.children.back());
+                        Coord y2 = 0;
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            Length l2BinHeight = lround(mp.getValue(h2[g][l][m]));
+                            if (Math::weakLess(l2BinHeight, 0)) { continue; }
+                            l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
+                            Bin &l2Bin(l1Bin.children.back());
+                            Coord x3 = x1;
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                Length l3BinWidth = lround(mp.getValue(w3[g][l][m][n]));
+                                if (Math::weakLess(l3BinWidth, 0)) { continue; }
+                                l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
+                                Bin &l3Bin(l2Bin.children.back());
+                                for (ID i = 0; i < itemNum; ++i) {
+                                    if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                    l1Bin.type = l2Bin.type = l3Bin.type = Node::SpecialType::Branch;
+
+                                    Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
+                                    Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
+                                    Length lowerWasteHeight = lround(mp.getValue(h4l[g][l][m][n]));
+                                    Length upperWasteHeight = lround(mp.getValue(h4u[g][l][m][n]));
+                                    bool lowerWaste = (lowerWasteHeight > 0);
+                                    bool upperWaste = (upperWasteHeight > 0);
+                                    if (lowerWaste) {
+                                        l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste));
+                                        l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
+                                    } else if (upperWaste) {
+                                        l3Bin.children.push_back(Bin(RectArea(x3, y2, w, h), i));
+                                        l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste));
+                                    } else {
+                                        l3Bin.rect = RectArea(x3, y2, w, h);
+                                        l3Bin.type = i;
+                                    }
+                                    // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
+                                    //if (lowerWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste)); }
+                                    //l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
+                                    //if (upperWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste)); }
+                                    if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
+                                    if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
+                                    break;
+                                }
+                                x3 += l3BinWidth;
+                            }
+                            y2 += l2BinHeight;
+                        }
+                        x1 += l1BinWidth;
+                    }
+                }
+
+                // visualization.
+                constexpr double PlateGap = 100;
+                constexpr double DefectHintRadius = 32;
+                const char FontColor[] = "000000";
+                const char FillColor[] = "CCFFCC";
+                Drawer draw;
+                draw.begin("visc.html", input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
+
+                double offset = 0;
+                for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
+                    // draw plate.
+                    draw.rect(0, offset, input.param.plateWidth, input.param.plateHeight);
+                    // draw items.
+                    double x1 = 0;
+                    for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                        double y2 = offset;
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            double x3 = x1;
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                for (ID i = 0; i < itemNum; ++i) {
+                                    if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                    draw.rect(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), to_string(i), FontColor, FillColor);
+                                    break;
+                                }
+                                x3 += mp.getValue(w3[g][l][m][n]);
+                            }
+                            y2 += mp.getValue(h2[g][l][m]);
+                        }
+                        x1 += mp.getValue(w1[g][l]);
+                    }
+                    // draw cuts.
+                    x1 = 0;
+                    for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                        if (Math::weakLess(mp.getValue(w1[g][l]), 0)) { continue; }
+                        double oldX1 = x1;
+                        x1 += mp.getValue(w1[g][l]);
+                        double y2 = offset;
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            if (Math::weakLess(mp.getValue(h2[g][l][m]), 0)) { continue; }
+                            double oldY2 = y2;
+                            y2 += mp.getValue(h2[g][l][m]);
+                            double x3 = oldX1;
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                if (Math::weakLess(mp.getValue(w3[g][l][m][n]), 0)) { continue; }
+                                x3 += mp.getValue(w3[g][l][m][n]);
+                                draw.line(x3, oldY2, x3, y2, L3);
+                            }
+                            draw.line(oldX1, y2, x1, y2, L2);
+                        }
+                        draw.line(x1, offset, x1, offset + input.param.plateHeight, L1);
+                    }
+                    // draw defects.
+                    for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
+                        if ((aux.defects[*f].w < (2 * DefectHintRadius)) || (aux.defects[*f].h < (2 * DefectHintRadius))) {
+                            draw.circle(aux.defects[*f].x + aux.defects[*f].w * 0.5, offset + aux.defects[*f].y + aux.defects[*f].h * 0.5, DefectHintRadius);
+                        }
+                        draw.rect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h, 0, "", FontColor, FontColor);
+                    }
+                }
+
+                draw.end();
+                break;
+            }
 
             ++prevL1Bin;
             ++nextL1Bin;
-            // TODO[szx][0]: fix the placed items and their positions.
+
+            for (ID i = 0; i < itemNum; ++i) {
+                if (!mp.isTrue(pi[i])) { continue; }
+                for (ID g = prevPlate; g < nextPlate; ++g) {
+                    for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                mp.addConstraint(pi3[i][g][l][m][n] == mp.isTrue(pi3[i][g][l][m][n]));
+                                // TODO[szx][0]: fix the L1 bin width, placed items and their directions.
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if (!feasible || (nextL1Bin > maxBinNum[L1])) {
             // TODO[szx][0]: what if there are defects and there must be an empty L1 bin or leave it empty will be better?
             ++prevPlate;
             ++nextPlate;
+            ++usedPlateNum;
             prevL1Bin = 0;
             nextL1Bin = 1;
+            xOffset = 0;
         }
     }
-
-    // record solution.
-    using Node = Problem::Output::Node;
-    sln.totalWidth = 0;
-    for (ID g = 0; ; ) {
-        sln.bins.push_back(Bin(RectArea(0, 0, input.param.plateWidth, input.param.plateHeight), Node::SpecialType::Branch));
-        Bin &plate(sln.bins.back());
-        Coord x1 = 0;
-        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-            Length l1BinWidth = lround(mp.getValue(w1[g][l]));
-            if (Math::weakLess(l1BinWidth, 0)) { continue; }
-            plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
-            Bin &l1Bin(plate.children.back());
-            Coord y2 = 0;
-            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                Length l2BinHeight = lround(mp.getValue(h2[g][l][m]));
-                if (Math::weakLess(l2BinHeight, 0)) { continue; }
-                l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
-                Bin &l2Bin(l1Bin.children.back());
-                Coord x3 = x1;
-                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                    Length l3BinWidth = lround(mp.getValue(w3[g][l][m][n]));
-                    if (Math::weakLess(l3BinWidth, 0)) { continue; }
-                    l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
-                    Bin &l3Bin(l2Bin.children.back());
-                    for (ID i = 0; i < itemNum; ++i) {
-                        if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
-                        l1Bin.type = l2Bin.type = l3Bin.type = Node::SpecialType::Branch;
-
-                        Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
-                        Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                        Length lowerWasteHeight = lround(mp.getValue(h4l[g][l][m][n]));
-                        Length upperWasteHeight = lround(mp.getValue(h4u[g][l][m][n]));
-                        bool lowerWaste = (lowerWasteHeight > 0);
-                        bool upperWaste = (upperWasteHeight > 0);
-                        if (lowerWaste) {
-                            l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste));
-                            l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
-                        } else if (upperWaste) {
-                            l3Bin.children.push_back(Bin(RectArea(x3, y2, w, h), i));
-                            l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste));
-                        } else {
-                            l3Bin.rect = RectArea(x3, y2, w, h);
-                            l3Bin.type = i;
-                        }
-                        // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
-                        //if (lowerWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste)); }
-                        //l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
-                        //if (upperWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste)); }
-                        if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
-                        if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
-                        break;
-                    }
-                    x3 += l3BinWidth;
-                }
-                y2 += l2BinHeight;
-            }
-            x1 += l1BinWidth;
-        }
-        if ((++g < maxBinNum[L0]) && mp.isTrue(p[g])) {
-            sln.totalWidth += input.param.plateWidth;
-        } else {
-            sln.totalWidth += x1;
-            break;
-        }
-    }
-
-    // statistics.
-    ID usedPlateNum = 0;
-    for (; (usedPlateNum < maxBinNum[L0]) && mp.isTrue(p[usedPlateNum]); ++usedPlateNum) {}
-    ID placedItemNum = 0;
-    for (ID i = 0; i < itemNum; ++i) { placedItemNum += mp.isTrue(pi[i]); }
-    Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
-
-    // visualization.
-    constexpr double PlateGap = 100;
-    constexpr double DefectHintRadius = 32;
-    const char FontColor[] = "000000";
-    const char FillColor[] = "CCFFCC";
-    Drawer draw;
-    draw.begin("visc.html", input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
-
-    double offset = 0;
-    for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
-        // draw plate.
-        draw.rect(0, offset, input.param.plateWidth, input.param.plateHeight);
-        // draw items.
-        double x1 = 0;
-        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-            double y2 = offset;
-            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                double x3 = x1;
-                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                    for (ID i = 0; i < itemNum; ++i) {
-                        if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
-                        draw.rect(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), to_string(i), FontColor, FillColor);
-                        break;
-                    }
-                    x3 += mp.getValue(w3[g][l][m][n]);
-                }
-                y2 += mp.getValue(h2[g][l][m]);
-            }
-            x1 += mp.getValue(w1[g][l]);
-        }
-        // draw cuts.
-        x1 = 0;
-        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-            if (Math::weakLess(mp.getValue(w1[g][l]), 0)) { continue; }
-            double oldX1 = x1;
-            x1 += mp.getValue(w1[g][l]);
-            double y2 = offset;
-            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                if (Math::weakLess(mp.getValue(h2[g][l][m]), 0)) { continue; }
-                double oldY2 = y2;
-                y2 += mp.getValue(h2[g][l][m]);
-                double x3 = oldX1;
-                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                    if (Math::weakLess(mp.getValue(w3[g][l][m][n]), 0)) { continue; }
-                    x3 += mp.getValue(w3[g][l][m][n]);
-                    draw.line(x3, oldY2, x3, y2, L3);
-                }
-                draw.line(oldX1, y2, x1, y2, L2);
-            }
-            draw.line(x1, offset, x1, offset + input.param.plateHeight, L1);
-        }
-        // draw defects.
-        for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
-            if ((aux.defects[*f].w < (2 * DefectHintRadius)) || (aux.defects[*f].h < (2 * DefectHintRadius))) {
-                draw.circle(aux.defects[*f].x + aux.defects[*f].w * 0.5, offset + aux.defects[*f].y + aux.defects[*f].h * 0.5, DefectHintRadius);
-            }
-            draw.rect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h, 0, "", FontColor, FontColor);
-        }
-    }
-
-    draw.end();
 }
 #pragma endregion Solver
 
