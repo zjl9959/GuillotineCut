@@ -189,6 +189,7 @@ void Solver::record() const {
 
     // record solution vector.
     // EXTEND[szx][2]: save solution in log.
+    log << "" << totalItemArea() / (output.totalWidth * input.param.plateHeight / 100.0) << "%";
     log << endl;
 
     // append all text atomically.
@@ -212,6 +213,12 @@ bool Solver::checkFeasibility() const {
 Length Solver::checkObjective() const {
     // TODO[szx][4]: check objective.
     return 0;
+}
+
+Length Solver::totalItemArea() const {
+    Length area = 0;
+    for (auto i = aux.items.begin(); i != aux.items.end(); ++i) { area += (i->w * i->h); }
+    return area;
 }
 
 void Solver::init() {
@@ -257,7 +264,8 @@ void Solver::init() {
 void Solver::optimize(Solution &sln, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
-    cfg.alg = Configuration::Algorithm::IteratedMp;
+    // TODO[szx][5]: parameterize the constant!
+    cfg.alg = (aux.items.size() > 25) ? Configuration::Algorithm::IteratedMp : Configuration::Algorithm::CompleteMp;
     switch (cfg.alg) {
     case Configuration::Algorithm::CompleteMp:
         cfg.cm.maxCoveredArea = true;
@@ -286,14 +294,13 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     using VarType = MpSolver::VariableType;
 
     enum Layer { L0, L1, L2, L3 };
-    constexpr ID maxBinNum[] = { 2, 12, 10, 8 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr ID maxBinNum[] = { 2, 8, 8, 8 }; // EXTEND[szx][5]: parameterize the constant!
     constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
     constexpr bool flawless = false; // there are defects on the plate.
     constexpr bool ordered = true; // the items should be produced in given order.
 
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
-    Length totalItemArea = 0;
 
     MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
     MpSolver mp(mpcfg);
@@ -448,7 +455,6 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         mp.addConstraint((cfg.placeAllItems && !cfg.constructive) ? (putInBin == 1) : (putInBin <= 1));
         // covered area.
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
-        totalItemArea += (aux.items[i].w * aux.items[i].h);
         placedItem += putInBin;
         pi[i] += putInBin;
     }
@@ -664,7 +670,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         Log(LogSwitch::Szx::Model) << "add min L1 width sum cut." << endl;
         if (cfg.placeAllItems && !cfg.constructive) {
             //mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= totalItemArea);
-            mp.addConstraint(input.param.plateHeight * coveredWidth >= totalItemArea);
+            mp.addConstraint(input.param.plateHeight * coveredWidth >= totalItemArea());
         } else {
             //mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= coveredArea);
             mp.addConstraint(input.param.plateHeight * coveredWidth >= coveredArea);
@@ -914,7 +920,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     ID prevL1Bin = 0;
     ID nextL1Bin = 1;
 
-    ID approxIter = itemNum / cfg.approxPlacedItemNumPerIteration;
+    double approxIter = max(1.5, itemNum / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
     double timeoutPerIteration = max(cfg.minSecTimeoutPerIteration, timer.restSeconds() / approxIter);
     Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
 
@@ -927,8 +933,40 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     ID placedItemNum = 0;
     Length xOffset = 0;
     List<bool> isItemPlaced(itemNum, false);
-    // OPTIMIZE[szx][0]: add mask to filter items buried deep down their staks.
     while (!timer.isTimeOut()) {
+        // OPTIMIZE[szx][0]: how to select items to be considered in model?
+        List<bool> skipItem(isItemPlaced);
+        if (placedItemNum + cfg.maxItemToConsiderPerIteration < itemNum) {
+            ID itemToSelectNum = cfg.maxItemToConsiderPerIteration;
+            ID itemNumPerStack = itemToSelectNum / static_cast<ID>(aux.stacks.size());
+            if (itemNumPerStack > 0) {
+                for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
+                    auto i = s->begin();
+                    for (ID num = 0; (i != s->end()) && (++num <= itemNumPerStack); ++i) {
+                        if (skipItem[*i]) { continue; }
+                        --itemToSelectNum;
+                    }
+                    for (; i != s->end(); ++i) {
+                        if (skipItem[*i]) { Log(Log::Error) << "unexpected skipped item." << endl; }
+                        skipItem[*i] = true;
+                    }
+                }
+            }
+
+            Log(LogSwitch::Szx::Model) << "select top " << itemNumPerStack << " items from each stack and " << itemToSelectNum << " items randomly." << endl;
+            
+            List<ID> itemToSelect(itemToSelectNum + 1);
+            Sampling sampler(rand, itemToSelectNum);
+            for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
+                for (auto i = s->begin(); i != s->end(); ++i) {
+                    if (skipItem[*i]) { continue; }
+                    itemToSelect[sampler.isPicked()] = *i;
+                    break;
+                }
+            }
+            for (auto i = itemToSelect.begin() + 1; i != itemToSelect.end(); ++i) { skipItem[*i] = true; }
+        }
+
         MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
         MpSolver mp(mpcfg);
 
@@ -965,7 +1003,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         Log(LogSwitch::Szx::Model) << "add decisions variables." << endl;
         for (ID i = 0; i < itemNum; ++i) {
-            if (isItemPlaced[i]) { continue; }
+            if (skipItem[i]) { continue; }
             d[i] = mp.addVar(VarType::Bool, 0, 1);
             for (ID g = prevPlate; g < nextPlate; ++g) {
                 for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1024,7 +1062,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
                         Expr l3BinItems;
                         for (ID i = 0; i < itemNum; ++i) {
-                            if (isItemPlaced[i]) { continue; }
+                            if (skipItem[i]) { continue; }
                             l3BinItems += pi3[i][g][l][m][n];
                         }
                         l2BinItems += l3BinItems;
@@ -1052,7 +1090,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             return (aux.items[itemId].h * (1 - d[itemId]) + aux.items[itemId].w * d[itemId]);
         };
         for (ID i = 0; i < itemNum; ++i) {
-            if (isItemPlaced[i]) { continue; }
+            if (skipItem[i]) { continue; }
             Length itemLen = aux.items[i].w;
             Expr putInBin;
             for (ID g = prevPlate; g < nextPlate; ++g) {
@@ -1132,7 +1170,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Model) << "add ordering constraints." << endl;
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
-                    if (isItemPlaced[*i] || isItemPlaced[*j]) { continue; }
+                    if (skipItem[*i] || skipItem[*j]) { continue; }
                     Expr putInBin;
                     for (ID g = prevPlate; g < nextPlate; ++g) {
                         for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1151,7 +1189,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 Expr prevPutInBin;
                 for (auto i = s->begin(); i != s->end(); ++i) {
-                    if (isItemPlaced[*i]) { continue; }
+                    if (skipItem[*i]) { continue; }
                     Expr nextPutInBin;
                     for (ID g = prevPlate; g < nextPlate; ++g) {
                         for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1251,7 +1289,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             for (ID g = prevPlate; g < nextPlate; ++g) {
                 Expr area;
                 for (ID i = 0; i < itemNum; ++i) {
-                    if (isItemPlaced[i]) { continue; }
+                    if (skipItem[i]) { continue; }
                     Expr putInBin;
                     for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
                         for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -1288,7 +1326,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
         // solve.
-        mp.setMipFocus(MpSolver::MipFocusMode::ImproveFeasibleSolution);
+        if (cfg.setMipFocus) { mp.setMipFocus(MpSolver::MipFocusMode::ImproveFeasibleSolution); }
         bool feasible = mp.optimize();
         if (feasible) {
             // record solution.
@@ -1317,7 +1355,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                             l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
                             Bin &l3Bin(l2Bin.children.back());
                             for (ID i = 0; i < itemNum; ++i) {
-                                if (isItemPlaced[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                if (skipItem[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
                                 l1Bin.type = l2Bin.type = l3Bin.type = Node::SpecialType::Branch;
 
                                 Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
@@ -1372,7 +1410,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                         double x3 = x1;
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             for (ID i = 0; i < itemNum; ++i) {
-                                if (isItemPlaced[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                if (skipItem[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
                                 items.push_back(Drawer::Item(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), i));
                                 break;
                             }

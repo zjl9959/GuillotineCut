@@ -128,7 +128,9 @@ public:
             String toBriefStr() const {
                 return "st=" + std::to_string(minSecTimeoutPerIteration)
                     + ";sn=" + std::to_string(approxPlacedItemNumPerIteration)
+                    + ";sc=" + std::to_string(maxItemToConsiderPerIteration)
                     + ";sr=" + std::to_string(initCoverageRatio)
+                    + ";sf=" + std::to_string(setMipFocus)
                     + ";or=" + std::to_string(maxCoverRatio)
                     + ";ow=" + std::to_string(minWasteArea)
                     + ";ub=" + std::to_string(addBinSizeOrderCut)
@@ -140,8 +142,10 @@ public:
 
             // strategy.
             double minSecTimeoutPerIteration = 60;
-            ID approxPlacedItemNumPerIteration = 4;
+            double approxPlacedItemNumPerIteration = 4;
+            ID maxItemToConsiderPerIteration = 80;
             double initCoverageRatio = 0.8;
+            bool setMipFocus = true;
 
             // constraint.
 
@@ -306,6 +310,8 @@ public:
 
     bool checkFeasibility() const;
     Length checkObjective() const;
+
+    Length totalItemArea() const;
 
 protected:
     void init();
