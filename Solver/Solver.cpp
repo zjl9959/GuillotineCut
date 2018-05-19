@@ -1017,7 +1017,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                         t3[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
                         t4u[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
                         t4l[g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
-                        ID defectNum = static_cast<ID>(aux.plates[g].size());
+                        ID defectNum = static_cast<ID>(aux.plates[plateId + g].size());
                         c[g][l][m][n].init(defectNum);
                         cr[g][l][m][n].init(defectNum);
                         cl[g][l][m][n].init(defectNum);
@@ -1046,10 +1046,13 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     Expr l2BinItems;
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
                         Expr l3BinItems;
-                        for (ID i = 0; i < itemNum; ++i) { l3BinItems += pi3[i][g][l][m][n]; }
+                        for (ID i = 0; i < itemNum; ++i) {
+                            if (isItemPlaced[i]) { continue; }
+                            l3BinItems += pi3[i][g][l][m][n];
+                        }
                         l2BinItems += l3BinItems;
                         // exclusive placement.
-                        if (aux.plates[g].empty()) { mp.addConstraint(l3BinItems <= 1); } // in case there is no defect on this plate and the defect free constraint is not added.
+                        if (aux.plates[plateId + g].empty()) { mp.addConstraint(l3BinItems <= 1); } // in case there is no defect on this plate and the defect free constraint is not added.
                         // L3 item placement.
                         mp.addConstraint(l3BinItems == p3[g][l][m][n]); // OPTIMIZE[szx][5]: can be <= if the obj is not maximizing the area of placed items.
                     }
@@ -1182,7 +1185,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                             }
                         }
                     }
-                    if (i > s->begin()) { mp.addConstraint(prevPutInBin >= nextPutInBin); }
+                    if (prevPutInBin.size() > 0) { mp.addConstraint(prevPutInBin >= nextPutInBin); }
                     prevPutInBin = nextPutInBin;
                 }
             }
@@ -1300,10 +1303,9 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         Log(LogSwitch::Szx::Model) << "add objectives." << endl;
         // minimize the wasted area.
-        // TODO[szx][4]: what if the optimal ratio is below optRatio? then the optima of this transformed obj will be 0 and nothing will be placed!
+        mp.addConstraint(placedItem >= 1); // in case the optimal ratio is below optRatio (then the optima of this transformed obj will be 0 and nothing will be placed).
         // TODO[szx][0]: parameterize the constant.
         // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
-        //mp.addConstraint(placedItem >= 1);
         double optRatio = 0.8;
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
@@ -1319,7 +1321,9 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             double offset = (input.param.plateHeight + PlateGap) * plateId;
             for (ID g = prevPlate; g < nextPlate; ++g, offset += (input.param.plateHeight + PlateGap)) {
                 // draw plate.
-                plates.push_back(DrawerRect(0, offset, input.param.plateWidth, input.param.plateHeight));
+                if ((plateId + g) >= static_cast<ID>(plates.size())) {
+                    plates.push_back(DrawerRect(0, offset, input.param.plateWidth, input.param.plateHeight));
+                }
                 // draw items.
                 double x1 = xOffset;
                 for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1328,7 +1332,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                         double x3 = x1;
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             for (ID i = 0; i < itemNum; ++i) {
-                                if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                if (isItemPlaced[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
                                 items.push_back(DrawerItem(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), i));
                                 break;
                             }
@@ -1360,21 +1364,10 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     cuts.push_back(DrawerCut(x1, offset, x1, offset + input.param.plateHeight, L1));
                 }
                 // draw defects.
-                for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
+                for (auto f = aux.plates[plateId + g].begin(); f != aux.plates[plateId + g].end(); ++f) {
                     flaws.push_back(DrawerRect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h));
                 }
             }
-
-            // statistics.
-            xOffset += lround(mp.getValue(w1[prevPlate][prevL1Bin]));
-            Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
-            Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
-            for (ID i = 0; i < itemNum; ++i) {
-                if (!mp.isTrue(pi[i])) { continue; }
-                ++placedItemNum;
-                isItemPlaced[i] = true;
-            }
-            Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
 
             // record solution.
             using Node = Problem::Output::Node;
@@ -1383,7 +1376,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     sln.bins.push_back(Bin(RectArea(0, 0, input.param.plateWidth, input.param.plateHeight), Node::SpecialType::Branch));
                 }
                 Bin &plate(sln.bins.back());
-                Coord x1 = 0;
+                Coord x1 = xOffset;
                 for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
                     Length l1BinWidth = lround(mp.getValue(w1[g][l]));
                     if (Math::weakLess(l1BinWidth, 0)) { continue; }
@@ -1402,7 +1395,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                             l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
                             Bin &l3Bin(l2Bin.children.back());
                             for (ID i = 0; i < itemNum; ++i) {
-                                if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                if (isItemPlaced[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
                                 l1Bin.type = l2Bin.type = l3Bin.type = Node::SpecialType::Branch;
 
                                 Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
@@ -1437,6 +1430,18 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
             }
 
+            // statistics.
+            xOffset += lround(mp.getValue(w1[prevPlate][prevL1Bin]));
+            Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
+            Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
+            for (ID i = 0; i < itemNum; ++i) {
+                if (!mp.isTrue(pi[i])) { continue; }
+                ++placedItemNum;
+                isItemPlaced[i] = true;
+            }
+            Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
+
+            // exit criteria.
             if (placedItemNum >= itemNum) {
                 // record obj.
                 sln.totalWidth = input.param.plateWidth * plateId + xOffset;
