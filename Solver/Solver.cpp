@@ -157,8 +157,9 @@ void Solver::solve() {
     List<thread> threadList;
     threadList.reserve(env.jobNum);
     for (int i = 0; i < env.jobNum; ++i) {
+        // TODO[szx][0]: as *this is captured by ref, the solver should support concurrency itself, i.e., data members should be read-only or independent for each worker.
         // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
-        threadList.emplace_back([&]() { optimize(solutions[i], i); });
+        threadList.emplace_back([&, i]() { optimize(solutions[i], i); });
     }
     for (int i = 0; i < env.jobNum; ++i) { threadList.at(i).join(); }
 
