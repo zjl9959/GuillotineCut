@@ -908,29 +908,36 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     ID itemNum = static_cast<ID>(aux.items.size());
 
     struct DrawerRect {
-        Coord x;
-        Coord y;
-        Length w;
-        Length h;
+        DrawerRect(double coordX, double coordY, double width, double height) : x(coordX), y(coordY), w(width), h(height) {}
+
+        double x;
+        double y;
+        double w;
+        double h;
+    };
+    struct DrawerItem {
+        DrawerItem(double coordX, double coordY, double width, double height, bool direction, ID itemId) : x(coordX), y(coordY), w(width), h(height), d(direction), i(itemId) {}
+
+        double x;
+        double y;
+        double w;
+        double h;
         bool d;
         ID i;
     };
-    struct DrawerLine {
-        Coord x0;
-        Coord y0;
-        Coord x1;
-        Coord y1;
+    struct DrawerCut {
+        DrawerCut(double coordX0, double coordY0, double coordX1, double coordY1, Layer layer) : x0(coordX0), y0(coordY0), x1(coordX1), y1(coordY1), l(layer) {}
+
+        double x0;
+        double y0;
+        double x1;
+        double y1;
         Layer l;
     };
-    struct DrawerFlaw {
-        Coord x;
-        Coord y;
-        Length w;
-        Length h;
-    };
-    List<DrawerRect> rects;
-    List<DrawerLine> lines;
-    List<DrawerFlaw> flaws;
+    List<DrawerRect> plates;
+    List<DrawerItem> items;
+    List<DrawerCut> cuts;
+    List<DrawerRect> flaws;
 
     ID prevPlate = 0;
     ID nextPlate = 1;
@@ -1311,7 +1318,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             double offset = (input.param.plateHeight + PlateGap) * plateId;
             for (ID g = prevPlate; g < nextPlate; ++g, offset += (input.param.plateHeight + PlateGap)) {
                 // draw plate.
-                draw.rect(0, offset, input.param.plateWidth, input.param.plateHeight);
+                plates.push_back(DrawerRect(0, offset, input.param.plateWidth, input.param.plateHeight));
                 // draw items.
                 double x1 = xOffset;
                 for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
@@ -1321,7 +1328,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             for (ID i = 0; i < itemNum; ++i) {
                                 if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
-                                rects.push_back({ x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), i });
+                                items.push_back(DrawerItem(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), i));
                                 break;
                             }
                             x3 += mp.getValue(w3[g][l][m][n]);
@@ -1345,20 +1352,20 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             if (Math::weakLess(mp.getValue(w3[g][l][m][n]), 0)) { continue; }
                             x3 += mp.getValue(w3[g][l][m][n]);
-                            lines.push_back({ x3, oldY2, x3, y2, L3 });
+                            cuts.push_back(DrawerCut(x3, oldY2, x3, y2, L3));
                         }
-                        lines.push_back({ oldX1, y2, x1, y2, L2 });
+                        cuts.push_back(DrawerCut(oldX1, y2, x1, y2, L2));
                     }
-                    lines.push_back({ x1, offset, x1, offset + input.param.plateHeight, L1 });
+                    cuts.push_back(DrawerCut(x1, offset, x1, offset + input.param.plateHeight, L1));
                 }
                 // draw defects.
                 for (auto f = aux.plates[g].begin(); f != aux.plates[g].end(); ++f) {
-                    flaws.push_back({ aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h });
+                    flaws.push_back(DrawerRect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h));
                 }
             }
 
             // statistics.
-            xOffset += mp.getValue(w1[prevPlate][prevL1Bin]);
+            xOffset += lround(mp.getValue(w1[prevPlate][prevL1Bin]));
             Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
             Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
             for (ID i = 0; i < itemNum; ++i) {
@@ -1437,11 +1444,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 Drawer draw;
                 draw.begin("visc.html", input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
 
-                for (auto r = rects.begin(); r != rects.end(); ++r) {
-                    draw.rect(r->x, r->y, r->w, r->h, r->d, to_string(r->i), FontColor, FillColor);
+                for (auto g = plates.begin(); g != plates.end(); ++g) {
+                    draw.rect(g->x, g->y, g->w, g->h);
                 }
-                for (auto l = lines.begin(); l != lines.end(); ++l) {
-                    draw.line(l->x0, l->y0, l->x1, l->y1, l->l);
+                for (auto i = items.begin(); i != items.end(); ++i) {
+                    draw.rect(i->x, i->y, i->w, i->h, i->d, to_string(i->i), FontColor, FillColor);
+                }
+                for (auto c = cuts.begin(); c != cuts.end(); ++c) {
+                    draw.line(c->x0, c->y0, c->x1, c->y1, c->l);
                 }
                 for (auto f = flaws.begin(); f != flaws.end(); ++f) {
                     if ((f->w < (2 * DefectHintRadius)) || (f->h < (2 * DefectHintRadius))) {
