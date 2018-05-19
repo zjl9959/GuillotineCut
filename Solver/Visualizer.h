@@ -37,6 +37,35 @@ struct RandColor {
 };
 
 struct Drawer {
+    struct Rect {
+        Rect(double coordX, double coordY, double width, double height) : x(coordX), y(coordY), w(width), h(height) {}
+
+        double x;
+        double y;
+        double w;
+        double h;
+    };
+    struct Item {
+        Item(double coordX, double coordY, double width, double height, bool direction, ID itemId) : x(coordX), y(coordY), w(width), h(height), d(direction), i(itemId) {}
+
+        double x;
+        double y;
+        double w;
+        double h;
+        bool d;
+        ID i;
+    };
+    struct Cut {
+        Cut(double coordX0, double coordY0, double coordX1, double coordY1, int layer) : x0(coordX0), y0(coordY0), x1(coordX1), y1(coordY1), l(layer) {}
+
+        double x0;
+        double y0;
+        double x1;
+        double y1;
+        int l;
+    };
+
+
     static constexpr double Scale = 1; // set to 0.2 to get 100% zoom on modern screen.
     static constexpr double CanvasWidth = 6000 * Scale;
     static constexpr double CanvasHeight = 3210 * Scale;

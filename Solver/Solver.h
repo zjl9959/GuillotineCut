@@ -126,7 +126,10 @@ public:
 
         struct IteratedModel {
             String toBriefStr() const {
-                return "or=" + std::to_string(maxCoverRatio)
+                return "st=" + std::to_string(minSecTimeoutPerIteration)
+                    + ";sn=" + std::to_string(approxPlacedItemNumPerIteration)
+                    + ";sr=" + std::to_string(initCoverageRatio)
+                    + ";or=" + std::to_string(maxCoverRatio)
                     + ";ow=" + std::to_string(minWasteArea)
                     + ";ub=" + std::to_string(addBinSizeOrderCut)
                     + ";ue=" + std::to_string(addEmptyBinMergingCut)
@@ -136,6 +139,9 @@ public:
 
 
             // strategy.
+            double minSecTimeoutPerIteration = 60;
+            ID approxPlacedItemNumPerIteration = 4;
+            double initCoverageRatio = 0.8;
 
             // constraint.
 
@@ -163,9 +169,9 @@ public:
         String toBriefStr() const {
             switch (alg) {
             case Algorithm::CompleteMp:
-                return cm.toBriefStr();
+                return "[C]" + cm.toBriefStr();
             case Algorithm::IteratedMp:
-                return im.toBriefStr();
+                return "[I]" + im.toBriefStr();
             default:
                 return "";
             }

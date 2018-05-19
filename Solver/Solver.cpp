@@ -900,7 +900,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     using VarType = MpSolver::VariableType;
 
     enum Layer { L0, L1, L2, L3 };
-    constexpr ID maxBinNum[] = { 1, 1, 8, 8 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr ID maxBinNum[] = { 1, 1, 6, 6 }; // EXTEND[szx][5]: parameterize the constant!
     constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
     constexpr bool flawless = false; // there are defects on the plate.
     constexpr bool ordered = true; // the items should be produced in given order.
@@ -908,49 +908,26 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
 
-    struct DrawerRect {
-        DrawerRect(double coordX, double coordY, double width, double height) : x(coordX), y(coordY), w(width), h(height) {}
-
-        double x;
-        double y;
-        double w;
-        double h;
-    };
-    struct DrawerItem {
-        DrawerItem(double coordX, double coordY, double width, double height, bool direction, ID itemId) : x(coordX), y(coordY), w(width), h(height), d(direction), i(itemId) {}
-
-        double x;
-        double y;
-        double w;
-        double h;
-        bool d;
-        ID i;
-    };
-    struct DrawerCut {
-        DrawerCut(double coordX0, double coordY0, double coordX1, double coordY1, Layer layer) : x0(coordX0), y0(coordY0), x1(coordX1), y1(coordY1), l(layer) {}
-
-        double x0;
-        double y0;
-        double x1;
-        double y1;
-        Layer l;
-    };
-    List<DrawerRect> plates;
-    List<DrawerItem> items;
-    List<DrawerCut> cuts;
-    List<DrawerRect> flaws;
-
+    // step control.
     ID prevPlate = 0;
     ID nextPlate = 1;
     ID prevL1Bin = 0;
     ID nextL1Bin = 1;
+
+    ID approxIter = itemNum / cfg.approxPlacedItemNumPerIteration;
+    double timeoutPerIteration = max(cfg.minSecTimeoutPerIteration, timer.restSeconds() / approxIter);
+    Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
+
+    List<Drawer::Rect> plates;
+    List<Drawer::Item> items;
+    List<Drawer::Cut> cuts;
+    List<Drawer::Rect> flaws;
     ID plateId = 0;
     ID usedPlateNum = 1;
     ID placedItemNum = 0;
     Length xOffset = 0;
     List<bool> isItemPlaced(itemNum, false);
-    double timeoutPerIteration = timer.restSeconds() / (itemNum / 4); // TODO[szx][0]: parameterize the constant!
-    Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
+    // OPTIMIZE[szx][0]: add mask to filter items buried deep down their staks.
     while (!timer.isTimeOut()) {
         MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
         MpSolver mp(mpcfg);
@@ -1301,74 +1278,19 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             mp.addConstraint(input.param.plateHeight * coveredWidth >= coveredArea);
         }
 
+        // in case the optimal ratio is below optRatio (then the optima of this transformed obj will be 0 and nothing will be placed).
+        mp.addConstraint(placedItem >= 1);
+
         Log(LogSwitch::Szx::Model) << "add objectives." << endl;
         // minimize the wasted area.
-        mp.addConstraint(placedItem >= 1); // in case the optimal ratio is below optRatio (then the optima of this transformed obj will be 0 and nothing will be placed).
-        // TODO[szx][0]: parameterize the constant.
         // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
-        double optRatio = 0.8;
+        double optRatio = cfg.initCoverageRatio;
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
         // solve.
+        mp.setMipFocus(MpSolver::MipFocusMode::ImproveFeasibleSolution);
         bool feasible = mp.optimize();
         if (feasible) {
-            // visualization.
-            constexpr double PlateGap = 100;
-            constexpr double DefectHintRadius = 32;
-            const char FontColor[] = "000000";
-            const char FillColor[] = "CCFFCC";
-
-            double offset = (input.param.plateHeight + PlateGap) * plateId;
-            for (ID g = prevPlate; g < nextPlate; ++g, offset += (input.param.plateHeight + PlateGap)) {
-                // draw plate.
-                if ((plateId + g) >= static_cast<ID>(plates.size())) {
-                    plates.push_back(DrawerRect(0, offset, input.param.plateWidth, input.param.plateHeight));
-                }
-                // draw items.
-                double x1 = xOffset;
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
-                    double y2 = offset;
-                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                        double x3 = x1;
-                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                            for (ID i = 0; i < itemNum; ++i) {
-                                if (isItemPlaced[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
-                                items.push_back(DrawerItem(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), i));
-                                break;
-                            }
-                            x3 += mp.getValue(w3[g][l][m][n]);
-                        }
-                        y2 += mp.getValue(h2[g][l][m]);
-                    }
-                    x1 += mp.getValue(w1[g][l]);
-                }
-                // draw cuts.
-                x1 = xOffset;
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
-                    if (Math::weakLess(mp.getValue(w1[g][l]), 0)) { continue; }
-                    double oldX1 = x1;
-                    x1 += mp.getValue(w1[g][l]);
-                    double y2 = offset;
-                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                        if (Math::weakLess(mp.getValue(h2[g][l][m]), 0)) { continue; }
-                        double oldY2 = y2;
-                        y2 += mp.getValue(h2[g][l][m]);
-                        double x3 = oldX1;
-                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                            if (Math::weakLess(mp.getValue(w3[g][l][m][n]), 0)) { continue; }
-                            x3 += mp.getValue(w3[g][l][m][n]);
-                            cuts.push_back(DrawerCut(x3, oldY2, x3, y2, L3));
-                        }
-                        cuts.push_back(DrawerCut(oldX1, y2, x1, y2, L2));
-                    }
-                    cuts.push_back(DrawerCut(x1, offset, x1, offset + input.param.plateHeight, L1));
-                }
-                // draw defects.
-                for (auto f = aux.plates[plateId + g].begin(); f != aux.plates[plateId + g].end(); ++f) {
-                    flaws.push_back(DrawerRect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h));
-                }
-            }
-
             // record solution.
             using Node = Problem::Output::Node;
             for (ID g = prevPlate; g < nextPlate; ++g) {
@@ -1427,6 +1349,63 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                         y2 += l2BinHeight;
                     }
                     x1 += l1BinWidth;
+                }
+            }
+
+            // visualization.
+            constexpr double PlateGap = 100;
+            constexpr double DefectHintRadius = 32;
+            const char FontColor[] = "000000";
+            const char FillColor[] = "CCFFCC";
+
+            double offset = (input.param.plateHeight + PlateGap) * plateId;
+            for (ID g = prevPlate; g < nextPlate; ++g, offset += (input.param.plateHeight + PlateGap)) {
+                // draw plate.
+                if ((plateId + g) >= static_cast<ID>(plates.size())) {
+                    plates.push_back(Drawer::Rect(0, offset, input.param.plateWidth, input.param.plateHeight));
+                }
+                // draw items.
+                double x1 = xOffset;
+                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    double y2 = offset;
+                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        double x3 = x1;
+                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                            for (ID i = 0; i < itemNum; ++i) {
+                                if (isItemPlaced[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
+                                items.push_back(Drawer::Item(x3, y2 + mp.getValue(h4l[g][l][m][n]), aux.items[i].w, aux.items[i].h, mp.isTrue(d[i]), i));
+                                break;
+                            }
+                            x3 += mp.getValue(w3[g][l][m][n]);
+                        }
+                        y2 += mp.getValue(h2[g][l][m]);
+                    }
+                    x1 += mp.getValue(w1[g][l]);
+                }
+                // draw cuts.
+                x1 = xOffset;
+                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    if (Math::weakLess(mp.getValue(w1[g][l]), 0)) { continue; }
+                    double oldX1 = x1;
+                    x1 += mp.getValue(w1[g][l]);
+                    double y2 = offset;
+                    for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        if (Math::weakLess(mp.getValue(h2[g][l][m]), 0)) { continue; }
+                        double oldY2 = y2;
+                        y2 += mp.getValue(h2[g][l][m]);
+                        double x3 = oldX1;
+                        for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                            if (Math::weakLess(mp.getValue(w3[g][l][m][n]), 0)) { continue; }
+                            x3 += mp.getValue(w3[g][l][m][n]);
+                            cuts.push_back(Drawer::Cut(x3, oldY2, x3, y2, L3));
+                        }
+                        cuts.push_back(Drawer::Cut(oldX1, y2, x1, y2, L2));
+                    }
+                    cuts.push_back(Drawer::Cut(x1, offset, x1, offset + input.param.plateHeight, L1));
+                }
+                // draw defects.
+                for (auto f = aux.plates[plateId + g].begin(); f != aux.plates[plateId + g].end(); ++f) {
+                    flaws.push_back(Drawer::Rect(aux.defects[*f].x, offset + aux.defects[*f].y, aux.defects[*f].w, aux.defects[*f].h));
                 }
             }
 
