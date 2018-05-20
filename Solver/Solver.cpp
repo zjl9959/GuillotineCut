@@ -840,7 +840,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         const char FontColor[] = "000000";
         const char FillColor[] = "CCFFCC";
         Drawer draw;
-        draw.begin("visc.html", input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
+        draw.begin(env.visualizPath(), input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
 
         double offset = 0;
         for (ID g = 0; g < maxBinNum[L0]; ++g, offset += (input.param.plateHeight + PlateGap)) {
@@ -934,37 +934,21 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     Length xOffset = 0;
     List<bool> isItemPlaced(itemNum, false);
     while (!timer.isTimeOut()) {
-        // OPTIMIZE[szx][0]: how to select items to be considered in model?
-        List<bool> skipItem(isItemPlaced);
+        List<bool> skipItem(isItemPlaced); // select items to be considered in model.
         if (placedItemNum + cfg.maxItemToConsiderPerIteration < itemNum) {
+            // OPTIMIZE[szx][0]: add some randomness?
+            List<List<ID>::iterator> sp(aux.stacks.size());
+            for (ID s = 0; s < stackNum; ++s) { sp[s] = aux.stacks[s].begin(); }
             ID itemToSelectNum = cfg.maxItemToConsiderPerIteration;
-            ID itemNumPerStack = itemToSelectNum / static_cast<ID>(aux.stacks.size());
-            if (itemNumPerStack > 0) {
-                for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
-                    auto i = s->begin();
-                    for (ID num = 0; (i != s->end()) && (++num <= itemNumPerStack); ++i) {
-                        if (skipItem[*i]) { continue; }
-                        --itemToSelectNum;
-                    }
-                    for (; i != s->end(); ++i) {
-                        if (skipItem[*i]) { Log(Log::Error) << "unexpected skipped item." << endl; }
-                        skipItem[*i] = true;
-                    }
-                }
+            for (ID s = 0; ; (++s) %= stackNum) { // seek to the last selected item.
+                while ((sp[s] != aux.stacks[s].end()) && skipItem[*sp[s]]) { ++sp[s]; }
+                if (sp[s] == aux.stacks[s].end()) { continue; }
+                if (--itemToSelectNum <= 0) { break; }
             }
-
-            Log(LogSwitch::Szx::Model) << "select top " << itemNumPerStack << " items from each stack and " << itemToSelectNum << " items randomly." << endl;
-            
-            List<ID> itemToSelect(itemToSelectNum + 1);
-            Sampling sampler(rand, itemToSelectNum);
-            for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
-                for (auto i = s->begin(); i != s->end(); ++i) {
-                    if (skipItem[*i]) { continue; }
-                    itemToSelect[sampler.isPicked()] = *i;
-                    break;
-                }
+            for (ID s = 0; s < stackNum; ++s) { // mark the following items as skipped.
+                if (sp[s] == aux.stacks[s].end()) { continue; }
+                while (++sp[s] != aux.stacks[s].end()) { skipItem[*sp[s]] = true; }
             }
-            for (auto i = itemToSelect.begin() + 1; i != itemToSelect.end(); ++i) { skipItem[*i] = true; }
         }
 
         MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
@@ -1465,7 +1449,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
                 // visualization.
                 Drawer draw;
-                draw.begin("visc.html", input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
+                draw.begin(env.visualizPath(), input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
 
                 for (auto g = plates.begin(); g != plates.end(); ++g) {
                     draw.rect(g->x, g->y, g->w, g->h);
@@ -1491,6 +1475,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             ++usedPlateNum;
             ++plateId;
             xOffset = 0;
+            Log(LogSwitch::Szx::Postprocess) << "use new plate " << plateId << endl;
         }
     }
 }

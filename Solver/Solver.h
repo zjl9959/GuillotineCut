@@ -228,7 +228,7 @@ public:
         String solutionPathWithSuffix() const { return slnPath + SolutionSuffix(); }
         String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
 
-        String visualizPath() const { return DefaultVisualizationDir() + instName + "." + localTime; }
+        String visualizPath() const { return DefaultVisualizationDir() + instName + "." + localTime + ".html"; }
         String friendlyLocalTime() const {
             return localTime.substr(0, 4) + "-" + localTime.substr(4, 2) + "-" + localTime.substr(6, 2)
                 + "_" + localTime.substr(8, 2) + ":" + localTime.substr(10, 2) + ":" + localTime.substr(12, 2);
