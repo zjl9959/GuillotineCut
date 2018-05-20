@@ -302,7 +302,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
 
-    MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
+    MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, false);
     MpSolver mp(mpcfg);
 
     Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
@@ -769,19 +769,19 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             Bin &plate(sln.bins.back());
             Coord x1 = 0;
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                Length l1BinWidth = lround(mp.getValue(w1[g][l]));
+                Length l1BinWidth = Math::floor(mp.getValue(w1[g][l]));
                 if (Math::weakLess(l1BinWidth, 0)) { continue; }
                 plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
                 Bin &l1Bin(plate.children.back());
                 Coord y2 = 0;
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    Length l2BinHeight = lround(mp.getValue(h2[g][l][m]));
+                    Length l2BinHeight = Math::floor(mp.getValue(h2[g][l][m]));
                     if (Math::weakLess(l2BinHeight, 0)) { continue; }
                     l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
                     Bin &l2Bin(l1Bin.children.back());
                     Coord x3 = x1;
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        Length l3BinWidth = lround(mp.getValue(w3[g][l][m][n]));
+                        Length l3BinWidth = Math::floor(mp.getValue(w3[g][l][m][n]));
                         if (Math::weakLess(l3BinWidth, 0)) { continue; }
                         l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
                         Bin &l3Bin(l2Bin.children.back());
@@ -791,8 +791,8 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
                             Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                             Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                            Length lowerWasteHeight = lround(mp.getValue(h4l[g][l][m][n]));
-                            Length upperWasteHeight = lround(mp.getValue(h4u[g][l][m][n]));
+                            Length lowerWasteHeight = Math::floor(mp.getValue(h4l[g][l][m][n]));
+                            Length upperWasteHeight = Math::floor(mp.getValue(h4u[g][l][m][n]));
                             bool lowerWaste = (lowerWasteHeight > 0);
                             bool upperWaste = (upperWasteHeight > 0);
                             if (lowerWaste) {
@@ -951,7 +951,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
         }
 
-        MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
+        MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, false);
         MpSolver mp(mpcfg);
 
         Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
@@ -1322,19 +1322,19 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 Bin &plate(sln.bins.back());
                 Coord x1 = xOffset;
                 for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
-                    Length l1BinWidth = lround(mp.getValue(w1[g][l]));
+                    Length l1BinWidth = Math::floor(mp.getValue(w1[g][l]));
                     if (Math::weakLess(l1BinWidth, 0)) { continue; }
                     plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
                     Bin &l1Bin(plate.children.back());
                     Coord y2 = 0;
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                        Length l2BinHeight = lround(mp.getValue(h2[g][l][m]));
+                        Length l2BinHeight = Math::floor(mp.getValue(h2[g][l][m]));
                         if (Math::weakLess(l2BinHeight, 0)) { continue; }
                         l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
                         Bin &l2Bin(l1Bin.children.back());
                         Coord x3 = x1;
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                            Length l3BinWidth = lround(mp.getValue(w3[g][l][m][n]));
+                            Length l3BinWidth = Math::floor(mp.getValue(w3[g][l][m][n]));
                             if (Math::weakLess(l3BinWidth, 0)) { continue; }
                             l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
                             Bin &l3Bin(l2Bin.children.back());
@@ -1344,8 +1344,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
                                 Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                                 Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                                Length lowerWasteHeight = lround(mp.getValue(h4l[g][l][m][n]));
-                                Length upperWasteHeight = lround(mp.getValue(h4u[g][l][m][n]));
+                                Length lowerWasteHeight = Math::floor(mp.getValue(h4l[g][l][m][n]));
+                                Length upperWasteHeight = Math::floor(mp.getValue(h4u[g][l][m][n]));
                                 bool lowerWaste = (lowerWasteHeight > 0);
                                 bool upperWaste = (upperWasteHeight > 0);
                                 if (lowerWaste) {
@@ -1432,7 +1432,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
 
             // statistics.
-            xOffset += lround(mp.getValue(w1[prevPlate][prevL1Bin]));
+            xOffset += Math::floor(mp.getValue(w1[prevPlate][prevL1Bin]));
             Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
             Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
             for (ID i = 0; i < itemNum; ++i) {

@@ -228,8 +228,12 @@ public:
         String solutionPathWithSuffix() const { return slnPath + SolutionSuffix(); }
         String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
 
-        String visualizPath() const { return DefaultVisualizationDir() + instName + "." + localTime + ".html"; }
-        String friendlyLocalTime() const {
+        String visualizPath() const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + ".html"; }
+        String friendlyInstName() const { // friendly to file system (without special char).
+            auto pos = instName.find_last_of('/');
+            return (pos == String::npos) ? instName : instName.substr(pos + 1);
+        }
+        String friendlyLocalTime() const { // friendly to human.
             return localTime.substr(0, 4) + "-" + localTime.substr(4, 2) + "-" + localTime.substr(6, 2)
                 + "_" + localTime.substr(8, 2) + ":" + localTime.substr(10, 2) + ":" + localTime.substr(12, 2);
         }
