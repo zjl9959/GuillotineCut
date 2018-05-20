@@ -159,6 +159,7 @@ void Simulator::parallelBenchmark(int repeat) {
             task.randSeed = to_string(Random::generateSeed());
             task.runId = to_string(i);
             tp.push([=]() { run(task); });
+            this_thread::sleep_for(1s);
         }
     }
 }
