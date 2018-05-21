@@ -248,3 +248,4 @@ ModelManifest.xml
 /Deploy/Analyzer.exe
 /Deploy/Instance/*.csv
 /Deploy/Solution/*.csv
+/Deploy/Visualization/*.html
