@@ -163,18 +163,20 @@ public:
 
 
         String toBriefStr() const {
+            String threshold(std::to_string(itemNumThresholdForCompleteModel));
             switch (alg) {
             case Algorithm::CompleteMp:
-                return "[C]" + cm.toBriefStr();
+                return "[C" + threshold + "]" + cm.toBriefStr();
             case Algorithm::IteratedMp:
-                return "[I]" + im.toBriefStr();
+                return "[I" + threshold + "]" + im.toBriefStr();
             default:
                 return "";
             }
         }
 
 
-        Algorithm alg; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
+        Algorithm alg = Configuration::Algorithm::IteratedMp; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
+        ID itemNumThresholdForCompleteModel = 20;
         CompleteModel cm;
         IteratedModel im;
     };

@@ -264,8 +264,7 @@ void Solver::init() {
 void Solver::optimize(Solution &sln, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
-    // TODO[szx][5]: parameterize the constant!
-    cfg.alg = (aux.items.size() > 25) ? Configuration::Algorithm::IteratedMp : Configuration::Algorithm::CompleteMp;
+    cfg.alg = (aux.items.size() > cfg.itemNumThresholdForCompleteModel) ? Configuration::Algorithm::IteratedMp : Configuration::Algorithm::CompleteMp;
     switch (cfg.alg) {
     case Configuration::Algorithm::CompleteMp:
         cfg.cm.maxCoveredArea = true;
