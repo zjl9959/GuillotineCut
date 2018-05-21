@@ -755,24 +755,23 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
                             Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                             Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                            Length lowerWasteHeight = Math::lfloor(mp.getValue(h4l[g][l][m][n]));
-                            Length upperWasteHeight = Math::lfloor(mp.getValue(h4u[g][l][m][n]));
-                            bool lowerWaste = (lowerWasteHeight > 0);
-                            bool upperWaste = (upperWasteHeight > 0);
+                            double wasteHeight = l2BinHeight - h;
+                            bool lowerWaste = mp.isTrue(t4l[g][l][m][n]);
+                            bool upperWaste = mp.isTrue(t4u[g][l][m][n]);
                             if (lowerWaste) {
-                                l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste));
-                                l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
+                                l3Bin.children.push_back(Bin(x3, y2, w, wasteHeight, Node::SpecialType::Waste));
+                                l3Bin.children.push_back(Bin(x3, y2 + wasteHeight, w, h, i));
                             } else if (upperWaste) {
                                 l3Bin.children.push_back(Bin(x3, y2, w, h, i));
-                                l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste));
+                                l3Bin.children.push_back(Bin(x3, y2 + h, w, wasteHeight, Node::SpecialType::Waste));
                             } else { // item only.
                                 l3Bin.rect = RectArea(Math::lfloor(x3), Math::lfloor(y2), w, h);
                                 l3Bin.type = i;
                             }
                             // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
-                            //if (lowerWaste) { l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste)); }
-                            //l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
-                            //if (upperWaste) { l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste)); }
+                            //if (lowerWaste) { l3Bin.children.push_back(Bin(x3, y2, w, wasteHeight, Node::SpecialType::Waste)); }
+                            //l3Bin.children.push_back(Bin(x3, y2 + wasteHeight, w, h, i));
+                            //if (upperWaste) { l3Bin.children.push_back(Bin(x3, y2 + h, w, wasteHeight, Node::SpecialType::Waste)); }
                             if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
                             if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
                             break;
@@ -1329,24 +1328,23 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
                                 Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                                 Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                                Length lowerWasteHeight = Math::lfloor(mp.getValue(h4l[g][l][m][n]));
-                                Length upperWasteHeight = Math::lfloor(mp.getValue(h4u[g][l][m][n]));
-                                bool lowerWaste = (lowerWasteHeight > 0);
-                                bool upperWaste = (upperWasteHeight > 0);
+                                double wasteHeight = l2BinHeight - h;
+                                bool lowerWaste = mp.isTrue(t4l[g][l][m][n]);
+                                bool upperWaste = mp.isTrue(t4u[g][l][m][n]);
                                 if (lowerWaste) {
-                                    l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste));
-                                    l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
+                                    l3Bin.children.push_back(Bin(x3, y2, w, wasteHeight, Node::SpecialType::Waste));
+                                    l3Bin.children.push_back(Bin(x3, y2 + wasteHeight, w, h, i));
                                 } else if (upperWaste) {
                                     l3Bin.children.push_back(Bin(x3, y2, w, h, i));
-                                    l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste));
+                                    l3Bin.children.push_back(Bin(x3, y2 + h, w, wasteHeight, Node::SpecialType::Waste));
                                 } else { // item only.
                                     l3Bin.rect = RectArea(Math::lfloor(x3), Math::lfloor(y2), w, h);
                                     l3Bin.type = i;
                                 }
                                 // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
-                                //if (lowerWaste) { l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste)); }
-                                //l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
-                                //if (upperWaste) { l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste)); }
+                                //if (lowerWaste) { l3Bin.children.push_back(Bin(x3, y2, w, wasteHeight, Node::SpecialType::Waste)); }
+                                //l3Bin.children.push_back(Bin(x3, y2 + wasteHeight, w, h, i));
+                                //if (upperWaste) { l3Bin.children.push_back(Bin(x3, y2 + h, w, wasteHeight, Node::SpecialType::Waste)); }
                                 if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
                                 if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
                                 break;
