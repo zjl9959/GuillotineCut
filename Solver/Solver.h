@@ -274,6 +274,8 @@ public:
         Bin() {}
         Bin(const RectArea &rectArea, Problem::Output::Node::Type nodeType = Problem::Output::Node::SpecialType::Waste)
             : rect(rectArea), type(nodeType) {}
+        Bin(double left, double bottom, double width, double height, Problem::Output::Node::Type nodeType = Problem::Output::Node::SpecialType::Waste)
+            : rect(Math::lfloor(left), Math::lfloor(bottom), Math::lfloor(width), Math::lfloor(height)), type(nodeType) {}
 
         Problem::Output::Node::Type type;
         RectArea rect;

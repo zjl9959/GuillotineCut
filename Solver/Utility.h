@@ -726,7 +726,8 @@ public:
         return ((l - r) < -tolerance);
     }
 
-    static int floor(double d) { return static_cast<int>(d + DefaultTolerance); }
+    static double floor(double d) { return std::floor(d + DefaultTolerance); }
+    static long lfloor(double d) { return static_cast<long>(d + DefaultTolerance); }
 
     template<typename T>
     static bool isOdd(T integer) { return ((integer % 2) == 1); }

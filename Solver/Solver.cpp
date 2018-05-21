@@ -294,7 +294,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     using VarType = MpSolver::VariableType;
 
     enum Layer { L0, L1, L2, L3 };
-    constexpr ID maxBinNum[] = { 2, 8, 8, 8 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr ID maxBinNum[] = { 2, 8, 8, 6 }; // EXTEND[szx][5]: parameterize the constant!
     constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
     constexpr bool flawless = false; // there are defects on the plate.
     constexpr bool ordered = true; // the items should be produced in given order.
@@ -765,25 +765,46 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         sln.totalWidth = 0;
         using Node = Problem::Output::Node;
         for (ID g = 0; ; ) {
-            sln.bins.push_back(Bin(RectArea(0, 0, input.param.plateWidth, input.param.plateHeight), Node::SpecialType::Branch));
+            sln.bins.push_back(Bin(0, 0, input.param.plateWidth, input.param.plateHeight, Node::SpecialType::Branch));
             Bin &plate(sln.bins.back());
-            Coord x1 = 0;
+            double x1 = 0;
+            double margin1 = 0; // cumulative length loss due to truncation from double to int.
             for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                Length l1BinWidth = Math::floor(mp.getValue(w1[g][l]));
+                double l1BinWidth = mp.getValue(w1[g][l]);
+                margin1 += (l1BinWidth - Math::floor(l1BinWidth));
+                l1BinWidth = Math::floor(l1BinWidth);
                 if (Math::weakLess(l1BinWidth, 0)) { continue; }
-                plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
+                if (Math::weakLess(1, margin1)) {
+                    l1BinWidth += margin1;
+                    margin1 -= Math::floor(margin1);
+                }
+                plate.children.push_back(Bin(x1, 0, l1BinWidth, input.param.plateHeight, Node::SpecialType::Waste));
                 Bin &l1Bin(plate.children.back());
-                Coord y2 = 0;
+                double y2 = 0;
+                double margin2 = 0; // cumulative length loss due to truncation from double to int.
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                    Length l2BinHeight = Math::floor(mp.getValue(h2[g][l][m]));
+                    double l2BinHeight = mp.getValue(h2[g][l][m]);
+                    margin2 += (l2BinHeight - Math::floor(l2BinHeight));
+                    l2BinHeight = Math::floor(l2BinHeight);
                     if (Math::weakLess(l2BinHeight, 0)) { continue; }
-                    l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
+                    if (Math::weakLess(1, margin2)) {
+                        l2BinHeight += margin2;
+                        margin2 -= Math::floor(margin2);
+                    }
+                    l1Bin.children.push_back(Bin(x1, y2, l1BinWidth, l2BinHeight, Node::SpecialType::Waste));
                     Bin &l2Bin(l1Bin.children.back());
-                    Coord x3 = x1;
+                    double x3 = x1;
+                    double margin3 = 0; // cumulative length loss due to truncation from double to int.
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                        Length l3BinWidth = Math::floor(mp.getValue(w3[g][l][m][n]));
+                        double l3BinWidth = mp.getValue(w3[g][l][m][n]);
+                        margin3 += (l3BinWidth - Math::floor(l3BinWidth));
+                        l3BinWidth = Math::floor(l3BinWidth);
                         if (Math::weakLess(l3BinWidth, 0)) { continue; }
-                        l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
+                        if (Math::weakLess(1, margin3)) {
+                            l3BinWidth += margin3;
+                            margin3 -= Math::floor(margin3);
+                        }
+                        l2Bin.children.push_back(Bin(x3, y2, l3BinWidth, l2BinHeight, Node::SpecialType::Waste));
                         Bin &l3Bin(l2Bin.children.back());
                         for (ID i = 0; i < itemNum; ++i) {
                             if (!mp.isTrue(pi3[i][g][l][m][n])) { continue; }
@@ -791,24 +812,24 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
 
                             Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                             Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                            Length lowerWasteHeight = Math::floor(mp.getValue(h4l[g][l][m][n]));
-                            Length upperWasteHeight = Math::floor(mp.getValue(h4u[g][l][m][n]));
+                            Length lowerWasteHeight = Math::lfloor(mp.getValue(h4l[g][l][m][n]));
+                            Length upperWasteHeight = Math::lfloor(mp.getValue(h4u[g][l][m][n]));
                             bool lowerWaste = (lowerWasteHeight > 0);
                             bool upperWaste = (upperWasteHeight > 0);
                             if (lowerWaste) {
-                                l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste));
-                                l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
+                                l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste));
+                                l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
                             } else if (upperWaste) {
-                                l3Bin.children.push_back(Bin(RectArea(x3, y2, w, h), i));
-                                l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste));
-                            } else {
-                                l3Bin.rect = RectArea(x3, y2, w, h);
+                                l3Bin.children.push_back(Bin(x3, y2, w, h, i));
+                                l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste));
+                            } else { // item only.
+                                l3Bin.rect = RectArea(Math::lfloor(x3), Math::lfloor(y2), w, h);
                                 l3Bin.type = i;
                             }
                             // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
-                            //if (lowerWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste)); }
-                            //l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
-                            //if (upperWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste)); }
+                            //if (lowerWaste) { l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste)); }
+                            //l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
+                            //if (upperWaste) { l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste)); }
                             if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
                             if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
                             break;
@@ -822,7 +843,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             if ((++g < maxBinNum[L0]) && mp.isTrue(p[g])) {
                 sln.totalWidth += input.param.plateWidth;
             } else {
-                sln.totalWidth += x1;
+                sln.totalWidth += Math::lfloor(x1);
                 break;
             }
         }
@@ -1317,26 +1338,47 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             using Node = Problem::Output::Node;
             for (ID g = prevPlate; g < nextPlate; ++g) {
                 if ((plateId + g) >= static_cast<ID>(sln.bins.size())) {
-                    sln.bins.push_back(Bin(RectArea(0, 0, input.param.plateWidth, input.param.plateHeight), Node::SpecialType::Branch));
+                    sln.bins.push_back(Bin(0, 0, input.param.plateWidth, input.param.plateHeight, Node::SpecialType::Branch));
                 }
                 Bin &plate(sln.bins.back());
-                Coord x1 = xOffset;
+                double x1 = xOffset;
+                double margin1 = 0; // cumulative length loss due to truncation from double to int.
                 for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
-                    Length l1BinWidth = Math::floor(mp.getValue(w1[g][l]));
+                    double l1BinWidth = mp.getValue(w1[g][l]);
+                    margin1 += (l1BinWidth - Math::floor(l1BinWidth));
+                    l1BinWidth = Math::floor(l1BinWidth);
                     if (Math::weakLess(l1BinWidth, 0)) { continue; }
-                    plate.children.push_back(Bin(RectArea(x1, 0, l1BinWidth, input.param.plateHeight), Node::SpecialType::Waste));
+                    if (Math::weakLess(1, margin1)) {
+                        l1BinWidth += margin1;
+                        margin1 -= Math::floor(margin1);
+                    }
+                    plate.children.push_back(Bin(x1, 0, l1BinWidth, input.param.plateHeight, Node::SpecialType::Waste));
                     Bin &l1Bin(plate.children.back());
-                    Coord y2 = 0;
+                    double y2 = 0;
+                    double margin2 = 0; // cumulative length loss due to truncation from double to int.
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                        Length l2BinHeight = Math::floor(mp.getValue(h2[g][l][m]));
+                        double l2BinHeight = mp.getValue(h2[g][l][m]);
+                        margin2 += (l2BinHeight - Math::floor(l2BinHeight));
+                        l2BinHeight = Math::floor(l2BinHeight);
                         if (Math::weakLess(l2BinHeight, 0)) { continue; }
-                        l1Bin.children.push_back(Bin(RectArea(x1, y2, l1BinWidth, l2BinHeight), Node::SpecialType::Waste));
+                        if (Math::weakLess(1, margin2)) {
+                            l2BinHeight += margin2;
+                            margin2 -= Math::floor(margin2);
+                        }
+                        l1Bin.children.push_back(Bin(x1, y2, l1BinWidth, l2BinHeight, Node::SpecialType::Waste));
                         Bin &l2Bin(l1Bin.children.back());
-                        Coord x3 = x1;
+                        double x3 = x1;
+                        double margin3 = 0; // cumulative length loss due to truncation from double to int.
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                            Length l3BinWidth = Math::floor(mp.getValue(w3[g][l][m][n]));
+                            double l3BinWidth = mp.getValue(w3[g][l][m][n]);
+                            margin3 += (l3BinWidth - Math::floor(l3BinWidth));
+                            l3BinWidth = Math::floor(l3BinWidth);
                             if (Math::weakLess(l3BinWidth, 0)) { continue; }
-                            l2Bin.children.push_back(Bin(RectArea(x3, y2, l3BinWidth, l2BinHeight), Node::SpecialType::Waste));
+                            if (Math::weakLess(1, margin3)) {
+                                l3BinWidth += margin3;
+                                margin3 -= Math::floor(margin3);
+                            }
+                            l2Bin.children.push_back(Bin(x3, y2, l3BinWidth, l2BinHeight, Node::SpecialType::Waste));
                             Bin &l3Bin(l2Bin.children.back());
                             for (ID i = 0; i < itemNum; ++i) {
                                 if (skipItem[i] || !mp.isTrue(pi3[i][g][l][m][n])) { continue; }
@@ -1344,24 +1386,24 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
                                 Length w = (mp.isTrue(d[i])) ? aux.items[i].h : aux.items[i].w;
                                 Length h = (mp.isTrue(d[i])) ? aux.items[i].w : aux.items[i].h;
-                                Length lowerWasteHeight = Math::floor(mp.getValue(h4l[g][l][m][n]));
-                                Length upperWasteHeight = Math::floor(mp.getValue(h4u[g][l][m][n]));
+                                Length lowerWasteHeight = Math::lfloor(mp.getValue(h4l[g][l][m][n]));
+                                Length upperWasteHeight = Math::lfloor(mp.getValue(h4u[g][l][m][n]));
                                 bool lowerWaste = (lowerWasteHeight > 0);
                                 bool upperWaste = (upperWasteHeight > 0);
                                 if (lowerWaste) {
-                                    l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste));
-                                    l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
+                                    l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste));
+                                    l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
                                 } else if (upperWaste) {
-                                    l3Bin.children.push_back(Bin(RectArea(x3, y2, w, h), i));
-                                    l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste));
-                                } else {
-                                    l3Bin.rect = RectArea(x3, y2, w, h);
+                                    l3Bin.children.push_back(Bin(x3, y2, w, h, i));
+                                    l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste));
+                                } else { // item only.
+                                    l3Bin.rect = RectArea(Math::lfloor(x3), Math::lfloor(y2), w, h);
                                     l3Bin.type = i;
                                 }
                                 // OPTIMIZE[szx][7]: make it consistent that items always produced via 4-cut?
-                                //if (lowerWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2, w, lowerWasteHeight), Node::SpecialType::Waste)); }
-                                //l3Bin.children.push_back(Bin(RectArea(x3, y2 + lowerWasteHeight, w, h), i));
-                                //if (upperWaste) { l3Bin.children.push_back(Bin(RectArea(x3, y2 + h, w, upperWasteHeight), Node::SpecialType::Waste)); }
+                                //if (lowerWaste) { l3Bin.children.push_back(Bin(x3, y2, w, lowerWasteHeight, Node::SpecialType::Waste)); }
+                                //l3Bin.children.push_back(Bin(x3, y2 + lowerWasteHeight, w, h, i));
+                                //if (upperWaste) { l3Bin.children.push_back(Bin(x3, y2 + h, w, upperWasteHeight, Node::SpecialType::Waste)); }
                                 if (!Math::weakEqual(l3BinWidth, w)) { Log(Log::Error) << "the width of an item does not fit its containing L3 bin." << endl; }
                                 if (lowerWaste && upperWaste) { Log(Log::Error) << "more than one 4-cut is required to produce an item." << endl; }
                                 break;
@@ -1432,7 +1474,11 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
 
             // statistics.
-            xOffset += Math::floor(mp.getValue(w1[prevPlate][prevL1Bin]));
+            for (ID g = prevPlate; g < nextPlate; ++g) {
+                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    xOffset += Math::lfloor(mp.getValue(w1[g][l]));
+                }
+            }
             Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
             Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
             for (ID i = 0; i < itemNum; ++i) {
@@ -1464,7 +1510,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     if ((f->w < (2 * DefectHintRadius)) || (f->h < (2 * DefectHintRadius))) {
                         draw.circle(f->x + f->w * 0.5, f->y + f->h * 0.5, DefectHintRadius);
                     }
-                    draw.rect(f->x, f->y, f->w, f->h, false, "", FontColor, FillColor);
+                    draw.rect(f->x, f->y, f->w, f->h, false, "", FontColor, FontColor);
                 }
 
                 draw.end();
