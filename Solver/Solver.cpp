@@ -452,7 +452,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
             }
         }
         // single placement.
-        mp.addConstraint((cfg.placeAllItems && !cfg.constructive) ? (putInBin == 1) : (putInBin <= 1));
+        mp.addConstraint(cfg.placeAllItems ? (putInBin == 1) : (putInBin <= 1));
         // covered area.
         coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
         placedItem += putInBin;
@@ -537,7 +537,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
 
         // an item can not be placed if its preceding item is not placed.
-        if (!cfg.placeAllItems || cfg.constructive || cfg.addPlacementOrderCut) {
+        if (!cfg.placeAllItems || cfg.addPlacementOrderCut) {
             for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
                 Expr prevPutInBin;
                 for (auto i = s->begin(); i != s->end(); ++i) {
@@ -588,7 +588,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
     }
 
-    if (cfg.addBinSizeOrderCut || (cfg.constructive && cfg.fixPlacedItems)) {
+    if (cfg.addBinSizeOrderCut) {
         Log(LogSwitch::Szx::Model) << "add bin size order cuts." << endl;
         // if there is no defect and order, put larger bins to the left or bottom.
         // else put all non-trivial bins to the left or bottom.
@@ -668,7 +668,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         //}
 
         Log(LogSwitch::Szx::Model) << "add min L1 width sum cut." << endl;
-        if (cfg.placeAllItems && !cfg.constructive) {
+        if (cfg.placeAllItems) {
             //mp.addConstraint(input.param.plateHeight * l1BinWidthSum >= totalItemArea);
             mp.addConstraint(input.param.plateHeight * coveredWidth >= totalItemArea());
         } else {
@@ -700,64 +700,7 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
     }
 
     // minimize the width of used plates (the original objective).
-    struct StackIndex {
-        ID id;
-        size_t top;
-    };
-    Arr<StackIndex> stackIndex(stackNum);
-    for (auto s = 0; s < stackNum; ++s) {
-        stackIndex[s].id = s;
-        stackIndex[s].top = 0;
-    }
-    MpSolver::OnOptimaFound onOptimaFound;
-    if (cfg.constructive) {
-        onOptimaFound = [&](MpSolver &mpSolver, function<bool(void)> reOptimize) {
-            double timeoutPerIteration = timer.restSeconds() * cfg.itemToPlaceNumInc / itemNum;
-            for (ID itemToPlaceNum = cfg.itemToPlaceNumInc; itemToPlaceNum < itemNum; itemToPlaceNum += cfg.itemToPlaceNumInc) {
-                if (timer.isTimeOut()) { return false; }
-                if (cfg.fixPlacedItems) { // OPTIMIZE[szx][5]: solution from previous iteration may use the top/right bins but leave the bottom/left bins empty.
-                    for (ID g = 0; g < maxBinNum[L0]; ++g) {
-                        if (!mp.isTrue(p[g])) { continue; }
-                        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                            if (!mp.isTrue(p1[g][l])) { continue; }
-                            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                                if (!mp.isTrue(p2[g][l][m])) { continue; }
-                                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                                    if (!mp.isTrue(p3[g][l][m][n])) { continue; }
-                                    for (ID i = 0; i < itemNum; ++i) {
-                                        if (!mpSolver.isTrue(pi3[i][g][l][m][n])) { continue; }
-                                        mpSolver.addConstraint(pi3[i][g][l][m][n] == 1);
-                                        //mpSolver.addConstraint(d[i] == mpSolver.isTrue(d[i])); // OPTIMIZE[szx][6]: fix direction?
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (cfg.fixItemsToPlace) {
-                    shuffle(stackIndex.begin(), stackIndex.end(), rand.rgen); // OPTIMIZE[szx][9]: record the non-empty ones and consider them only.
-                    for (ID i = 0, s = 0; i < cfg.itemToPlaceNumInc; (++s) %= stackNum) {
-                        if (stackIndex[s].top >= aux.stacks[stackIndex[s].id].size()) { continue; }
-                        ID itemId = aux.stacks[stackIndex[s].id][stackIndex[s].top];
-                        ++stackIndex[s].top;
-                        ++i;
-                        mpSolver.addConstraint(pi[itemId] >= 1);
-                    }
-                } else {
-                    mpSolver.addConstraint(placedItem >= itemToPlaceNum);
-                }
-                mpSolver.setTimeLimitInSecond(timeoutPerIteration);
-                Log(LogSwitch::Szx::Model) << "[callback] place " << itemToPlaceNum << "/" << itemNum << " items at least." << endl;
-                reOptimize();
-            }
-            for (ID i = 0; i < itemNum; ++i) { mpSolver.addConstraint(pi[i] >= 1); }
-            mpSolver.setTimeLimitInSecond(timer.restSeconds());
-            Log(LogSwitch::Szx::Model) << "[callback] place all " << itemNum << " items." << endl;
-            return reOptimize();
-        };
-    }
-    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 2, 0, 0, MpSolver::Configuration::Forever, onOptimaFound);
+    mp.addObjective(coveredWidth, MpSolver::OptimaOrientation::Minimize, 2, 0, 0, MpSolver::Configuration::Forever);
 
     // solve.
     if (mp.optimize()) {

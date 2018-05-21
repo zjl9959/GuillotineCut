@@ -84,11 +84,7 @@ public:
     struct Configuration {
         struct CompleteModel {
             String toBriefStr() const {
-                return "sc=" + std::to_string(constructive)
-                    + ";sp=" + std::to_string(fixPlacedItems)
-                    + ";sf=" + std::to_string(fixItemsToPlace)
-                    + ";sn=" + std::to_string(itemToPlaceNumInc)
-                    + ";cp=" + std::to_string(placeAllItems)
+                return "cp=" + std::to_string(placeAllItems)
                     + ";oc=" + std::to_string(maxCoveredArea)
                     + ";or=" + std::to_string(maxCoveredRatio)
                     + ";ow=" + std::to_string(minWastedArea)
@@ -102,10 +98,6 @@ public:
 
 
             // strategy.
-            bool constructive = false; // there may be some items that are not placed before finishing.
-            bool fixPlacedItems = false; // (only work when (constructive == true)) set the position of placed items before each construction iteration.
-            bool fixItemsToPlace = true; // (only work when (constructive == true)) set which items should be placed at each construction iteration.
-            ID itemToPlaceNumInc = 4; // (only work when (constructive == true)) number of items to be placed at each construction iteration.
 
             // constraint.
             bool placeAllItems = false; // all items must be placed finally.
