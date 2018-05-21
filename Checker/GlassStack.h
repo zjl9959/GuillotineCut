@@ -35,7 +35,7 @@ public:
         _nbOfItems = val;
     }
 
-    void curItemIdx(unsigned int val) {
+    void curItemIdx(int val) {
         _curItemIdx = val;
     }
 

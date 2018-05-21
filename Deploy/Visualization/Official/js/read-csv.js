@@ -310,10 +310,16 @@ function drawDefects(){
       w =((defects[i][defects_WIDTH_col]*scale));
       h =((defects[i][defects_HEIGHT_col]*scale));
       y = canvas_height - y - h;
-      context.beginPath();
-      context.fillStyle = "rgb(255, 0, 0)";
-      context.arc(x, y, 2, 0,2*Math.PI);
-      context.fill();
+      
+	  //context.beginPath();
+      //context.fillStyle = "rgb(255, 0, 0)";
+      //context.arc(x, y, 2, 0,2*Math.PI);
+      //context.fill();
+	  
+	  context.beginPath();
+	  context.rect(x,y,w,h);
+	  context.fillStyle = "red";
+	  context.fill();
     }
   }
 }

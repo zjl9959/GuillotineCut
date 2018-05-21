@@ -135,6 +135,7 @@ void verifyItemProduction(void);
 /// Create statisticsLog log file
 void statisticsLog(void);
 
+
 /// List violated constraints.
 void violatedConstraints(void);
 
@@ -514,6 +515,51 @@ void verifyItemProduction(void) {
 }
 
 /**
+ * Recursively explore the node and count the number of overlap between defect and node
+ * @param n, node to start on
+ * @return number of overlap
+ */
+unsigned int explore(GlassNode n) {
+    unsigned int d = 0;
+    
+    //Get node info
+    unsigned int node_x = n.x();
+    unsigned int node_y = n.y();
+    unsigned int node_width = n.w();
+    unsigned int node_height = n.h();
+    unsigned int plate_id = n.plateId();
+
+    //If the node has no successor, it is a waste, an item or a residual
+    if (n.Getsuccessor_nbr() == 0) {
+        for (unsigned int j = 0; j < plate[plate_id].Getdefect_nbr(); ++j) {
+            //Get defect info
+            unsigned int defect_x = plate[plate_id].Getdefect(j).Getpos_x();
+            unsigned int defect_y = plate[plate_id].Getdefect(j).Getpos_y();
+            unsigned int defect_width = plate[plate_id].Getdefect(j).Getwidth();
+            unsigned int defect_height = plate[plate_id].Getdefect(j).Getheight();
+
+            //If the defect fits into the plate
+            if ((node_x < defect_x + defect_width) && (defect_x < node_x + node_width) && (node_y < defect_y + defect_height) && (defect_y < node_y + node_height)) {
+                //Found one extra overlap
+                ++d;
+
+                //If the defect does not fit in the plate, a cut is made through this defect
+                if (!(node_x <= defect_x && defect_x + defect_width <= node_x + node_width && node_y <= defect_y && defect_y + defect_height <= node_y + node_height)) {
+                    if (active_log) {
+                        log_file << "\tERROR -- " << plate[plate_id].Getdefect(j) << " does not fit entirely in " << n << endl;
+                        constraint_error |= DEFECTS_SUPERPOSING_ERROR_MASK;
+                    } else
+                        cout << "\tERROR -- " << plate[plate_id].Getdefect(j) << " does not fit entirely in " << n << endl;
+                }
+            }
+        }
+    } else
+        for (unsigned int i = 0; i < n.Getsuccessor_nbr(); ++i)
+            d += explore(n.Getsuccessor(i));
+    return d;
+}
+
+/**
  * This function verifies if solution items overlap defect(s)
  * given in defects csv file.
  **/
@@ -524,34 +570,58 @@ void verifyDefects(void) {
     else
         cout << endl << "\t--- Superposing with defects constraint verification ---" << endl;
     unsigned int i, j, plate_id;
-    unsigned int defect_width, defect_height, defect_x, defect_y; // Defect Coord.
-    unsigned int item_width, item_height, item_x, item_y; // Item Coord.
-    // Loop on solution parsed nodes.
+
+    //Defect and node coordinates and dimensions
+    unsigned int defect_width, defect_height, defect_x, defect_y;
+    unsigned int node_x, node_y, node_width, node_height;
+
+    //For all plates
+    for (i = 0; i < plates_nbr; ++i) {
+        unsigned int nb_overlap = 0;
+
+        //Recursively explore cutting tree attached to this plate
+        for (unsigned int j = 0; j < plate[i].Getsuccessor_nbr(); j++)
+            nb_overlap += explore(plate[i].Getsuccessor(j));
+
+        //If there is extra overlaps, this implies that a cut is made through a defect
+        if (plate[i].Getdefect_nbr() > 0 && nb_overlap != plate[i].Getdefect_nbr()) {
+            error = 1;
+            if (active_log) {
+                log_file << "\tERROR -- It seems that a cut is made through a defect" << endl;
+                constraint_error |= DEFECTS_SUPERPOSING_ERROR_MASK;
+            } else
+                cout << "\tERROR -- It seems that a cut is made through a defect" << endl;
+        }
+    }
+
+
+    //Loop on solution parsed nodes.
     for (i = 0; i < useful_node; i++) {
-        // Get node coordinates.
-        item_x = sol_items [i].x();
-        item_y = sol_items [i].y();
-        item_width = sol_items [i].w();
-        item_height = sol_items [i].h();
+
+        //Get node coordinates.
+        node_x = sol_items[i].x();
+        node_y = sol_items[i].y();
+        node_width = sol_items[i].w();
+        node_height = sol_items[i].h();
         plate_id = sol_items[i].plateId();
-        // Loop on associated plate defects.
+
+        //Loop on associated plate defects
         for (j = 0; j < plate[plate_id].Getdefect_nbr(); j++) {
-            // Get defect coordinates.
+            //Get defect coordinates
             defect_x = plate[sol_items[i].plateId()].Getdefect(j).Getpos_x();
             defect_y = plate[sol_items[i].plateId()].Getdefect(j).Getpos_y();
             defect_width = plate[sol_items[i].plateId()].Getdefect(j).Getwidth();
             defect_height = plate[sol_items[i].plateId()].Getdefect(j).Getheight();
-            // Test if one or more defect ends are inside the solution useful node area.
-            if ((((item_x <= defect_x) && (defect_x < item_x + item_width)) || ((item_x < defect_x + defect_width) && (defect_x + defect_width < item_x + item_width))) && // horizontal ends
-                    (((item_y <= defect_y) && (defect_y < item_y + item_height)) || ((item_y < defect_y + defect_height) && (defect_y + defect_height < item_y + item_height)))) // vertical ends
-            {
+
+            //Test if one or more defect ends are inside the solution useful node area
+            if ((node_x < defect_x + defect_width) && (defect_x < node_x + node_width) && (node_y < defect_y + defect_height) && (defect_y < node_y + node_height)) {
                 error = 1;
                 if (active_log) {
-                    log_file << "\tERROR -- Node " << sol_items [i].id() << ": (type: item, item_id: " << sol_items [i].nodeType() << ", x: " << item_x << ", y: " << item_y << ", width: " << item_width << ", height: " << item_height
+                    log_file << "\tERROR -- Node " << sol_items[i].id() << ": (type: item, item_id: " << sol_items [i].nodeType() << ", x: " << node_x << ", y: " << node_y << ", width: " << node_width << ", height: " << node_height
                             << ") superposes defect " << plate[sol_items[i].plateId()].Getdefect(j).Getdefect_id() << ": (x: " << defect_x << ", y: " << defect_y << ", width: " << defect_width << ", height: " << defect_height << ")" << endl;
                     constraint_error |= DEFECTS_SUPERPOSING_ERROR_MASK;
                 } else {
-                    cout << "\tERROR -- Node " << sol_items [i].id() << ": (type: item, item_id: " << sol_items [i].nodeType() << ", x: " << item_x << ", y: " << item_y << ", width: " << item_width << ", height: " << item_height
+                    cout << "\tERROR -- Node " << sol_items[i].id() << ": (type: item, item_id: " << sol_items [i].nodeType() << ", x: " << node_x << ", y: " << node_y << ", width: " << node_width << ", height: " << node_height
                             << ") superposes defect " << plate[sol_items[i].plateId()].Getdefect(j).Getdefect_id() << ": (x: " << defect_x << ", y: " << defect_y << ", width: " << defect_width << ", height: " << defect_height << ")" << endl;
                 }
             }
@@ -911,8 +981,9 @@ void verifyIdt_Sequence(void) {
                 curItemIdx = stacks[j].curItemIdx();
 
                 //If solution item type equals to an authorized stack item id.
-                //If current item index is negative, it means that all items of current stack are already verified and no items left
-                if (curItemIdx != stacks[j].nbOfItems() && sol_items[i].nodeType() == stacks[j].getitem(curItemIdx).id()) {
+                //If current item index is less than number of items in stacks, there are items to cut in this stack
+                //Process cutting node as an item
+                if (curItemIdx < stacks[j].nbOfItems() && sol_items[i].nodeType() == stacks[j].getitem(curItemIdx).id()) {
                     fnd_stck++;
                     sol_width = sol_items[i].w();
                     sol_height = sol_items[i].h();
@@ -978,7 +1049,7 @@ void verifyIdt_Sequence(void) {
  * @param t, string to return
  * @return input stream
  */
-std::istream& safeGetline(std::istream& is, std::string& t) {
+std::istream & safeGetline(std::istream& is, std::string & t) {
     t.clear();
 
     // The characters in the stream are read one-by-one using a std::streambuf.
@@ -1167,7 +1238,7 @@ int parseDefects(string path) {
             //Check for negative value
             if (isNegative(d.Getdefect_id()) || isNegative(d.Getplate_id()) ||
                     isNegative(d.Getpos_x()) || isNegative(d.Getpos_y()) || isNegativeOrNull(d.Getwidth()) || isNegativeOrNull(d.Getheight())) {
-                cout << "\tERROR: One attribute of a defect is negative, please check Defect file" << endl;
+                cout << "\tERROR: One attribute of a defect is negative or null, please check Defect file" << endl;
                 return EXIT_FAILURE;
             }
 
