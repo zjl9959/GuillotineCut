@@ -43,7 +43,7 @@ public:
         static String AuthorNameSwitch() { return "-name"; }
         static String HelpSwitch() { return "-h"; }
 
-        static String AuthorName() { return ""; } // TODO[szx][0]: fill the author name!
+        static String AuthorName() { return "S28"; }
         static String HelpInfo() {
             return "Pattern (args can be in any order):\n"
                 "  exe (-p path) (-o path) [-s int] [-t seconds] [-name]\n"
