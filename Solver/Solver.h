@@ -133,10 +133,10 @@ public:
 
 
             // strategy.
-            double minSecTimeoutPerIteration = 60;
+            double minSecTimeoutPerIteration = 45;
             double approxPlacedItemNumPerIteration = 4;
-            ID maxItemToConsiderPerIteration = 80;
-            double initCoverageRatio = 0.8;
+            ID maxItemToConsiderPerIteration = 100;
+            double initCoverageRatio = 0.875;
             bool setMipFocus = true;
 
             // constraint.

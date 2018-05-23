@@ -575,11 +575,10 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
                             for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
                             Expr fy;
                             for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
-                            fy += h4l[g][l][m][n];
                             mp.addConstraint(fx + input.param.plateWidth * cr[g][l][m][n][f] >= aux.defects[*gf].x + aux.defects[*gf].w);
                             mp.addConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][f] <= aux.defects[*gf].x);
-                            mp.addConstraint(fy + input.param.plateHeight * cu[g][l][m][n][f] >= aux.defects[*gf].y + aux.defects[*gf].h);
-                            mp.addConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][f] <= aux.defects[*gf].y);
+                            mp.addConstraint(fy + h4l[g][l][m][n] + input.param.plateHeight * cu[g][l][m][n][f] >= aux.defects[*gf].y + aux.defects[*gf].h);
+                            mp.addConstraint(fy - h4u[g][l][m][n] + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][f] <= aux.defects[*gf].y);
                         }
                     }
                 }
@@ -1170,11 +1169,10 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                 for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
                                 Expr fy;
                                 for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
-                                fy += h4l[g][l][m][n];
                                 mp.addConstraint(fx + input.param.plateWidth * cr[g][l][m][n][f] >= aux.defects[*gf].x + aux.defects[*gf].w);
                                 mp.addConstraint(fx + w3[g][l][m][n] - input.param.plateWidth * cl[g][l][m][n][f] <= aux.defects[*gf].x);
-                                mp.addConstraint(fy + input.param.plateHeight * cu[g][l][m][n][f] >= aux.defects[*gf].y + aux.defects[*gf].h);
-                                mp.addConstraint(fy + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][f] <= aux.defects[*gf].y);
+                                mp.addConstraint(fy + h4l[g][l][m][n] + input.param.plateHeight * cu[g][l][m][n][f] >= aux.defects[*gf].y + aux.defects[*gf].h);
+                                mp.addConstraint(fy - h4u[g][l][m][n] + h2[g][l][m] - input.param.plateHeight * cd[g][l][m][n][f] <= aux.defects[*gf].y);
                             }
                         }
                     }
