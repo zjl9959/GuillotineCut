@@ -1,4 +1,4 @@
-var widthPlates = 3210; // prefixed palte width value.
+var widthPlates = 3210; // prefixed plate width value.
 var canvheight = document.getElementById("canvas").height - 100;
 var scale = canvheight/widthPlates; // Compute pixel scale to adapt plate width to canvas width.
 
@@ -222,9 +222,12 @@ function parsePlts () {
 
 /// This function will clear canvas area then redraw it according to plateId.
 function drawSolution() {
-  context.clearRect(0, 0, canvas_width, canvas_height);
+	var something_drawn = 0;
+	
+	context.clearRect(0, 0, canvas_width, canvas_height);
 	var offset = 50;
-		var x /* x coord */, y /* y coord */, w /* width*/, h /*height*/, c /* cut */;
+	var x /* x coord */, y /* y coord */, w /* width*/, h /*height*/, c /* cut */;
+	
 	for (var i = nodes.length - 1; i >= 0 ; i--)
 	{
 		x = (nodes[i][solution_X_col]*scale) + offset;
@@ -247,20 +250,20 @@ function drawSolution() {
 				context.fillText(scale_y, 20, y+3);
 			}
 			if ((nodes[i][solution_TYPE_col] != -2)) {
+				something_drawn = 1;
 				context.beginPath();
 				context.strokeStyle = "#000000";
 				context.lineWidth = "1";
 				if (nodes[i][solution_TYPE_col] == -1) {
-	        if ((nodes[i][solution_PLATE_ID_col] == maxtplateId) && (i == nodes.length - 1)) {
-	          context.fillStyle = "rgb(160, 160, 160)";
-	        } else {
-			      context.fillStyle = "rgb(188, 194, 197)";
-	        }
+					if ((nodes[i][solution_PLATE_ID_col] == maxtplateId) && (i == nodes.length - 1)) {
+						context.fillStyle = "rgb(160, 160, 160)";
+					} else {
+						context.fillStyle = "rgb(188, 194, 197)";
+					}
 					context.rect(x, y, w, h);
 					context.stroke();
 					context.fill();
-				}
-				else if (nodes[i][solution_TYPE_col] ==  -3) {
+				}else if (nodes[i][solution_TYPE_col] ==  -3) {
 					context.fillStyle = "rgb(160, 160, 160)";
 					context.rect(x, y, w, h);
 					context.stroke();
@@ -273,25 +276,40 @@ function drawSolution() {
 					context.font="10px Verdana";
 					context.fillStyle = "rgb(0, 0, 0)";
 					if (w > 40 && h > 50) {
-	          if (ErrorIdx == 0){
+						if (ErrorIdx == 0){
 							context.fillText('id: ' + Math.floor(nodes[i][solution_TYPE_col]), x + w/2 - 12, y + h/2 - 17);
 							context.fillText('w: ' + Math.floor(nodes[i][solution_WIDTH_col]), x + w/2 - 12, y + h/2 - 7);
 							context.fillText('h: ' + Math.floor(nodes[i][solution_HEIGHT_col]), x + w/2 - 12, y + h/2 + 3);
-	            for (var j = 0; j < stacks.length-1; j++) {
+							for (var j = 0; j < stacks.length-1; j++) {
 								if(stacks[j][batch_ITEM_ID_col] == nodes[i][solution_TYPE_col]) {
-	                context.fillText('stk: ' + Math.floor(stacks[j][batch_STACK_col]), x + w/2 - 12, y + h/2 + 13);
-	                context.fillText('seq: ' + Math.floor(stacks[j][batch_SEQ_col]), x + w/2 - 12, y + h/2 + 23);
-	              }
-	            }
-	          } else {
+									context.fillText('stk: ' + Math.floor(stacks[j][batch_STACK_col]), x + w/2 - 12, y + h/2 + 13);
+									context.fillText('seq: ' + Math.floor(stacks[j][batch_SEQ_col]), x + w/2 - 12, y + h/2 + 23);
+								}
+							}
+						} else {
 							context.fillText('id: ' + Math.floor(nodes[i][solution_TYPE_col]), x + w/2 - 12, y + h/2 - 7);
 							context.fillText('w: ' + Math.floor(nodes[i][solution_WIDTH_col]), x + w/2 - 12, y + h/2 + 3);
 							context.fillText('h: ' + Math.floor(nodes[i][solution_HEIGHT_col]), x + w/2 - 12, y + h/2 + 13);
-	          }
+						}
 					} else {
-	          context.fillText('id: ' + Math.floor(nodes[i][solution_TYPE_col]), x + w/2 - 12, y + h/2 + 2);
-	        }
+						context.fillText('id: ' + Math.floor(nodes[i][solution_TYPE_col]), x + w/2 - 12, y + h/2 + 2);
+					}
 				}
+			} else if(something_drawn == 0){
+				if (w > 50) {
+					var scale_x = parseInt(nodes[i][solution_X_col]) + parseInt(nodes[i][solution_WIDTH_col]);
+					context.fillText(scale_x, x+w-10, 565);
+				}
+				if (h > 50) {
+					var scale_y = parseInt(nodes[i][solution_Y_col]) + parseInt(nodes[i][solution_HEIGHT_col]);
+					context.fillText(scale_y, 20, y+3);
+				}
+				context.strokeStyle = "#000000";
+				context.lineWidth = "1";
+				context.fillStyle = "rgb(188, 194, 197)";
+				context.rect(x, y, w, h);
+				context.stroke();
+				context.fill();
 			}
 		}
 	}
@@ -311,15 +329,15 @@ function drawDefects(){
       h =((defects[i][defects_HEIGHT_col]*scale));
       y = canvas_height - y - h;
       
-	  //context.beginPath();
-      //context.fillStyle = "rgb(255, 0, 0)";
-      //context.arc(x, y, 2, 0,2*Math.PI);
-      //context.fill();
-	  
 	  context.beginPath();
-	  context.rect(x,y,w,h);
-	  context.fillStyle = "red";
-	  context.fill();
+      context.fillStyle = "rgb(255, 0, 0)";
+      context.arc(x, y, 2, 0,2*Math.PI);
+      context.fill();
+	  
+	  //context.beginPath();
+	  //context.rect(x,y,w,h);
+	  //context.fillStyle = "red";
+	  //context.fill();
     }
   }
 }

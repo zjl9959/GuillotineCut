@@ -17,6 +17,8 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <stdlib.h>
 
 #include "main.h"
 #include "GlassNode.h"
@@ -31,6 +33,7 @@ ofstream log_file; // Reference to log file.
 
 ofstream statistics_file; // Reference to statisticsLog file.
 bool opened_file = true; // Boolean to test if one of needed files (batch, solution, defects and optimization parameters) was not opened.
+bool verbose = true; // Boolean to have a verbose checker or not
 
 string file_idx; // To save used file index (Normal mode).
 string testPath; // To save path according to chosen test.
@@ -71,6 +74,10 @@ GlassPlate *plate; // List of solution used plates.
 GlassNode *sol_items; // List of solution nodes.
 GlassStack *stacks; // List of batch stacks.
 GlassItem *items; // List of batch items.
+
+
+double total_useful_percentage = 0.0; // Total useful area expressed as a percentage
+unsigned int of = 0; // Objective function value
 
 /// Optimization Parameters file Parser
 int parseOptimizationParams(string path);
@@ -143,13 +150,17 @@ int main(int argc, char* argv[]) {
     testPath = "";
     string batchPath, solutionPath, defectsPath, optParamsPath;
     int not_exit = 1, choice = 0;
-    cout << endl << "\t------------------- Optimization Checker -------------------" << endl << endl;
-    log_file << endl << "\t------------------- Optimization Checker -------------------" << endl;
+    streambuf* coutbuf = cout.rdbuf();
 
     //Check the number of parameters
-    if (argc > 2) {
+    if (argc > 3) {
         cout << "\tERROR: too many parameters" << endl;
         return EXIT_FAILURE;
+    } else if (argc == 3) {
+        //Read the parameter as used batch to check
+        file_idx = argv[1];
+        if ((int) stoi(argv[2]) == 0)
+            verbose = false;
     } else if (argc == 2) {
         //Read the parameter as used batch to check
         file_idx = argv[1];
@@ -158,35 +169,52 @@ int main(int argc, char* argv[]) {
         cin >> file_idx;
     }
     batchPath = PATH_TO_INSTANCES + file_idx + "_batch.csv";
-    solutionPath =  PATH_TO_SOLUTIONS + file_idx + "_solution.csv";
+    solutionPath = PATH_TO_SOLUTIONS + file_idx + "_solution.csv";
     defectsPath = PATH_TO_INSTANCES + file_idx + "_defects.csv";
     optParamsPath = PATH_TO_INSTANCES "global_param.csv";
+
+    //Redirect output if not verbose
+    if (!verbose) {
+        std::stringstream out;
+        cout.rdbuf(out.rdbuf());
+    }
+
+    cout << endl << "\t------------------- Optimization Checker -------------------" << endl << endl;
+    log_file << endl << "\t------------------- Optimization Checker -------------------" << endl;
+
+    cout << endl << "\t------------------- Version - 23/05/2018 -------------------" << endl << endl;
+    log_file << endl << "\t------------------- Version - 23/05/2018 -------------------" << endl;
 
     /// If csv files exist and files index is equal.
     string log_name = "logs/" + file_idx + "_log.txt";
     log_file.open(log_name.c_str());
     cout << endl << "\t\t----------- Start files parsing -----------" << endl;
     log_file << endl << "\t\t----------- Start files parsing -----------" << endl;
-    int exit_code = -1;
-    exit_code = parseOptimizationParams(optParamsPath);
-    if (exit_code == EXIT_FAILURE)
+    int exit_code = 0;
+    exit_code += parseOptimizationParams(optParamsPath);
+    exit_code += parseBatch(batchPath);
+    exit_code += parseSolution(solutionPath);
+    exit_code += parseDefects(defectsPath);
+
+    //If there is a trouble when reading a file
+    if (exit_code != 0) {
+        //Just ouput the result of the checker without any details
+        if (!verbose) {
+            cout.rdbuf(coutbuf);
+            cout << "\t\t----------- Error in files parsing ----------" << endl;
+            log_file << "\t\t----------- Error in files parsing ----------" << endl;
+        }
         return EXIT_FAILURE;
-    exit_code = parseBatch(batchPath);
-    if (exit_code == EXIT_FAILURE)
-        return EXIT_FAILURE;
-    exit_code = parseSolution(solutionPath);
-    if (exit_code == EXIT_FAILURE)
-        return EXIT_FAILURE;
-    exit_code = parseDefects(defectsPath);
-    if (exit_code == EXIT_FAILURE)
-        return EXIT_FAILURE;
-    /// If a needed file do not exist.
+    }
+
+    //If a needed file do not exist.
     if (!opened_file)
         return EXIT_FAILURE;
 
     cout << "\t\t----------- End of files parsing ----------" << endl;
     log_file << "\t\t----------- End of files parsing ----------" << endl;
-    // Auto verify constraints and generate log file.
+
+    //Auto verify constraints and generate log file.
     verifyItemProduction();
     verifyDefects();
     verifyIdt_Sequence();
@@ -201,7 +229,28 @@ int main(int argc, char* argv[]) {
         log_file << "               SOLUTION VALIDATED SUCCESSFULLY               " << endl;
     log_file << "\t------------------------------------------------------------" << endl;
     log_file.close();
+
+    //Print stats.
     statisticsLog();
+
+    //Just ouput the result of the checker without any details
+    if (!verbose) {
+        cout.rdbuf(coutbuf);
+        cout << file_idx << " => ";
+        if (constraint_error > 0) {
+            cout << "INVALID SOLUTION" << endl;
+            return EXIT_FAILURE;
+        } else {
+            cout << "VALID SOLUTION"
+                    << "\t (waste,OF) : "
+                    << " | " << total_useful_percentage
+                    << " | " << of
+                    << endl;
+            return EXIT_SUCCESS;
+        }
+    }
+
+    //Debug each constraint or print info
     cout << endl << endl << "\t\t------ Start constraints verification -----" << endl;
     while (not_exit) {
         cout << endl << "\tPress to verify constraint: " << endl;
@@ -362,7 +411,6 @@ void violatedConstraints(void) {
 void displayPlatesAreaUsage(void) {
     double useful = 0.0;
     double waste = 0.0;
-    double total_useful_percentage = 0.0;
     double total_waste_percentage = 0.0;
     unsigned int all_plates_area = 0;
     double residual_percentage = 0.0;
@@ -371,39 +419,73 @@ void displayPlatesAreaUsage(void) {
     else
         cout << endl << "\t--- Display Plates Area Usage ---" << endl;
     unsigned int i;
-    total_waste = 0, total_useful = 0;
-    if (active_log) {
-        if (constraint_error) {
-            log_file << "\tERROR -- Unable to verify Display Plates Area Usage due to INVALID SOLUTION" << endl;
+    total_waste = 0, total_useful = 0, of = 0;
+    total_useful_percentage = 0.0;
+
+    if (constraint_error) {
+        if (active_log) {
+            log_file << "\tERROR -- Unable to Display Plates Area Usage due to INVALID SOLUTION" << endl;
             log_file << "\t--- End of Display Plates Area Usage ---" << endl;
-            return;
+        } else {
+            cout << "\tERROR -- Unable to Display Plates Area Usage due to INVALID SOLUTION" << endl;
+            cout << "\t--- End of Display Plates Area Usage ---" << endl;
         }
+        return;
+    }
+
+    if (active_log) {
         log_file << "\t---------------------- Summary --------------------------" << endl;
         log_file << "\t|  Plates               |  Used Area    |  Wasted Area  |" << endl;
         log_file << "\t---------------------------------------------------------" << endl;
-        for (i = 0; i < plates_nbr; i++) {
-            if (i == plates_nbr - 1) // If this is the last plate.
-            {
-                useful = (double) plate[i].Getuseful() / ((plate_w - plate[i].Getresidual().w()) * plate_h / 100); // Compute plate[i] used area percentage without taking into account residual area.
-                waste = (double) plate[i].Getwaste() / ((plate_w - plate[i].Getresidual().w()) * plate_h / 100); // Compute plate[i] wasted area percentage without taking into account residual area.
-            } else {
-                useful = (double) plate[i].Getuseful() / (plate_h * plate_w / 100); // Compute plate[i] used area percentage.
-                waste = (double) plate[i].Getwaste() / (plate_h * plate_w / 100); // Compute plate[i] wasted area percentage.
-            }
-            total_useful += plate[i].Getuseful();
-            total_waste += plate[i].Getwaste();
-            log_file << "\t|  Plate " << i << "\t\t|  " << useful << "%\t|  " << waste << "%\t|" << endl;
-        }
-        all_plates_area = (plate_w * plate_h) * (plates_nbr - 1) + (plate_w - plate[plates_nbr - 1].Getresidual().w()) * plate_h;
-        total_useful_percentage = (double) 100 * total_useful / all_plates_area;
-        total_waste_percentage = (double) 100 * total_waste / all_plates_area;
+    } else {
+        cout << "\t---------------------- Summary --------------------------" << endl;
+        cout << "\t|  Plates               |  Used Area    |  Wasted Area  |" << endl;
+        cout << "\t---------------------------------------------------------" << endl;
+    }
 
+    //Compute waste and useful area for each plate
+    for (i = 0; i < plates_nbr; i++) {
+        // If this is the last plate
+        if (i == plates_nbr - 1) {
+            useful = (double) plate[i].Getuseful() / ((plate_w - plate[i].Getresidual().w()) * plate_h / 100); // Compute plate[i] used area percentage without taking into account residual area.
+            waste = (double) plate[i].Getwaste() / ((plate_w - plate[i].Getresidual().w()) * plate_h / 100); // Compute plate[i] wasted area percentage without taking into account residual area.
+        } else {
+            useful = (double) plate[i].Getuseful() / (plate_h * plate_w / 100); // Compute plate[i] used area percentage.
+            waste = (double) plate[i].Getwaste() / (plate_h * plate_w / 100); // Compute plate[i] wasted area percentage.
+        }
+        total_useful += plate[i].Getuseful();
+        total_waste += plate[i].Getwaste();
+
+        if (active_log) {
+            if (useful > 0)
+                log_file << "\t|  Plate " << i << "\t\t|  " << useful << "%\t|  " << waste << "%\t|" << endl;
+            else
+                log_file << "\t|  Plate " << i << "\t\t|  " << useful << "%\t\t|  " << waste << "%\t\t|" << endl;
+        } else {
+            if (useful > 0)
+                cout << "\t|  Plate " << i << "\t\t|  " << useful << "%\t|  " << waste << "%\t|" << endl;
+            else
+                cout << "\t|  Plate " << i << "\t\t|  " << useful << "%\t\t|  " << waste << "%\t\t|" << endl;
+        }
+
+    }
+    all_plates_area = (plate_w * plate_h) * (plates_nbr - 1) + (plate_w - plate[plates_nbr - 1].Getresidual().w()) * plate_h;
+    total_useful_percentage = (double) 100 * total_useful / all_plates_area;
+    total_waste_percentage = (double) 100 * total_waste / all_plates_area;
+
+    if (active_log) {
         log_file << "\t---------------------------------------------------------" << endl;
         log_file << "\t|  Total (" << plates_nbr << " plate)\t|  " << total_useful_percentage << "%\t|  " << total_waste_percentage << "%\t|" << endl;
         log_file << "\t---------------------------------------------------------" << endl << endl;
+    } else {
+        cout << "\t---------------------------------------------------------" << endl;
+        cout << "\t|  Total (" << plates_nbr << " plate)\t|  " << total_useful_percentage << "%\t|  " << total_waste_percentage << "%\t|" << endl;
+        cout << "\t---------------------------------------------------------" << endl << endl;
+    }
 
-        residual_percentage = plate[plates_nbr - 1].Getresidual().w() * plate[plates_nbr - 1].Getresidual().h() / (plate_h * plate_w / 100);
+    residual_percentage = plate[plates_nbr - 1].Getresidual().w() * plate[plates_nbr - 1].Getresidual().h() / (plate_h * plate_w / 100);
 
+    if (active_log) {
         log_file << "\t------------------------ Residual -----------------------" << endl;
         log_file << "\t|  Plate id             |  Width        |  Area %       |" << endl;
         log_file << "\t---------------------------------------------------------" << endl;
@@ -411,42 +493,25 @@ void displayPlatesAreaUsage(void) {
         log_file << "\t---------------------------------------------------------" << endl;
         log_file << "\t--- End of Display Plates Area Usage ---" << endl;
     } else {
-        if (constraint_error) {
-            cout << "\tERROR -- Unable to Display Plates Area Usage due to INVALID SOLUTION" << endl;
-            cout << "\t--- End of Display Plates Area Usage ---" << endl;
-            return;
-        }
-        cout << "\t---------------------- Summary --------------------------" << endl;
-        cout << "\t|  Plates               |  Used Area    |  Wasted Area  |" << endl;
-        cout << "\t---------------------------------------------------------" << endl;
-        for (i = 0; i < plates_nbr; i++) {
-            if (i == plates_nbr - 1) // If this is the last plate.
-            {
-                useful = (double) plate[i].Getuseful() / ((plate_w - plate[i].Getresidual().w()) * plate_h / 100); // Compute plate[i] used area percentage without taking into account residual area.
-                waste = (double) plate[i].Getwaste() / ((plate_w - plate[i].Getresidual().w()) * plate_h / 100); // Compute plate[i] wasted area percentage without taking into account residual area.
-            } else {
-                useful = (double) plate[i].Getuseful() / (plate_h * plate_w / 100); // Compute plate[i] used area percentage.
-                waste = (double) plate[i].Getwaste() / (plate_h * plate_w / 100); // Compute plate[i] wasted area percentage.
-            }
-            total_useful += plate[i].Getuseful();
-            total_waste += plate[i].Getwaste();
-            cout << "\t|  Plate " << i << "\t\t|  " << useful << "%\t|  " << waste << "%\t|" << endl;
-        }
-        all_plates_area = (plate_w * plate_h) * (plates_nbr - 1) + (plate_w - plate[plates_nbr - 1].Getresidual().w()) * plate_h;
-        total_useful_percentage = (double) 100 * total_useful / all_plates_area;
-        total_waste_percentage = (double) 100 * total_waste / all_plates_area;
-
-        cout << "\t---------------------------------------------------------" << endl;
-        cout << "\t|  Total (" << plates_nbr << " plate)\t|  " << total_useful_percentage << "%\t|  " << total_waste_percentage << "%\t|" << endl;
-        cout << "\t---------------------------------------------------------" << endl << endl;
-
-        residual_percentage = plate[plates_nbr - 1].Getresidual().w() * plate[plates_nbr - 1].Getresidual().h() / (plate_h * plate_w / 100);
-
         cout << "\t------------------------ Residual -----------------------" << endl;
         cout << "\t|  Plate id             |  Width        |  Area %       |" << endl;
         cout << "\t---------------------------------------------------------" << endl;
         cout << "\t|  Plate " << plate[plates_nbr - 1].Getplate_id() << "\t\t|  " << plate[plates_nbr - 1].Getresidual().w() << "mm  \t|  " << residual_percentage << "%  \t|" << endl;
         cout << "\t---------------------------------------------------------" << endl;
+    }
+
+    //Diplay the objective function value
+    of = (plates_nbr * plate_h * plate_w) - (plate_h * plate[plates_nbr - 1].Getresidual().w());
+    for (i = 0; i < batch_items; ++i)
+        of -= (items[i].h() * items[i].w());
+
+    if (active_log) {
+        log_file << "\t--------------------- Solution Value --------------------" << endl;
+        log_file << "\t--- OF = " << of << "---" << endl;
+        log_file << "\t--- End of Display Plates Area Usage ---" << endl;
+    } else {
+        cout << "\t--------------------- Solution Value --------------------" << endl;
+        cout << "\t--- OF = " << of << "---" << endl;
         cout << "\t--- End of Display Plates Area Usage ---" << endl;
     }
 }
@@ -521,7 +586,7 @@ void verifyItemProduction(void) {
  */
 unsigned int explore(GlassNode n) {
     unsigned int d = 0;
-    
+
     //Get node info
     unsigned int node_x = n.x();
     unsigned int node_y = n.y();
@@ -543,7 +608,7 @@ unsigned int explore(GlassNode n) {
                 //Found one extra overlap
                 ++d;
 
-                //If the defect does not fit in the plate, a cut is made through this defect
+                //If the defect does not fit entirely in the plate, a cut is made through this defect
                 if (!(node_x <= defect_x && defect_x + defect_width <= node_x + node_width && node_y <= defect_y && defect_y + defect_height <= node_y + node_height)) {
                     if (active_log) {
                         log_file << "\tERROR -- " << plate[plate_id].Getdefect(j) << " does not fit entirely in " << n << endl;
@@ -575,22 +640,24 @@ void verifyDefects(void) {
     unsigned int defect_width, defect_height, defect_x, defect_y;
     unsigned int node_x, node_y, node_width, node_height;
 
-    //For all plates
+    //For all plates in which a cut is performed
     for (i = 0; i < plates_nbr; ++i) {
-        unsigned int nb_overlap = 0;
+        if (plate[i].Getsuccessor_nbr() > 0) {
+            unsigned int nb_overlap = 0;
 
-        //Recursively explore cutting tree attached to this plate
-        for (unsigned int j = 0; j < plate[i].Getsuccessor_nbr(); j++)
-            nb_overlap += explore(plate[i].Getsuccessor(j));
+            //Recursively explore cutting tree attached to this plate
+            for (unsigned int j = 0; j < plate[i].Getsuccessor_nbr(); j++)
+                nb_overlap += explore(plate[i].Getsuccessor(j));
 
-        //If there is extra overlaps, this implies that a cut is made through a defect
-        if (plate[i].Getdefect_nbr() > 0 && nb_overlap != plate[i].Getdefect_nbr()) {
-            error = 1;
-            if (active_log) {
-                log_file << "\tERROR -- It seems that a cut is made through a defect" << endl;
-                constraint_error |= DEFECTS_SUPERPOSING_ERROR_MASK;
-            } else
-                cout << "\tERROR -- It seems that a cut is made through a defect" << endl;
+            //If there is extra overlaps, this implies that a cut is made through a defect
+            if (plate[i].Getdefect_nbr() > 0 && nb_overlap != plate[i].Getdefect_nbr()) {
+                error = 1;
+                if (active_log) {
+                    log_file << "\tERROR -- It seems that a cut is made through a defect for plate: " << i << endl;
+                    constraint_error |= DEFECTS_SUPERPOSING_ERROR_MASK;
+                } else
+                    cout << "\tERROR -- It seems that a cut is made through a defect for plate: " << i << endl;
+            }
         }
     }
 
@@ -1154,7 +1221,7 @@ int parseOptimizationParams(string path) {
     //Check for negative value
     if (isNegativeOrNull(plate_nbr_limit) || isNegativeOrNull(plate_w) || isNegativeOrNull(plate_h) ||
             isNegative(min1Cut) || isNegative(min2Cut) || isNegative(max1Cut) || isNegative(waste_min)) {
-        cout << "\tOne parameter is negative, please check Optimization Parameters file" << endl;
+        cout << "\tERROR: One parameter is negative, please check Optimization Parameters file" << endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -1589,6 +1656,7 @@ void buildDataStructure(GlassNode * node) {
         useful = 0.0;
         waste = 0.0;
         c_nbr = plate[i].Getnodes_nbr();
+
         // if first plate, start at index 0 in node array. if not, start read at index = plate[i-1].nodes_nbr.
         index += (i > 0) ? plate[i - 1].Getnodes_nbr() : 0;
         // Loop on plate node list (not only its successors).
@@ -1637,6 +1705,12 @@ void buildDataStructure(GlassNode * node) {
                 }
                 plate[i].Setsuccessor(node[index + j]);
             }
+        }
+
+        //If the plate has no nodes, the whole plate is a waste
+        if (c_nbr == 0) {
+            plate[i].Setwaste(plate_w * plate_h);
+            plate[i].Setuseful(0);
         }
     }
 }
