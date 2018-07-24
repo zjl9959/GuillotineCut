@@ -466,3 +466,19 @@ on the right side of the bin : 4.
 not on the right side of the bin: 0, 1, 2, 3.
 covered by the bin: 1, 2.
 overlapped with the bin: 1, 2, 3.
+
+- cut through defects is forbidden even if they are surrounded by wastes.
+```
+                1-cut                      3-cut                      3-cut           
+                 |                          |                          |              
+                 V                          V                          V              
+          +---+--+---+                  +---+---+                  +---+---+          
+          |///|  |   |                  |///|///|                  |   |   |          
+          |///|  D   |          4-cut ->+---+///|                  |   D   |          
+          |///|  |   |                  |   |///|                  |   |   |          
+          |///|  +---+<- 2-cut          +-D-+---+<- 2-cut          |   +---+<- 4-cut  
+  2-cut ->+---+--+///|                  |   |///|                  |   |///|          
+          |//////|///|          4-cut ->+---+///|          4-cut ->+---+///|          
+          |//////|///|                  |///|///|                  |///|///|          
+          +------+---+                  +---+---+                  +---+---+          
+```
