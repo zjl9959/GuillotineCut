@@ -48,6 +48,6 @@
 ## Linux
 
 - Debug
-  `g++ -m64 -g -o challengeSG Solver/*.cpp -ILib/gurobi/include -LLib/gurobi/lib/ -lgurobi_c++ -lgurobi75 -lm`
+  `g++ -m64 -g -o challengeSG Solver/*.cpp -ILib/gurobi/include -LLib/gurobi/lib/ -lgurobi_c++ -lgurobi80 -lm`
 - Release
-	`g++ -m64 -O2 -o challengeSG Solver/*.cpp -ILib/gurobi/include -LLib/gurobi/lib/ -lgurobi_c++ -lgurobi75 -lm`
+	`g++ -m64 -O2 -o challengeSG Solver/*.cpp -ILib/gurobi/include -LLib/gurobi/lib/ -lgurobi_c++ -lgurobi80 -lm`

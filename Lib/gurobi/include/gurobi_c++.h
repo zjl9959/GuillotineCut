@@ -2,7 +2,7 @@
 #ifndef _GUROBI_CPP_H
 #define _GUROBI_CPP_H
  
-// Copyright (C) 2016, Gurobi Optimization, Inc.
+// Copyright (C) 2018, Gurobi Optimization, LLC
 // All Rights Reserved
 #include <iostream>
 #include <vector>
@@ -125,7 +125,6 @@ enum GRB_IntParam {
   GRB_IntParam_Disconnected,
   GRB_IntParam_NoRelHeuristic,
   GRB_IntParam_UpdateMode,
-  GRB_IntParam_WorkerPort,
   GRB_IntParam_Record,
   GRB_IntParam_ObjNumber,
   GRB_IntParam_MultiObjMethod,
@@ -134,7 +133,13 @@ enum GRB_IntParam {
   GRB_IntParam_PoolSearchMode,
   GRB_IntParam_StartNumber,
   GRB_IntParam_StartNodeLimit,
-  GRB_IntParam_IgnoreNames
+  GRB_IntParam_IgnoreNames,
+  GRB_IntParam_PartitionPlace,
+  GRB_IntParam_CSPriority,
+  GRB_IntParam_CSTLSInsecure,
+  GRB_IntParam_CSIdleTimeout,
+  GRB_IntParam_ServerTimeout,
+  GRB_IntParam_TSPort
 };
 
 enum GRB_StringParam {
@@ -143,6 +148,14 @@ enum GRB_StringParam {
   GRB_StringParam_ResultFile,
   GRB_StringParam_WorkerPool,
   GRB_StringParam_WorkerPassword,
+  GRB_StringParam_ComputeServer,
+  GRB_StringParam_ServerPassword,
+  GRB_StringParam_CSRouter,
+  GRB_StringParam_TokenServer,
+  GRB_StringParam_CloudAccessID,
+  GRB_StringParam_CloudSecretKey,
+  GRB_StringParam_CloudPool,
+  GRB_StringParam_CloudHost,
   GRB_StringParam_Dummy
 };
 
@@ -303,7 +316,9 @@ enum GRB_StringAttr {
   GRB_StringAttr_ConstrName,
   GRB_StringAttr_QCName,
   GRB_StringAttr_GenConstrName,
-  GRB_StringAttr_ObjNName
+  GRB_StringAttr_ObjNName,
+  GRB_StringAttr_Server,
+  GRB_StringAttr_JobID
 };
 
 class GRBVar;
@@ -370,13 +385,27 @@ class GRBEnv
 
     friend class GRBModel;
 
-    GRBEnv();
+    GRBEnv(const bool empty = false);
+    GRBEnv(const char* logfilename);
     GRBEnv(const std::string& logfilename);
-    GRBEnv(const std::string& logfilename, const std::string& computeservers, int port,
-           const std::string& password, int priority, double timeout);
-    GRBEnv(const std::string&, const std::string&, const std::string&, const std::string&);
+    GRBEnv(const std::string& logfilename, const std::string& computeserver,
+           const std::string& router, const std::string& password,
+           const std::string& group, int tlsInsecure, int priority,
+           double timeout);
+    GRBEnv(const std::string& logfilename, const std::string& accessID,
+           const std::string& secretKey, const std::string& pool,
+           int priority);
     GRBEnv(const std::string&, const std::string&, const std::string&, int, const std::string&);
+    GRBEnv(const std::string&, const std::string&, const std::string&, int, const std::string&,
+           void* (__stdcall *)(MALLOCCB_ARGS),
+           void* (__stdcall *)(CALLOCCB_ARGS),
+           void* (__stdcall *)(REALLOCCB_ARGS),
+           void  (__stdcall *)(FREECB_ARGS),
+           int   (__stdcall *)(THREADCREATECB_ARGS),
+           void  (__stdcall *)(THREADJOINCB_ARGS),
+           void*);
     ~GRBEnv();
+    void start();
     void message(const std::string& msg);
     int get(GRB_IntParam param) const;
     double get(GRB_DoubleParam param) const;
@@ -453,7 +482,7 @@ class GRBModel
     void optimizeasync();
     void computeIIS();
     void tune();
-    void reset();
+    void reset(int clearall = 0);
     void check();
     void terminate();
 

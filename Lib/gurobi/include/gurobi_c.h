@@ -1,7 +1,11 @@
-/* Copyright 2017, Gurobi Optimization, Inc. */
+/* Copyright 2018, Gurobi Optimization, LLC */
  
 #ifndef _GUROBI_C_H
 #define _GUROBI_C_H
+ 
+#ifdef __cplusplus
+extern "C" {
+#endif
  
 #include <stdio.h>
 
@@ -23,8 +27,8 @@ typedef struct _GRBenv GRBenv;
 
 /* Version numbers */
 
-#define GRB_VERSION_MAJOR     7
-#define GRB_VERSION_MINOR     5
+#define GRB_VERSION_MAJOR     8
+#define GRB_VERSION_MINOR     0
 #define GRB_VERSION_TECHNICAL 1
 
 /* Default and max priority for Compute Server jobs */
@@ -35,6 +39,10 @@ typedef struct _GRBenv GRBenv;
 /* Default port number for Compute Server */
 
 #define DEFAULT_CS_PORT 61000
+
+/* Default Compute Server hangup duration */
+
+#define DEFAULT_CS_HANGUP 60
 
 /* Error codes */
 
@@ -67,6 +75,8 @@ typedef struct _GRBenv GRBenv;
 #define GRB_ERROR_UPDATEMODE_CHANGE        10027
 #define GRB_ERROR_CLOUD                    10028
 #define GRB_ERROR_MODEL_MODIFICATION       10029
+#define GRB_ERROR_CSWORKER                 10030
+#define GRB_ERROR_TUNE_MODEL_TYPES         10031
 
 /* Constraint senses */
 
@@ -103,7 +113,6 @@ typedef struct _GRBenv GRBenv;
 #define GRB_MAX_NAMELEN    255
 #define GRB_MAX_STRLEN     512
 #define GRB_MAX_CONCURRENT 64
-/* Copyright 2016, Gurobi Optimization, Inc. */
 
 /* Query interface */
 
@@ -252,7 +261,8 @@ int __stdcall
 #define GRB_INT_ATTR_IS_QP         "IsQP"          /* Model has quadratic obj? */
 #define GRB_INT_ATTR_IS_QCP        "IsQCP"         /* Model has quadratic constr? */
 #define GRB_INT_ATTR_IS_MULTIOBJ   "IsMultiObj"    /* Model has multiple objectives? */
-#define GRB_STR_ATTR_SERVER        "Server"        /* Name of compute server */
+#define GRB_STR_ATTR_SERVER        "Server"        /* Name of Compute Server */
+#define GRB_STR_ATTR_JOBID         "JobID"         /* Compute Server job ID */
 #define GRB_INT_ATTR_LICENSE_EXPIRATION "LicenseExpiration" /* License expiration date */
 
 /* Variable attributes */
@@ -466,6 +476,7 @@ int __stdcall
 #define GRB_CB_MIPNODE   5
 #define GRB_CB_MESSAGE   6
 #define GRB_CB_BARRIER   7
+#define GRB_CB_MULTIOBJ  8
 
 /* Supported names for callback */
 
@@ -516,6 +527,10 @@ int __stdcall
 #define GRB_CB_BARRIER_PRIMINF 7004
 #define GRB_CB_BARRIER_DUALINF 7005
 #define GRB_CB_BARRIER_COMPL   7006
+
+#define GRB_CB_MULTIOBJ_OBJCNT  8001
+#define GRB_CB_MULTIOBJ_SOLCNT  8002
+#define GRB_CB_MULTIOBJ_SOL     8003
 
 #define GRB_FEASRELAX_LINEAR      0
 #define GRB_FEASRELAX_QUADRATIC   1
@@ -617,7 +632,6 @@ int __stdcall
                   int (__stdcall *threadcreatecb)(THREADCREATECB_ARGS),
                   void (__stdcall *threadjoincb)(THREADJOINCB_ARGS),
                   void *syscbusrdata);
-/* Copyright 2016, Gurobi Optimization, Inc. */
 
 int __stdcall
   GRBreadmodel(GRBenv *env, const char *filename, GRBmodel **modelP);
@@ -748,6 +762,9 @@ int __stdcall
   GRBupdatemodel(GRBmodel *model);
 
 int __stdcall
+GRBreset(GRBmodel *model, int clearall);
+
+int __stdcall
   GRBresetmodel(GRBmodel *model);
 
 int __stdcall
@@ -810,15 +827,12 @@ int __stdcall
 #define GRB_NONBASIC_LOWER -1
 #define GRB_NONBASIC_UPPER -2
 #define GRB_SUPERBASIC     -3
-/* Copyright 2016, Gurobi Optimization, Inc. */
 
 /* Undocumented routines */
 
 int __stdcall
   GRBstrongbranch(GRBmodel *model, int num, int *cand,
                   double *downobjbd, double *upobjbd, int *statusP);
-/* Copyright 2016, Gurobi Optimization, Inc. */
-
 /**************/
 /* Parameters */
 /**************/
@@ -918,7 +932,6 @@ int __stdcall
 
 #define GRB_STR_PAR_WORKERPOOL      "WorkerPool"
 #define GRB_STR_PAR_WORKERPASSWORD  "WorkerPassword"
-#define GRB_INT_PAR_WORKERPORT      "WorkerPort"
 
 /* Other */
 
@@ -966,8 +979,22 @@ int __stdcall
 #define GRB_INT_PAR_POOLSOLUTIONS     "PoolSolutions"
 #define GRB_DBL_PAR_POOLGAP           "PoolGap"
 #define GRB_INT_PAR_POOLSEARCHMODE    "PoolSearchMode"
-#define GRB_INT_PAR_STARTNUMBER       "StartNumber"
 #define GRB_INT_PAR_IGNORENAMES       "IgnoreNames"
+#define GRB_INT_PAR_STARTNUMBER       "StartNumber"
+#define GRB_INT_PAR_PARTITIONPLACE    "PartitionPlace"
+#define GRB_STR_PAR_COMPUTESERVER     "ComputeServer"
+#define GRB_STR_PAR_TOKENSERVER       "TokenServer"
+#define GRB_STR_PAR_SERVERPASSWORD    "ServerPassword"
+#define GRB_INT_PAR_SERVERTIMEOUT     "ServerTimeout"
+#define GRB_STR_PAR_CSROUTER          "CSRouter"
+#define GRB_INT_PAR_CSPRIORITY        "CSPriority"
+#define GRB_INT_PAR_CSIDLETIMEOUT     "CSIdleTimeout"
+#define GRB_INT_PAR_CSTLSINSECURE     "TLSInsecure"
+#define GRB_INT_PAR_TSPORT            "TSPort"
+#define GRB_STR_PAR_CLOUDACCESSID     "CloudAccessID"
+#define GRB_STR_PAR_CLOUDSECRETKEY    "CloudSecretKey"
+#define GRB_STR_PAR_CLOUDPOOL         "CloudPool"
+#define GRB_STR_PAR_CLOUDHOST         "CloudHost"
 #define GRB_STR_PAR_DUMMY             "Dummy"
 
 /* Parameter enumerations */
@@ -1017,6 +1044,12 @@ int __stdcall
 #define GRB_VARBRANCH_MAX_INFEAS     2
 #define GRB_VARBRANCH_STRONG         3
 
+#define GRB_PARTITION_EARLY     16
+#define GRB_PARTITION_ROOTSTART 8
+#define GRB_PARTITION_ROOTEND   4
+#define GRB_PARTITION_NODES     2
+#define GRB_PARTITION_CLEANUP   1
+
 int __stdcall
   GRBcheckmodel(GRBmodel *model);
 void __stdcall
@@ -1031,8 +1064,8 @@ int __stdcall
                   int qnz, int *qrow, int *qcol, double *qval);
 int __stdcall
   GRBsetobjectiven(GRBmodel *model, int index, int priority, double weight,
-                   double abstol, double reltol, char *name, double constant,
-                   int lnz, int *lind, double *lval);
+                   double abstol, double reltol, const char *name,
+                   double constant, int lnz, int *lind, double *lval);
 void __stdcall
   GRBclean2(int *lenP, int *ind, double *val);
 void __stdcall
@@ -1102,27 +1135,48 @@ int __stdcall
 int __stdcall
   GRBloadenv(GRBenv **envP, const char *logfilename);
 int __stdcall
+  GRBemptyenv(GRBenv **envP);
+int __stdcall
+  GRBemptyenvadv(GRBenv **envP, int apitype, int major, int minor, int tech);
+int __stdcall
+  GRBstartenv(GRBenv *env);
+int __stdcall
   GRBloadenvadv(GRBenv **envP, const char *logfilename,
                 int apitype, int major, int minor, int tech,
+                const char *server, const char *router,
+                const char *password, const char *group,
+                int priority, int idletimeout,
+                const char *accessid, const char *secretkey,
                 int (__stdcall *cb)(CB_ARGS), void *usrdata);
 int __stdcall
+  GRBloadenvadv2(GRBenv **envP, const char *logfilename,
+                 int apitype, int major, int minor, int tech,
+                 const char *server, const char *router,
+                 const char *password, const char *group,
+                 int priority, int idletimeout,
+                 const char *accessid, const char *secretkey,
+                 int (__stdcall *cb)(CB_ARGS), void *usrdata,
+                 int (__stdcall *logcb)(char *msg));
+int __stdcall
   GRBloadclientenv(GRBenv **envP, const char *logfilename,
-                   const char *computeservers, int port, const char *password,
+                   const char *computeserver, const char *router,
+                   const char *password, const char *group, int tls_insecure,
                    int priority, double timeout);
 int __stdcall
   GRBloadclientenvadv(GRBenv **envP, const char *logfilename,
-                      const char *computeservers, int port,
-                      const char *password, int priority, double timeout,
-                      int apitype, int major, int minor, int tech,
+                      const char *computeserver, const char *router,
+                      const char *password, const char *group, int tls_insecure,
+                      int priority, double timeout, int apitype,
+                      int major, int minor, int tech,
                       int (__stdcall *cb)(CB_ARGS), void *usrdata);
 int __stdcall
   GRBloadcloudenv(GRBenv **envP, const char *logfilename,
                   const char *accessID, const char *secretKey,
-                  const char *pool);
+                  const char *pool, int priority);
 int __stdcall
   GRBloadcloudenvadv(GRBenv **envP, const char *logfilename,
                      const char *accessID, const char *secretKey,
-                     const char *pool, int apitype, int major,
+                     const char *pool, int priority, int apitype, int major,
                      int minor, int tech,
                      int (__stdcall *cb)(CB_ARGS), void *usrdata);
 GRBenv *__stdcall
@@ -1154,24 +1208,6 @@ char * __stdcall
 
 int __stdcall
   GRBlisttokens(void);
-int __stdcall
-  GRBlistclients(const char *computeServer, int port);
-int __stdcall
-  GRBchangeuserpassword(const char *computeServer, int port,
-                        const char *admin_password,
-                        const char *new_user_password);
-int __stdcall
-  GRBchangeadminpassword(const char *computeServer, int port,
-                         const char *admin_password,
-                         const char *new_admin_password);
-int __stdcall
-  GRBchangejoblimit(const char *computeServer, int port, int newlimit,
-                    const char *admin_password);
-int __stdcall
-  GRBkilljob(const char *computeServer, int port, const char *jobID,
-             const char *admin_password);
-int __stdcall
-  GRBshutdown(const char *computeServer, int port, const char *admin_password);
 
 /* Tuning */
 
@@ -1186,10 +1222,16 @@ int __stdcall
   GRBgettunelog(GRBmodel *model, int i, char **logP);
 int __stdcall
   GRBtunemodeladv(GRBmodel *model, GRBmodel *ignore, GRBmodel *hint);
-/* Copyright 2016, Gurobi Optimization, Inc. */
-
 /* Async interface */
 
 int __stdcall
   GRBsync(GRBmodel *model);
+
+int __stdcall
+  GRBpingserver(const char *server, const char *password);
+ 
+#ifdef __cplusplus
+}
+#endif
+ 
 #endif

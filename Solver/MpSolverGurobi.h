@@ -26,7 +26,7 @@
 
 #pragma region AutoLinking
 /// only use the major and minor version number, e.g. v6.5.0 => 65, v6.0.5 => 60.
-#define GUROBI_VERSION  75
+#define GUROBI_VERSION  80
 
 #if _DR_DEBUG
 #if _LL_DYNAMIC
