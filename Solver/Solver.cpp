@@ -866,33 +866,33 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     using Expr = MpSolver::LinearExpr;
     using VarType = MpSolver::VariableType;
 
-    enum Layer { L0, L1, L2, L3 };
-    constexpr ID maxBinNum[] = { 1, 1, 6, 6 }; // EXTEND[szx][5]: parameterize the constant!
-    constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3];
     constexpr bool flawless = false; // there are defects on the plate.
     constexpr bool ordered = true; // the items should be produced in given order.
 
+    // step control.
+    enum Layer { L0, L1, L2, L3, L4 };
+    constexpr ID maxBinNum[] = { 1, 1, 6, 6, 2 }; // EXTEND[szx][5]: parameterize the constant!
+    constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3] * maxBinNum[L4];
+    constexpr ID PlateStep = 1;
+    constexpr ID L1BinStep = 1;
+
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
-
-    // step control.
-    ID prevPlate = 0;
-    ID nextPlate = 1;
-    ID prevL1Bin = 0;
-    ID nextL1Bin = 1;
 
     double approxIter = max(1.5, itemNum / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
     double timeoutPerIteration = max(cfg.minSecTimeoutPerIteration, timer.restSeconds() / approxIter);
     Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
 
+    // for visualization.
     List<Drawer::Rect> plates;
     List<Drawer::Item> items;
     List<Drawer::Cut> cuts;
     List<Drawer::Rect> flaws;
-    ID plateId = 0;
     ID usedPlateNum = 1;
+
+    ID plateId = 0; // current plate.
+    Length xOffset = 0; // left of current L1 bin in current plate.
     ID placedItemNum = 0;
-    Length xOffset = 0;
     List<bool> isItemPlaced(itemNum, false);
     while (!timer.isTimeOut()) {
         List<bool> skipItem(isItemPlaced); // select items to be considered in model.
@@ -950,8 +950,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         for (ID i = 0; i < itemNum; ++i) {
             if (skipItem[i]) { continue; }
             d[i] = mp.addVar(VarType::Bool, 0, 1);
-            for (ID g = prevPlate; g < nextPlate; ++g) {
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID g = 0; g < PlateStep; ++g) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             pi3[i][g][l][m][n] = mp.addVar(VarType::Bool, 0, 1);
@@ -960,9 +960,9 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
             }
         }
-        for (ID g = prevPlate; g < nextPlate; ++g) {
+        for (ID g = 0; g < PlateStep; ++g) {
             e[g] = mp.addVar(VarType::Bool, 0, 1);
-            for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID l = 0; l < L1BinStep; ++l) {
                 p1[g][l] = mp.addVar(VarType::Bool, 0, 1);
                 w1[g][l] = mp.addVar(VarType::Real, 0, input.param.plateWidth); // OPTIMIZE[szx][7]: use MpSolver::Infinity?
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -995,12 +995,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
         }
 
-        coveredWidth = w1[prevPlate][prevL1Bin];
+        for (ID g = 0; g < PlateStep; ++g) {
+            for (ID l = 0; l < L1BinStep; ++l) { coveredWidth += w1[g][l]; }
+        }
 
         Log(LogSwitch::Szx::Model) << "add constraints." << endl;
         Log(LogSwitch::Szx::Model) << "add placement constraints." << endl;
-        for (ID g = prevPlate; g < nextPlate; ++g) {
-            for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+        for (ID g = 0; g < PlateStep; ++g) {
+            for (ID l = 0; l < L1BinStep; ++l) {
                 Expr l1BinItems;
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
                     Expr l2BinItems;
@@ -1038,8 +1040,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             if (skipItem[i]) { continue; }
             Length itemLen = aux.items[i].w;
             Expr putInBin;
-            for (ID g = prevPlate; g < nextPlate; ++g) {
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID g = 0; g < PlateStep; ++g) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             putInBin += pi3[i][g][l][m][n];
@@ -1062,9 +1064,9 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         }
 
         Log(LogSwitch::Szx::Model) << "add composition constraints." << endl;
-        for (ID g = prevPlate; g < nextPlate; ++g) {
+        for (ID g = 0; g < PlateStep; ++g) {
             Expr l1BinWidthSum;
-            for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID l = 0; l < L1BinStep; ++l) {
                 l1BinWidthSum += w1[g][l];
                 Expr l2BinHeightSum;
                 for (ID m = 0; m < maxBinNum[L2]; ++m) {
@@ -1085,8 +1087,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         }
 
         Log(LogSwitch::Szx::Model) << "add bounding constraints." << endl;
-        for (ID g = prevPlate; g < nextPlate; ++g) {
-            for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+        for (ID g = 0; g < PlateStep; ++g) {
+            for (ID l = 0; l < L1BinStep; ++l) {
                 // L1 width bound.
                 mp.addConstraint(input.param.minL1Width * p1[g][l] <= w1[g][l]);
                 mp.addConstraint(w1[g][l] <= input.param.maxL1Width);
@@ -1117,8 +1119,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 for (auto i = s->begin(), j = s->begin() + 1; j != s->end(); ++i, ++j) {
                     if (skipItem[*i] || skipItem[*j]) { continue; }
                     Expr putInBin;
-                    for (ID g = prevPlate; g < nextPlate; ++g) {
-                        for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    for (ID g = 0; g < PlateStep; ++g) {
+                        for (ID l = 0; l < L1BinStep; ++l) {
                             for (ID m = 0; m < maxBinNum[L2]; ++m) {
                                 for (ID n = 0; n < maxBinNum[L3]; ++n) {
                                     mp.addConstraint(1 - pi3[*i][g][l][m][n] >= putInBin); // OPTIMIZE[szx][9]: skip the very first one where g=l=m=n=0.
@@ -1136,8 +1138,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 for (auto i = s->begin(); i != s->end(); ++i) {
                     if (skipItem[*i]) { continue; }
                     Expr nextPutInBin;
-                    for (ID g = prevPlate; g < nextPlate; ++g) {
-                        for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    for (ID g = 0; g < PlateStep; ++g) {
+                        for (ID l = 0; l < L1BinStep; ++l) {
                             for (ID m = 0; m < maxBinNum[L2]; ++m) {
                                 for (ID n = 0; n < maxBinNum[L3]; ++n) {
                                     nextPutInBin += pi3[*i][g][l][m][n];
@@ -1153,8 +1155,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         if (!flawless) {
             Log(LogSwitch::Szx::Model) << "add defect constraints." << endl;
-            for (ID g = prevPlate; g < nextPlate; ++g) {
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID g = 0; g < PlateStep; ++g) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             ID f = 0;
@@ -1184,8 +1186,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Model) << "add bin size order cuts." << endl;
             // if there is no defect and order, put larger bins to the left or bottom.
             // else put all non-trivial bins to the left or bottom.
-            for (ID g = prevPlate; g < nextPlate; ++g) {
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID g = 0; g < PlateStep; ++g) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     if (l + 1 < maxBinNum[L1]) {
                         mp.addConstraint(t3[g][l][0][0] >= t3[g][l + 1][0][0]);
                         if (flawless && !ordered) { mp.addConstraint(w1[g][l] >= w1[g][l + 1]); }
@@ -1208,8 +1210,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         if (cfg.addEmptyBinMergingCut) {
             Log(LogSwitch::Szx::Model) << "add empty bin merging cuts." << endl;
-            for (ID g = prevPlate; g < nextPlate; ++g) {
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID g = 0; g < PlateStep; ++g) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     if (l + 1 < maxBinNum[L1]) {
                         // OPTIMIZE[szx][0]: make sure adding this will not cut the optima!
                         //mp.addConstraint(p1[g][l] + p1[g][l + 1] >= t3[g][l + 1][0][0]);
@@ -1230,12 +1232,12 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         if (cfg.addCoveredAreaOnEachPlateCut) { // user cut for covered area should be less than the plate.
             Log(LogSwitch::Szx::Model) << "add covered area on each plate cuts." << endl;
-            for (ID g = prevPlate; g < nextPlate; ++g) {
+            for (ID g = 0; g < PlateStep; ++g) {
                 Expr area;
                 for (ID i = 0; i < itemNum; ++i) {
                     if (skipItem[i]) { continue; }
                     Expr putInBin;
-                    for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                    for (ID l = 0; l < L1BinStep; ++l) {
                         for (ID m = 0; m < maxBinNum[L2]; ++m) {
                             for (ID n = 0; n < maxBinNum[L3]; ++n) {
                                 putInBin += pi3[i][g][l][m][n];
@@ -1275,14 +1277,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         if (feasible) {
             // record solution.
             using Node = Problem::Output::Node;
-            for (ID g = prevPlate; g < nextPlate; ++g) {
+            for (ID g = 0; g < PlateStep; ++g) {
                 if ((plateId + g) >= static_cast<ID>(sln.bins.size())) {
                     sln.bins.push_back(Bin(0, 0, input.param.plateWidth, input.param.plateHeight, Node::SpecialType::Branch));
                 }
                 Bin &plate(sln.bins.back());
                 double x1 = xOffset;
                 double margin1 = 0; // cumulative length loss due to truncation from double to int.
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     double l1BinWidth = mp.getValue(w1[g][l]);
                     margin1 += (l1BinWidth - Math::floor(l1BinWidth));
                     l1BinWidth = Math::floor(l1BinWidth);
@@ -1361,14 +1363,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             const char FillColor[] = "CCFFCC";
 
             double offset = (input.param.plateHeight + PlateGap) * plateId;
-            for (ID g = prevPlate; g < nextPlate; ++g, offset += (input.param.plateHeight + PlateGap)) {
+            for (ID g = 0; g < PlateStep; ++g, offset += (input.param.plateHeight + PlateGap)) {
                 // draw plate.
                 if ((plateId + g) >= static_cast<ID>(plates.size())) {
                     plates.push_back(Drawer::Rect(0, offset, input.param.plateWidth, input.param.plateHeight));
                 }
                 // draw items.
                 double x1 = xOffset;
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     double y2 = offset;
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
                         double x3 = x1;
@@ -1386,7 +1388,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
                 // draw cuts.
                 x1 = xOffset;
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     if (Math::weakLess(mp.getValue(w1[g][l]), 0)) { continue; }
                     double oldX1 = x1;
                     x1 += mp.getValue(w1[g][l]);
@@ -1412,8 +1414,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
 
             // statistics.
-            for (ID g = prevPlate; g < nextPlate; ++g) {
-                for (ID l = prevL1Bin; l < nextL1Bin; ++l) {
+            for (ID g = 0; g < PlateStep; ++g) {
+                for (ID l = 0; l < L1BinStep; ++l) {
                     xOffset += Math::lfloor(mp.getValue(w1[g][l]));
                 }
             }
