@@ -23,6 +23,7 @@
 | $L^{1}$ | layer-1 virtual bin | need good estimation | $l, l'$ |  |
 | $L^{2}_{l}$ | layer-2 virtual bin | need good estimation | $m, m'$ |  |
 | $L^{3}_{lm}$ | layer-3 virtual bin |need good estimation  | $n, n'$ |  |
+| $L^{4}_{lmn}$ | layer-4 virtual bin |2  | $j, j'$ |  |
 
 ### Constant
 
@@ -51,21 +52,19 @@
 | $p_{l}$ | there are items placed in L1 virtual bin $l$ | bool | $\{0, 1\}$ | |
 | $p_{lm}$ | there are items placed in L2 virtual bin $(l, m)$ | bool | $\{0, 1\}$ | |
 | $p_{lmn}$ | there are items placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
-| $p_{lmni}$ | item $i$ is placed in L3 virtual bin $(l, m, n)$ | bool | $\{0, 1\}$ | |
+| $p_{lmnj}$ | there are items placed in L4 virtual bin $(l, m, n, j)$ | bool | $\{0, 1\}$ | |
+| $p_{lmnji}$ | item $i$ is placed in L4 virtual bin $(l, m, n, j)$ | bool | $\{0, 1\}$ | |
 | $\omega^{1}_{l}$ | width of the L1 virtual bin $l$ | real | $[0, +\infty)$ | |
 | $\eta^{2}_{lm}$ | height of the L2 virtual bin $m$ in L1 virtual bin $l$ | real | $[0, +\infty)$ | |
 | $\omega^{3}_{lmn}$ | width of the L3 virtual bin $n$ in L2 virtual bin $(l, m)$ | real | $[0, +\infty)$ |  |
-| $\eta^{4+}_{lmn}$ | height of the upper waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
-| $\eta^{4-}_{lmn}$ | height of the lower waste in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
+| $\eta^{4}_{lmnj}$ | height of the L4 virtual bin $j$ in L3 virtual bin $(l, m, n)$ | real | $[0, +\infty)$ |  |
 | $\tau^{2}_{lm}$ | L2 virtual bin $(l, m)$ is non-trivial by positive height | bool | $\{0, 1\} $ | bool variable to implement semi variable |
 | $\tau^{3}_{lmn}$ | L3 virtual bin $(l, m, n)$ is non-trivial by positive width | bool | $\{0, 1\} $ | bool variable to implement semi variable |
-| $\tau^{4+}_{lmn}$ | upper waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
-| $\tau^{4-}_{lmn}$ | lower waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
+| $\tau^{4}_{lmnj}$ | L4 virtual bin $(l, m, n, j)$ is non-trivial by positive height | bool | $\{0, 1\} $ | bool variable to implement semi variable |
 | $\gamma$ | width of the used area in the last used bin | real | $[0, +\infty)$ | |
 | $e$ | there is residual in plate | bool | $\{0, 1\}$ | bool variable to implement semi variable |
-| $c_{lmnf}$ | L3 virtual bin $(l, m, n)$ contains or overlaps with flaw $f$ | bool | $\{0, 1\}$ | |
-| $c^{k}_{lmnf}$ | L3 virtual bin $(l, m, n)$ is not on the $k^\textrm{th}$ side of flaw $f$ | bool | $\{0, 1\}$ | $k \in \{1\textrm{:right}, 2\textrm{:left}, 3\textrm{:up}, 4\textrm{:down}\}$ |
-| $c^{1}_{f}$ | the residual in plate is not on the right side of flaw $f$ | bool | $\{0, 1\}$ |  |
+| $c_{lmnjf}$ | L4 virtual bin $(l, m, n, j)$ covers flaw $f$ | bool | $\{0, 1\}$ | |
+| $c^{1}_{f}$ | the residual in plate covers flaw $f$ | bool | $\{0, 1\}$ |  |
 | $o_{i}$ | the sequence number of item $i$ to be produced | real | $[0, +\infty)$ |  |
 
 ### Convention and Function
@@ -75,8 +74,8 @@
   - virtual bins $L^{1}_{g}, L^{2}_{gl}, L^{3}_{glm}$
   - virtual bin size $\omega^{1}_{gl}, \eta^{2}_{glm}, \omega^{3}_{glmn}$
   - trivial or empty bin $\tau^{2}_{glm}, \tau^{3}_{glmn}, e_{g}$
-  - item inclusion $p_{g}, p_{gl}, p_{glm}, p_{glmn}, p_{glmni}$
-  - flaw inclusion $c_{glmnf}, c^{k}_{glmnf}, c^{1}_{gf}$
+  - item inclusion $p_{g}, p_{gl}, p_{glm}, p_{glmn}, p_{glmnj}, p_{glmnji}$
+  - flaw inclusion $c_{glmnf}, c^{1}_{gf}$
 - an empty bin means a bin without item placed in, which could be waste or residual.
 - a trivial bin means a bin with 0 width or height, which is nothing, and it will always be empty.
 - assume $\Omega_{i} \ge \Eta_{i}$ is true on all items (this can be done easily by **preprocessing**), but may be false on flaws.
@@ -85,11 +84,11 @@
 - define function $\textrm{w}(i) = \Omega_{i} \cdot (1 - d_{i}) + \Eta_{i} \cdot d_{i}$ to indicate the actual width of item $i$ regarding its rotation.
 - define function $\textrm{h}(i) = \Eta_{i} \cdot (1 - d_{i}) + \Omega_{i} \cdot d_{i}$ to indicate the actual height of item $i$ regarding its rotation.
 - define function $\textrm{x}(l, m, n) = \sum\limits_{l' \in L^{1}, l' < l} \omega^{1}_{l'} + \sum\limits_{n' \in L^{3}_{lm}, n' < n} \omega^{3}_{lmn'}$ to indicate the horizontal position of L3 virtual bin $(l, m, n)$'s left bottom.
-- define function $\textrm{y}(l, m, n) = \sum\limits_{m' \in L^{2}_{l}, m' < m} \eta^{2}_{lm'}$ to indicate the vertical position of L3 virtual bin $(l, m, n)$'s left bottom.
-- define function $\textrm{seq}(g, l, m, n) = |L^{3}_{lm}| \cdot (|L^{2}_{l}| \cdot (|L^{1}| \cdot g + l) + m) + n$ to indicate the produced order of L3 virtual bin $(l, m, n)$ in bin $g$.
+- define function $\textrm{y}(l, m, n, j) = \sum\limits_{m' \in L^{2}_{l}, m' < m} \eta^{2}_{lm'} + \sum\limits_{j' \in L^{4}_{lmn}, j' < j} \eta^{4}_{lmnj'}$ to indicate the vertical position of L4 virtual bin $(l, m, n, j)$'s left bottom.
+- define function $\textrm{seq}(g, l, m, n, j) = (((g \cdot |L^{1}| + l) \cdot |L^{2}_{l}| + m) \cdot |L^{3}_{lm}| + n) \cdot |L^{4}_{lmn}| + j$ to indicate the produced order of L4 virtual bin $(l, m, n, j)$ in bin $g$.
 - define function $\textrm{next}(i)$ to indicate the next item of $i$ in its stack.
 - define function $\textrm{next}(g)$ to indicate the next bin of $g$ in the queue $G$.
-- define function $\textrm{p}(i) = \sum\limits_{l \in L^{1}} \sum\limits_{m \in L^{2}_{l}} \sum\limits_{n \in L^{3}_{lm}} p_{lmni}$ to indicate whether item $i$ is placed in the plate.
+- define function $\textrm{p}(i) = \sum\limits_{l \in L^{1}} \sum\limits_{m \in L^{2}_{l}} \sum\limits_{n \in L^{3}_{lm}} \sum\limits_{n \in L^{4}_{lmn}} p_{lmnji}$ to indicate whether item $i$ is placed in any plate.
 
 
 ## Objective
@@ -144,23 +143,33 @@ all of the following constraints must be satisfied.
 - **HPU.A (plate used)** if there are items placed in the plate.
   the left side can be omitted if **OPI (placed items)** is disabled.
   $$
-  p \le \sum_{i \in I} \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} \le |I| \cdot p
+  p \le \sum_{l \in L^{1}} p_{l} \le |I| \cdot p
   $$
+
 - **HIP1.A (L1 item placement)** if there are items placed in L1 virtual bin $l$.
   the left side can be omitted if **OPI (placed items)** is disabled.
   $$
-  p_{l} \le \sum_{i \in I} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} \le |I| \cdot p_{l}, \quad \forall l \in L^{1}
+  p_{l} \le \sum_{m \in L^{2}_{l}} p_{lm} \le |I| \cdot p_{l}, \quad \forall l \in L^{1}
   $$
+
 - **HIP2.A (L2 item placement)** if there are items placed in L2 virtual bin $(l, m)$.
   the left side can be omitted if **OPI (placed items)** is disabled.
   $$
-  p_{lm} \le \sum_{i \in I} \sum_{n \in L^{3}_{lm}} p_{lmni} \le |I| \cdot p_{lm}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
+  p_{lm} \le \sum_{n \in L^{3}_{lm}} p_{lmn} \le |I| \cdot p_{lm}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
   $$
+
 - **HIP3.A (L3 item placement)** if there are items placed in L3 virtual bin $(l, m, n)$.
   the left side can be omitted if **OPI (placed items)** is disabled.
   $|I|$ on the right side can be 1 if **HEP (exclusive placement)** is enabled.
   $$
-  p_{lmn} \le \sum_{i \in I} p_{lmni} \le |I| \cdot p_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  p_{lmn} \le \sum_{j \in L^{4}_{lmn}} p_{lmnj} \le |I| \cdot p_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  $$
+
+- **HIP4.A (L4 item placement)** if there are items placed in L4 virtual bin $(l, m, n, j)$.
+  the left side can be omitted if **OPI (placed items)** is disabled.
+  $|I|$ on the right side can be 1 if **HEP (exclusive placement)** is enabled.
+  $$
+  p_{lmnj} \le \sum_{i \in I} p_{lmnji} \le |I| \cdot p_{lmnj}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall j \in L^{4}_{lmn}
   $$
 
 - **HRP (residual position)** locating the residual on the last bin and get the width of the used area.
@@ -174,26 +183,34 @@ all of the following constraints must be satisfied.
   $$
   W \cdot (1 - e) \le \sum_{l \in L^{1}} \omega^{1}_{l} \le W - W^{-}_{3} \cdot e
   $$
+
 - **HTH2 (L2 total height)** the sum of all L2 virtual bin's height should be equal to the height of the plate.
   $$
   \sum_{m \in L^{2}_{l}} \eta^{2}_{lm} = H, \quad \forall l \in L^{1}
   $$
+
 - **HTW3 (L3 total width)** the sum of all L3 virtual bin's width should not exceed the width of its covering L1 virtual bin.
   $$
   \sum_{n \in L^{3}_{l}} \omega^{3}_{lmn} = \omega^{1}_{l}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
   $$
 
-- **HHF (horizontal fitting)** the width of the item $i$ should be equal to the width of a L3 virtual bin $(l, m, n)$ if $i$ is placed in.
+- **HTH4 (L4 total height)** the sum of all L4 virtual bin's height should be equal to the height of its covering L2 virtual bin.
+  $$
+  \sum_{j \in L^{4}_{lmn}} \eta^{4}_{lmnj} = \eta^{2}_{lm}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{2}_{lm}
+  $$
+
+- **HHF (horizontal fitting)** the width of the item $i$ should be equal to the width of a L4 virtual bin $(l, m, n, j)$ if $i$ is placed in.
   $W​$ on the left side can be reduced to $\Omega_{i}​$ to tighten the bound, but it may not accelerate the optimization.
   $W$ on the right side can be any value that is no less than $\omega^{3}_{lmn}$.
   $$
-  \textrm{w}(i) - W \cdot (1 - p_{lmni}) \le \omega^{3}_{lmn} \le \textrm{w}(i) + W \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  \textrm{w}(i) - W \cdot (1 - p_{lmnji}) \le \omega^{3}_{lmn} \le \textrm{w}(i) + W \cdot (1 - p_{lmnji}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall j \in L^{4}_{lmn}
   $$
-- **HVF (vertical fitting)** the height of the item $i$ should be equal to the height of a L3 virtual bin $(l, m, n)$ if $i$ is placed in.
+
+- **HVF (vertical fitting)** the height of the item $i$ should be equal to the height of a L4 virtual bin $(l, m, n, j)$ if $i$ is placed in.
   $H$ on the left side can be reduced to $\Omega_{i}$ to tighten the bound, but it may not accelerate the optimization.
   $H$ on the right side can be any value that is no less than $\eta^{2}_{lm}$.
   $$
-  \textrm{h}(i) - H \cdot (1 - p_{lmni}) \le \eta^{2}_{lm} - \eta^{4+}_{lmn} - \eta^{4-}_{lmn} \le \textrm{h}(i) + H \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  \textrm{h}(i) - H \cdot (1 - p_{lmni}) \le \eta^{4}_{lmnj} \le \textrm{h}(i) + H \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}
   $$
 
 - **HWB1 (L1 width bound)** L1 virtual bin $l$'s width should not exceed the width limits if there are items placed in.
@@ -201,161 +218,88 @@ all of the following constraints must be satisfied.
   $$
   W^{-}_{1} \cdot p_{l} \le \omega^{1}_{l} \le W^{+}_{1}, \quad \forall l \in L^{1}
   $$
-- **HMH2 (L2 min height)** L2 virtual bin $(l, m)$'s height should not be less than the min height.
-  $H$ on the left side can be reduced to $H^{-}_{4}$ to tighten the bound.
+
+- **HMH2 (L2 min height)** L2 virtual bin $(l, m)$'s height should not be less than the min height if there are items placed in.
   $$
   H^{-}_{2} \cdot p_{lm} \le \eta^{2}_{lm}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
   $$
-  $$
-  H^{-}_{4} \cdot \tau^{2}_{lm} - H \cdot p_{lm} \le \eta^{2}_{lm} \le H \cdot \tau^{2}_{lm} + H \cdot p_{lm}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}
-  $$
+
 - **HMW3 (L3 min width)** L3 virtual bin $(l, m, n)$'s width should not be less than the min width if it is empty.
-  the left side can be replaced by a series of constraints applied on each item in L3 virtual bin.
-  if all items' width and height are no less than $W^{-}_{3}, H^{-}_{4}$, then $W \cdot p_{lmn}$ can be omitted.
+  if all items' width are no less than $W^{-}_{3}$, then $W \cdot p_{lmnj}$ can be omitted.
+  $W$ on the left side can be reduced to $W^{-}_{3}$ to tighten the bound.
   $$
   W^{-}_{3} \cdot \tau^{3}_{lmn} - W \cdot p_{lmn} \le \omega^{3}_{lmn} \le W \cdot \tau^{3}_{lmn} + W \cdot p_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
   $$
-- **HMH4 (L4 min height)** the height of wastes in L3 virtual bin $(l, m, n)$ should not be less than the min height.
+
+- **HMH4 (L4 min height)** L4 virtual bin $(l, m, n, j)$'s height should not be less than the min height if it is empty.
+  if all items' height are no less than $H^{-}_{4}$, then $H \cdot p_{lmnj}$ can be omitted.
+  $H$ on the left side can be reduced to $H^{-}_{4}$ to tighten the bound.
   $$
-  H^{-}_{4} \cdot \tau^{4+}_{lmn} \le \eta^{4+}_{lmn} \le H \cdot \tau^{4+}_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
-  $$
-  $$
-  H^{-}_{4} \cdot \tau^{4-}_{lmn} \le \eta^{4-}_{lmn} \le H \cdot \tau^{4-}_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  H^{-}_{4} \cdot \tau^{4}_{lmnj} - H \cdot p_{lmnj} \le \eta^{4}_{lmnj} \le H \cdot \tau^{4}_{lmnj} + H \cdot p_{lmnj}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall j \in L^{4}_{lmn}
   $$
 
-- **HMW (max waste)** there should be no more than 1 waste in L3 virtual bin $(l, m, n)$.
-  $$
-  \tau^{4+}_{lmn} + \tau^{4-}_{lmn} \le 1, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
-  $$
-
-- **HSP (single placement)** each item should be placed in exactly 1 L3 virtual bin.
+- **HSP (single placement)** each item should be placed in exactly 1 L4 virtual bin.
   the $=$ should be $\le$ if **OPI (placed items)** is enabled.
   $$
-  \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} = 1, \quad \forall i \in I
-  $$
-- **HEP (exclusive placement)** there should be no more than 1 item placed in single L3 virtual bin $(l, m, n)$.
-  it will be a trivial constraint if **HDF (defect free)** is enabled.
-  $$
-  \sum_{i \in I} p_{lmni} \le 1, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} \sum_{n \in L^{4}_{lmn}} p_{lmnji} = 1, \quad \forall i \in I
   $$
 
-- **HDF (defect free)** there should be no item placed in L3 virtual bin $(l, m, n)$ if it contains defects.
+- **HEP (exclusive placement)** there should be no more than 1 item placed in single L4 virtual bin $(l, m, n, j)$.
+  it will be a trivial constraint if **HDF (defect free)** is enabled.
+  $$
+  \sum_{i \in I} p_{lmnji} \le 1, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}
+  $$
+
+- **HDF (defect free)** there should be no item placed in L4 virtual bin $(l, m, n, j)$ if it contains defects.
   enabling it will make **HEP (exclusive placement)** a trivial constraint.
   $$
-  \sum_{i \in I} p_{lmni} \le 1 - c_{lmnf}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+  \sum_{i \in I} p_{lmnji} \le 1 - c_{lmnjf}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
   $$
+
 - **HDB (defect bypassing)** cutting through defects is forbidden, i.e., each defect should be covered by single L4 virtual bin or the residual entirely.
-  the $=$ can be replaced by $\le$ if **HDC.L (defect containing)** & **HDD.L (defect direction)** is enabled instead of **HDD.L (defect covering)**.
   the $=$ can be replaced by $\ge$ if **HDF (defect free)** and **HDD.L (defect covering)** is enabled.
   $$
-  c^{1}_{f} + \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} (c_{lmnf} + c^{-}_{lmnf} + c^{+}_{lmnf}) = 1, \quad \forall f \in F
+  c^{1}_{f} + \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} \sum_{n \in L^{4}_{lmn}} c_{lmnjf} = 1, \quad \forall f \in F
   $$
-- **HDC.L (defect containing)** L3 virtual bin $(l, m, n)$ contains flaw $f$ if it is not on any side of flaw $f$, i.e., they are overlapped.
-  if **HDD.L (defect direction)** is also enabled, they will make **HDD.L (defect covering)** a trivial constraint.
-  $$
-  c_{lmnf} \ge \bigwedge^{4}_{k = 1} c^{k}_{lmnf}
-  \ \Leftrightarrow\ 
-  3 + c_{lmnf} \ge \sum^{4}_{k = 1} c^{k}_{lmnf}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-  $$
-  the following 2 constraints can be omitted if **HDB (defect bypassing)** is disabled.
-  replace $c^{k-}_{lmnf}$ and $c^{k+}_{lmnf}$ with $c^{k}_{lmnf}$ while $k = 1, 2$.
-  $$
-  c^{-}_{lmnf} \ge \bigwedge^{4}_{k = 1} c^{k-}_{lmnf}
-  \ \Leftrightarrow\ 
-  3 + c^{-}_{lmnf} \ge \sum^{4}_{k = 1} c^{k-}_{lmnf}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-  $$
-  $$
-  c^{+}_{lmnf} \ge \bigwedge^{4}_{k = 1} c^{k+}_{lmnf}
-  \ \Leftrightarrow\ 
-  3 + c^{+}_{lmnf} \ge \sum^{4}_{k = 1} c^{k+}_{lmnf}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-  $$
-- **HDD.L (defect direction)** $c^{k}_{lmnf}$ should be true if L4 virtual bin $(l, m, n)$ is not on some sides of flaw $f$.
-  if **HDC.L (defect containing)** is also enabled, they will make **HDD.L (defect covering)** a trivial constraint.
+
+- **HDD.L (defect covering)** $c_{lmnjf}$ should be false if L4 virtual bin $(l, m, n, j)$ does not cover flaw $f$ (this constraint can not guarantee its converse-negative proposition).
   - for the L4 virtual bin.
     $$
-    \textrm{x}(l, m, n) + W \cdot c^{1}_{lmnf} \ge X_{f} + \Omega_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+    \textrm{x}(l, m, n) - W \cdot (1 - c_{lmnjf}) \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
     $$
     $$
-    \textrm{x}(l, m, n) + \omega^{3}_{lmn} - W \cdot c^{2}_{lmnf} \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+    \textrm{x}(l, m, n) + \omega^{3}_{lmn} + W \cdot (1 - c_{lmnjf}) \ge X_{f} + \Omega_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
     $$
     $$
-    \textrm{y}(l, m, n) + \eta^{4-}_{lmn} + H \cdot c^{3}_{lmnf} \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+    \textrm{y}(l, m, n, j) - H \cdot (1 - c_{lmnjf}) \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
     $$
     $$
-    \textrm{y}(l, m, n) + \eta^{2}_{lm} - \eta^{4+}_{lmn} - H \cdot c^{4}_{lmnf} \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
+    \textrm{y}(l, m, n, j) + \eta^{4}_{lmnj} + H \cdot (1 - c_{lmnjf}) \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
     $$
-  - for the lower waste L4 virtual bin.
-    they can be omitted if **HDB (defect bypassing)** is disabled.
-    $$
-    \textrm{y}(l, m, n) + H \cdot c^{3-}_{lmnf} \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{y}(l, m, n) + \eta^{4-}_{lmn} - H \cdot c^{4-}_{lmnf} \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-  - for the upper waste L4 virtual bin.
-    they can be omitted if **HDB (defect bypassing)** is disabled.
-    $$
-    \textrm{y}(l, m, n) + \eta^{2}_{lm} - \eta^{4+}_{lmn} + H \cdot c^{3+}_{lmnf} \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{y}(l, m, n) + \eta^{2}_{lm} - H \cdot c^{4+}_{lmnf} \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-  - for the residual of the plate.
-    they can be omitted if **HDB (defect bypassing)** is disabled.
-    $$
-    \sum_{l \in L^{1}} \omega^{1}_{l} + W \cdot c^{1}_{f} \ge X_{f} + \Omega_{f}, \quad \forall f \in F
-    $$
-- **HDD.L (defect covering)** $c_{lmnf}$ should be false if L4 virtual bin $(l, m, n)$ does not cover flaw $f$.
-  it will make **HDC.L (defect containing)** & **HDD.L (defect direction)** trivial constraints.
-  - for the L4 virtual bin.
-    $$
-    \textrm{x}(l, m, n) - W \cdot (1 - c_{lmnf}) \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{x}(l, m, n) + \omega^{3}_{lmn} + W \cdot (1 - c_{lmnf}) \ge X_{f} + \Omega_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{y}(l, m, n) + \eta^{4-}_{lmn} - H \cdot (1 - c_{lmnf}) \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{y}(l, m, n) + \eta^{2}_{lm} - \eta^{4+}_{lmn} + H \cdot (1 - c_{lmnf}) \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-  - for the lower waste L4 virtual bin.
-    $$
-    \textrm{y}(l, m, n) - H \cdot (1 - c_{lmnf}) \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{y}(l, m, n) + \eta^{4-}_{lmn} + H \cdot (1 - c_{lmnf}) \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-  - for the upper waste L4 virtual bin.
-    $$
-    \textrm{y}(l, m, n) + \eta^{2}_{lm} - \eta^{4+}_{lmn} - H \cdot (1 - c_{lmnf}) \le Y_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
-    $$
-    \textrm{y}(l, m, n) + \eta^{2}_{lm} + H \cdot (1 - c_{lmnf}) \ge Y_{f} + \Eta_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall f \in F
-    $$
+
   - for the residual.
     $$
     \sum_{l \in L^{1}} \omega^{1}_{l} - W \cdot (1 - c^{1}_{f}) \le X_{f}, \quad \forall f \in F
     $$
 
-- **HIO (item order)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its next item in stack should only be in L3 virtual bin $(l', m', n')$ where $\textrm{seq}(l, m, n) < \textrm{seq}(l', m', n')$.
+- **HIO (item order)** if item $i$ is placed in L4 virtual bin $(l, m, n, j)$ then its next item in stack should only be in L4 virtual bin $(l', m', n', j')$ where $\textrm{seq}(l, m, n, j) < \textrm{seq}(l', m', n', j')$.
   it will make **HIL (item label)** & **HLO (label order)** trivial constraints.
-  the right side can be $\sum p_{l'm'n'i'}$ where $(l', m', n') \in \{ (l', m', n') | \textrm{seq}(l', m', n') < \textrm{seq}(l, m, n) \}$ to reduce the number of constraints.
+  the right side can be $\sum p_{l'm'n'j'i'}$ where $(l', m', n', j') \in \{ (l', m', n', j') | \textrm{seq}(l', m', n', j') < \textrm{seq}(l, m, n, j) \}$ to reduce the number of constraints.
   $$
   \begin{equation}
   \begin{split}
-  1 - p_{lmni} \ge p_{l'm'n'i'}, \quad &\forall l, l' \in L^{1}, \forall m, m' \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, \forall i, i' \in I, i' = \textrm{next}(i),\\
-  &(l' \le l - 1) \vee ((l' = l) \wedge ((m' \le m - 1) \vee ((m = m') \wedge (n' \le n - 1))))
+  1 - p_{lmnji} \ge p_{l'm'n'j'i'}, \quad &\forall l, l' \in L^{1}, \forall m, m' \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, \forall i, i' \in I, i' = \textrm{next}(i),\\
+  &(l' \le l - 1) \vee ((l' = l) \wedge ((m' \le m - 1) \vee ((m = m') \wedge ((n' \le n - 1) \vee ((n = n') \wedge (j \le j'))))))
   \end{split}
   \end{equation}
   $$
 
-- **HIL (item label)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its ordinal number is $\textrm{seq}(l, m, n)$.
+- **HIL (item label)** if item $i$ is placed in L4 virtual bin $(l, m, n, j)$ then its ordinal number is $\textrm{seq}(l, m, n, j)$.
   if **HLO (label order)** is also enabled, they will make **HIO (item order)** a trivial constraint.
   $$
-  \textrm{seq}(l, m, n) - L \cdot (1 - p_{lmni}) \le o_{i} \le \textrm{seq}(l, m, n) + L \cdot (1 - p_{lmni}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}
+  \textrm{seq}(l, m, n, j) - L \cdot (1 - p_{lmnji}) \le o_{i} \le \textrm{seq}(l, m, n, j) + L \cdot (1 - p_{lmnji}), \quad \forall i \in I, \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall j \in L^{4}_{lmn}
   $$
+
 - **HLO (label order)** the value of items' labels in the same stack should be in increasing order.
   if **HIL (item label)** is also enabled, they will make **HIO (item order)** a trivial constraint.
   $$
@@ -365,7 +309,7 @@ all of the following constraints must be satisfied.
 - **HPO.O (placement order)** an item can not be placed if its preceding item is not placed.
   it can be omitted if **OPI (placed items)** is disabled.
   $$
-  \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni} \ge \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} p_{lmni'}, \quad \forall i, i' \in I, i' = \textrm{next}(i)
+  \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} \sum_{n \in L^{4}_{lmn}} p_{lmnji} \ge \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} \sum_{n \in L^{4}_{lmn}} p_{lmnji'}, \quad \forall i, i' \in I, i' = \textrm{next}(i)
   $$
 
 - **HGO.O (glass order)** the bins should used one by one without skipping some bins.
@@ -382,6 +326,7 @@ all of the following constraints must be satisfied.
   $$
   W \cdot \omega^{1}_{l} \ge \omega^{1}_{l'}, \quad \forall l, l' \in L^{1}, l' = l + 1
   $$
+
 - **HVO2.O (L2 vertical order)** put all trivial bins to the upmost.
   $$
   \tau^{2}_{lm} \ge \tau^{2}_{lm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
@@ -391,6 +336,7 @@ all of the following constraints must be satisfied.
   $$
   H \cdot \eta^{2}_{lm} \ge \eta^{2}_{lm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
   $$
+
 - **HHO3.O (L3 horizontal order)** put all trivial bins to the rightmost.
   $$
   \tau^{3}_{lmn} \ge \tau^{3}_{lmn'}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, n' = n + 1
@@ -402,16 +348,18 @@ all of the following constraints must be satisfied.
   $$
 
 - **HBM1.O (L1 bin merging)** there should not be contiguous non-trivial empty L1 virtual bins.
-  ==it may cut the optima if some defects make an area wider than $W^{+}_{1}$ that can not place any item.==
+  ==it may cut off the optima if some defects make an area wider than $W^{+}_{1}$ that can not place any item.==
   it may cut more symmetric solutions if **HVO1.O (L1 horizontal order)** is enabled.
   $$
   p_{l} + p_{l'} \ge \tau^{3}_{l'mn}, \quad \forall l, l' \in L^{1}, l' = l + 1, m = 0, n = 0
   $$
+
 - **HBM2.O (L2 bin merging)** there should not be contiguous non-trivial empty L2 virtual bins.
   it may cut more symmetric solutions if **HVO2.O (L2 vertical order)** is enabled.
   $$
   p_{lm} + p_{lm'} \ge \tau^{2}_{lm'}, \quad \forall l \in L^{1}, \forall m, m' \in L^{2}_{l}, m' = m + 1
   $$
+
 - **HBM3.O (L3 bin merging)** there should not be contiguous non-trivial empty L3 virtual bins.
   it may cut more symmetric solutions if **HHO3.O (L3 horizontal order)** is enabled.
   $$
@@ -428,6 +376,7 @@ all of the following constraints must be satisfied.
   $$
   H \cdot (W \cdot \sum_{g \in G} p_{g} - (W - \gamma)) \ge \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
   $$
+
 
 
 ## Notes
@@ -452,7 +401,7 @@ this leads to more bins to be consider in the width/height bounding constraints 
 this leads to less bins to consider in sequencing constraints.
 ==this may cuts off the optima if there are some items with $(\Omega_{i} = \Omega_{i'}) \vee (\Omega_{i} = \Eta_{i'}) \vee (\Eta_{i} = \Omega_{i'}) \vee (\Eta_{i} = \Eta_{i'})$.==
 
-- **(not) on some side** vs. **cover** vs. **overlap**.
+- **(not) on some side** vs. **cover** vs. **overlap/contain**.
 ```
         +-----------+
         |        +--|--+
