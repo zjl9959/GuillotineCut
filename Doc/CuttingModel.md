@@ -63,7 +63,7 @@
 | $\tau^{4-}_{lmn}$ | lower waste in L3 virtual bin $(l, m, n)$ is non-trivial | bool | $\{0, 1\} $ | bool variable to implement semi variable |
 | $\gamma$ | width of the used area in the last used bin | real | $[0, +\infty)$ | |
 | $e$ | there is residual in plate | bool | $\{0, 1\}$ | bool variable to implement semi variable |
-| $c_{lmnf}$ | L3 virtual bin $(l, m, n)$ contains flaw $f$ | bool | $\{0, 1\}$ | |
+| $c_{lmnf}$ | L3 virtual bin $(l, m, n)$ contains or overlaps with flaw $f$ | bool | $\{0, 1\}$ | |
 | $c^{k}_{lmnf}$ | L3 virtual bin $(l, m, n)$ is not on the $k^\textrm{th}$ side of flaw $f$ | bool | $\{0, 1\}$ | $k \in \{1\textrm{:right}, 2\textrm{:left}, 3\textrm{:up}, 4\textrm{:down}\}$ |
 | $c^{1}_{f}$ | the residual in plate is not on the right side of flaw $f$ | bool | $\{0, 1\}$ |  |
 | $o_{i}$ | the sequence number of item $i$ to be produced | real | $[0, +\infty)$ |  |
@@ -76,7 +76,7 @@
   - virtual bin size $\omega^{1}_{gl}, \eta^{2}_{glm}, \omega^{3}_{glmn}$
   - trivial or empty bin $\tau^{2}_{glm}, \tau^{3}_{glmn}, e_{g}$
   - item inclusion $p_{g}, p_{gl}, p_{glm}, p_{glmn}, p_{glmni}$
-  - flaw inclusion $c_{glmnf}, c^{k}_{glmnf}$
+  - flaw inclusion $c_{glmnf}, c^{k}_{glmnf}, c^{1}_{gf}$
 - an empty bin means a bin without item placed in, which could be waste or residual.
 - a trivial bin means a bin with 0 width or height, which is nothing, and it will always be empty.
 - assume $\Omega_{i} \ge \Eta_{i}$ is true on all items (this can be done easily by **preprocessing**), but may be false on flaws.
@@ -246,8 +246,9 @@ all of the following constraints must be satisfied.
   $$
 - **HDB (defect bypassing)** cutting through defects is forbidden, i.e., each defect should be covered by single L4 virtual bin or the residual entirely.
   the $=$ can be replaced by $\le$ if **HDC.L (defect containing)** & **HDD.L (defect direction)** is enabled instead of **HDD.L (defect covering)**.
+  the $=$ can be replaced by $\ge$ if **HDF (defect free)** and **HDD.L (defect covering)** is enabled.
   $$
-  \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} (c_{lmnf} + c^{-}_{lmnf} + c^{+}_{lmnf}) + c^{1}_{f} = 1, \quad \forall f \in F
+  c^{1}_{f} + \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} (c_{lmnf} + c^{-}_{lmnf} + c^{+}_{lmnf}) = 1, \quad \forall f \in F
   $$
 - **HDC.L (defect containing)** L3 virtual bin $(l, m, n)$ contains flaw $f$ if it is not on any side of flaw $f$, i.e., they are overlapped.
   if **HDD.L (defect direction)** is also enabled, they will make **HDD.L (defect covering)** a trivial constraint.
@@ -335,17 +336,19 @@ all of the following constraints must be satisfied.
     $$
   - for the residual.
     $$
-    \sum_{l \in L^{1}} \omega^{1}_{l} + W \cdot (1 - c^{1}_{f}) \ge X_{f} + \Omega_{f}, \quad \forall f \in F
+    \sum_{l \in L^{1}} \omega^{1}_{l} - W \cdot (1 - c^{1}_{f}) \le X_{f}, \quad \forall f \in F
     $$
 
 - **HIO (item order)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its next item in stack should only be in L3 virtual bin $(l', m', n')$ where $\textrm{seq}(l, m, n) < \textrm{seq}(l', m', n')$.
   it will make **HIL (item label)** & **HLO (label order)** trivial constraints.
-  the right side can be $\sum p_{l'm'n'i'}$ where $(l', m', n') \in \{ (l', m', n') | \textrm{seq}(l, m, n) < \textrm{seq}(l', m', n') \}$ to reduce the number of constraints.
+  the right side can be $\sum p_{l'm'n'i'}$ where $(l', m', n') \in \{ (l', m', n') | \textrm{seq}(l', m', n') < \textrm{seq}(l, m, n) \}$ to reduce the number of constraints.
   $$
+  \begin{equation}
   \begin{split}
   1 - p_{lmni} \ge p_{l'm'n'i'}, \quad &\forall l, l' \in L^{1}, \forall m, m' \in L^{2}_{l}, \forall n, n' \in L^{3}_{lm}, \forall i, i' \in I, i' = \textrm{next}(i),\\
   &(l' \le l - 1) \vee ((l' = l) \wedge ((m' \le m - 1) \vee ((m = m') \wedge (n' \le n - 1))))
   \end{split}
+  \end{equation}
   $$
 
 - **HIL (item label)** if item $i$ is placed in L3 virtual bin $(l, m, n)$ then its ordinal number is $\textrm{seq}(l, m, n)$.
@@ -447,7 +450,7 @@ this leads to less bins to consider in width/height bounding constraints and def
 (2) make single L4 virtual bin which can place item and two L4 virtual bins above/below it which can be waste only, and at least one of the waste bins should be trivial.
 this leads to more bins to be consider in the width/height bounding constraints and defect bypassing constraints.
 this leads to less bins to consider in sequencing constraints.
-==this may cuts off the optima if there are some items with $(\Omega_{i} = \Omega_{j}) \vee (\Omega_{i} = \Eta_{j}) \vee (\Eta_{i} = \Omega_{j}) \vee (\Eta_{i} = \Eta_{j})$.==
+==this may cuts off the optima if there are some items with $(\Omega_{i} = \Omega_{i'}) \vee (\Omega_{i} = \Eta_{i'}) \vee (\Eta_{i} = \Omega_{i'}) \vee (\Eta_{i} = \Eta_{i'})$.==
 
 - **(not) on some side** vs. **cover** vs. **overlap**.
 ```
