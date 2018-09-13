@@ -674,11 +674,12 @@ public:
     using Cmd = Shell::Unix;
     #endif // _OS_MS_WINDOWS
 
+    static int exec(const std::string &cmd) { return system(cmd.c_str()); }
+
     static std::string quote(const std::string &s) { return ('\"' + s + '\"'); }
 
     static void makeSureDirExist(const std::string &dir) {
-        std::string cmd(Cmd::Mkdir() + quote(dir) + Cmd::RedirectStderr() + Cmd::NullDev());
-        system(cmd.c_str());
+        exec(Cmd::Mkdir() + quote(dir) + Cmd::RedirectStderr() + Cmd::NullDev());
     }
 
     struct MemorySize {
@@ -714,7 +715,7 @@ public:
 
 class Math {
 public:
-    static constexpr double DefaultTolerance = 1E-4;
+    static constexpr double DefaultTolerance = 0.01;
 
     static bool weakEqual(double l, double r, double tolerance = DefaultTolerance) {
         return (std::abs(l - r) < tolerance);

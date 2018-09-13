@@ -68,7 +68,7 @@ int Solver::Cli::run(int argc, char * argv[]) {
     solver.solve();
     solver.output.save(env.solutionPath());
     // OPTIMIZE[szx][9]: confirm arg format for solution file.
-    solver.output.save(env.solutionPathWithSuffix());
+    //solver.output.save(env.solutionPathWithSuffix());
     solver.output.save(env.solutionPathWithTime());
     solver.record();
 
@@ -169,19 +169,21 @@ void Solver::solve() {
 }
 
 void Solver::record() const {
+    #if SZX_DEBUG
     int generation = 0, iteration = 0;
-
-    System::MemoryUsage mu = System::peakMemoryUsage();
 
     ostringstream log;
 
-    Length obj = output.totalWidth * input.param.plateHeight - input.itemTotalArea();
+    System::MemoryUsage mu = System::peakMemoryUsage();
+
+    Length obj = output.totalWidth * input.param.plateHeight - totalItemArea();
+    Length checkerObj = -1;
 
     // record basic information.
     log << env.friendlyLocalTime() << ","
         << env.rid << ","
         << env.instName << ","
-        << checkFeasibility() << "," << (obj - checkObjective()) << ","
+        << check(checkerObj) << "," << (obj - checkerObj) << ","
         << output.totalWidth << ","
         << timer.elapsedSeconds() << ","
         << mu.physicalMemory << "," << mu.virtualMemory << ","
@@ -189,7 +191,7 @@ void Solver::record() const {
         << cfg.toBriefStr() << ","
         << generation << "," << iteration << ","
         << totalItemArea() / (output.totalWidth * input.param.plateHeight / 100.0) << "%," // util ratio.
-        << obj; // wasted area.
+        << checkerObj; // wasted area.
 
     // record solution vector.
     // EXTEND[szx][2]: save solution in log.
@@ -206,16 +208,36 @@ void Solver::record() const {
     }
     logFile << log.str();
     logFile.close();
+    #endif // SZX_DEBUG
 }
 
-bool Solver::checkFeasibility() const {
-    // TODO[szx][4]: check feasibility.
+bool Solver::check(Length &checkerObj) const {
+    #if SZX_DEBUG
+    enum CheckerFlag {
+        IoError = 0x0,
+        FormatError = 0x1,
+        ItemProductionError = 0x2,
+        DefectSuperposingError = 0x4,
+        ItemDimensionError = 0x8,
+        IdentityError = 0x10,
+        SequenceError = 0x20
+    };
+
+    checkerObj = System::exec("Checker.exe " + env.instName + " " + env.solutionPath());
+    if (checkerObj > 0) { return true; }
+    checkerObj = ~checkerObj;
+    if (checkerObj == CheckerFlag::IoError) { Log(LogSwitch::Checker) << "IoError." << endl; }
+    if (checkerObj & CheckerFlag::FormatError) { Log(LogSwitch::Checker) << "FormatError." << endl; }
+    if (checkerObj & CheckerFlag::ItemProductionError) { Log(LogSwitch::Checker) << "ItemProductionError." << endl; }
+    if (checkerObj & CheckerFlag::DefectSuperposingError) { Log(LogSwitch::Checker) << "DefectSuperposingError." << endl; }
+    if (checkerObj & CheckerFlag::ItemDimensionError) { Log(LogSwitch::Checker) << "ItemDimensionError." << endl; }
+    if (checkerObj & CheckerFlag::IdentityError) { Log(LogSwitch::Checker) << "IdentityError." << endl; }
+    if (checkerObj & CheckerFlag::SequenceError) { Log(LogSwitch::Checker) << "SequenceError." << endl; }
     return false;
-}
-
-Length Solver::checkObjective() const {
-    // TODO[szx][4]: check objective.
-    return 0;
+    #else
+    checkerObj = 0;
+    return true;
+    #endif // SZX_DEBUG
 }
 
 Length Solver::totalItemArea() const {

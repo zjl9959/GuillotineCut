@@ -68,12 +68,6 @@ public:
             return (loadBatch(batchFilePath) && loadDefects(defectsFilePath));
         }
 
-        Length itemTotalArea() const {
-            Length area = 0;
-            for (auto i = batch.begin(); i != batch.end(); ++i) { area += (i->width * i->height); }
-            return area;
-        }
-
         List<Item> batch;
         List<Defect> defects;
         Param param;

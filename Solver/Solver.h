@@ -305,11 +305,8 @@ public:
     #pragma region Method
 public:
     void solve(); // solve by multiple workers together.
-    bool check() const { return (checkFeasibility() && checkObjective()); }
+    bool check(Length &obj) const;
     void record() const; // save running log.
-
-    bool checkFeasibility() const;
-    Length checkObjective() const;
 
     Length totalItemArea() const;
 

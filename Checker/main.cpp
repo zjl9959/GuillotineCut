@@ -155,21 +155,23 @@ int main(int argc, char* argv[]) {
     //Check the number of parameters
     if (argc > 3) {
         cout << "\tERROR: too many parameters" << endl;
-        return EXIT_FAILURE;
+        return -1;
     } else if (argc == 3) {
         //Read the parameter as used batch to check
-        file_idx = argv[1];
-        if ((int) stoi(argv[2]) == 0)
-            verbose = false;
+        char *p = strchr(argv[1], '/');
+        file_idx = (p == NULL) ? argv[1] : (p + 1);
+        solutionPath = argv[2];
+        verbose = false;
+        active_log = 0;
     } else if (argc == 2) {
         //Read the parameter as used batch to check
         file_idx = argv[1];
+        solutionPath = PATH_TO_SOLUTIONS + file_idx + "_solution.csv";
     } else {
         cout << "\tPlease enter your USED BATCH file Index: ";
         cin >> file_idx;
     }
     batchPath = PATH_TO_INSTANCES + file_idx + "_batch.csv";
-    solutionPath = PATH_TO_SOLUTIONS + file_idx + "_solution.csv";
     defectsPath = PATH_TO_INSTANCES + file_idx + "_defects.csv";
     optParamsPath = PATH_TO_INSTANCES "global_param.csv";
 
@@ -204,12 +206,12 @@ int main(int argc, char* argv[]) {
             cout << "\t\t----------- Error in files parsing ----------" << endl;
             log_file << "\t\t----------- Error in files parsing ----------" << endl;
         }
-        return EXIT_FAILURE;
+        return -1;
     }
 
     //If a needed file do not exist.
     if (!opened_file)
-        return EXIT_FAILURE;
+        return -1;
 
     cout << "\t\t----------- End of files parsing ----------" << endl;
     log_file << "\t\t----------- End of files parsing ----------" << endl;
@@ -239,14 +241,14 @@ int main(int argc, char* argv[]) {
         cout << file_idx << " => ";
         if (constraint_error > 0) {
             cout << "INVALID SOLUTION" << endl;
-            return EXIT_FAILURE;
+            return ~constraint_error;
         } else {
             cout << "VALID SOLUTION"
                     << "\t (waste,OF) : "
                     << " | " << total_useful_percentage
                     << " | " << of
                     << endl;
-            return EXIT_SUCCESS;
+            return of;
         }
     }
 
