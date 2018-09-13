@@ -175,21 +175,24 @@ void Solver::record() const {
 
     ostringstream log;
 
+    Length obj = output.totalWidth * input.param.plateHeight - input.itemTotalArea();
+
     // record basic information.
     log << env.friendlyLocalTime() << ","
         << env.rid << ","
         << env.instName << ","
-        << checkFeasibility() << "," << (output.totalWidth - checkObjective()) << ","
+        << checkFeasibility() << "," << (obj - checkObjective()) << ","
         << output.totalWidth << ","
         << timer.elapsedSeconds() << ","
         << mu.physicalMemory << "," << mu.virtualMemory << ","
         << env.randSeed << ","
         << cfg.toBriefStr() << ","
-        << generation << "," << iteration << ",";
+        << generation << "," << iteration << ","
+        << totalItemArea() / (output.totalWidth * input.param.plateHeight / 100.0) << "%," // util ratio.
+        << obj; // wasted area.
 
     // record solution vector.
     // EXTEND[szx][2]: save solution in log.
-    log << "" << totalItemArea() / (output.totalWidth * input.param.plateHeight / 100.0) << "%";
     log << endl;
 
     // append all text atomically.
@@ -199,7 +202,7 @@ void Solver::record() const {
     ofstream logFile(env.logPath, ios::app);
     logFile.seekp(0, ios::end);
     if (logFile.tellp() <= 0) {
-        logFile << "Time,ID,Instance,Feasible,ObjMatch,ObjValue,Duration,PhysMem,VirtMem,RandSeed,Config,Generation,Iteration,Solution" << endl;
+        logFile << "Time,ID,Instance,Feasible,ObjMatch,Width,Duration,PhysMem,VirtMem,RandSeed,Config,Generation,Iteration,Util,Waste,Solution" << endl;
     }
     logFile << log.str();
     logFile.close();
@@ -1288,6 +1291,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             mp.addConstraint(input.param.plateHeight * coveredWidth >= coveredArea);
         }
 
+        // TODO[szx][0]: minimize (width used to place in this iteration) + (estimated width to be used in later iteration) and remove the following constraint?
         // in case the optimal ratio is below optRatio (then the optima of this transformed obj will be 0 and nothing will be placed).
         mp.addConstraint(placedItem >= 1);
 
