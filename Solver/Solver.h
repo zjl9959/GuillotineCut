@@ -92,7 +92,7 @@ public:
                     + ";ue=" + std::to_string(addEmptyBinMergingCut)
                     + ";ug=" + std::to_string(addGlassOrderCut)
                     + ";up=" + std::to_string(addPlacementOrderCut)
-                    + ";uc=" + std::to_string(addCoveredAreaOnEachPlateCut)
+                    + ";ua=" + std::to_string(addAreaBoundCut)
                     + ";uw=" + std::to_string(addL1BinWidthSumCut);
             }
 
@@ -112,7 +112,7 @@ public:
             bool addEmptyBinMergingCut = false;
             bool addGlassOrderCut = true;
             bool addPlacementOrderCut = false;
-            bool addCoveredAreaOnEachPlateCut = true;
+            bool addAreaBoundCut = true;
             bool addL1BinWidthSumCut = true;
         };
 
@@ -127,7 +127,7 @@ public:
                     + ";ow=" + std::to_string(minWasteArea)
                     + ";ub=" + std::to_string(addBinSizeOrderCut)
                     + ";ue=" + std::to_string(addEmptyBinMergingCut)
-                    + ";uc=" + std::to_string(addCoveredAreaOnEachPlateCut)
+                    + ";ua=" + std::to_string(addAreaBoundCut)
                     + ";uw=" + std::to_string(addL1BinWidthSumCut);
             }
 
@@ -135,8 +135,8 @@ public:
             // strategy.
             double minSecTimeoutPerIteration = 45;
             double approxPlacedItemNumPerIteration = 4;
-            ID maxItemToConsiderPerIteration = 100;
-            double initCoverageRatio = 0.875;
+            ID maxItemToConsiderPerIteration = 120;
+            double initCoverageRatio = 0.9;
             bool setMipFocus = true;
 
             // constraint.
@@ -148,7 +148,7 @@ public:
             // user cut.
             bool addBinSizeOrderCut = true;
             bool addEmptyBinMergingCut = false;
-            bool addCoveredAreaOnEachPlateCut = true;
+            bool addAreaBoundCut = true;
             bool addL1BinWidthSumCut = true;
         };
 
@@ -176,7 +176,7 @@ public:
 
 
         Algorithm alg = Configuration::Algorithm::IteratedMp; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
-        ID itemNumThresholdForCompleteModel = 20;
+        ID itemNumThresholdForCompleteModel = 0; // TODO[szx][2]: enable complete model?
         CompleteModel cm;
         IteratedModel im;
     };
