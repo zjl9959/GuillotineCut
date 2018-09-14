@@ -34,13 +34,13 @@ public:
         static constexpr char Delimiter = '_';
 
 
-        std::string str(const char *obj) { return std::string(obj); }
+        static std::string str(const char *obj) { return std::string(obj); }
 
         template<typename T>
-        std::string str(const T &obj) { return std::to_string(obj); }
+        static std::string str(const T &obj) { return std::to_string(obj); }
 
         template<typename T, typename ... Ts>
-        std::string str(const T &obj, Ts ... objs) { return str(obj) + Delimiter + str(objs ...); }
+        static std::string str(const T &obj, Ts ... objs) { return str(obj) + Delimiter + str(objs ...); }
     };
 
 
