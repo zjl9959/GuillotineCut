@@ -1199,6 +1199,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                             for (ID k = 0; k < maxBinNum[L4]; ++k) {
                                 ID f = 0;
                                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
+                                    if ((aux.defects[*gf].x + aux.defects[*gf].w) <= xOffset) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
                                     // defect free.
                                     mp.addConstraint(p4[g][l][m][n][k] <= 1 - c[g][l][m][n][k][f]);
                                     // defect covering.
@@ -1218,6 +1219,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
                 ID f = 0;
                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
+                    if ((aux.defects[*gf].x + aux.defects[*gf].w) <= xOffset) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
                     Expr defectCovered;
                     for (ID g = 0; g < maxBinNum[L0]; ++g) {
                         for (ID l = 0; l < maxBinNum[L1]; ++l) {
