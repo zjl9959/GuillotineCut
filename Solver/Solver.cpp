@@ -1197,21 +1197,22 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             for (ID k = 0; k < maxBinNum[L4]; ++k) {
+                                Expr fx = ((g == 0) ? xOffset : 0);
+                                for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
+                                for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
+                                Expr fy;
+                                for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
                                 ID f = 0;
                                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
-                                    if ((aux.defects[*gf].x + aux.defects[*gf].w) <= xOffset) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
+                                    RectArea &flaw(aux.defects[*gf]);
+                                    if ((g == 0) && ((flaw.x + flaw.w) <= xOffset)) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
                                     // defect free.
                                     mp.addConstraint(p4[g][l][m][n][k] <= 1 - c[g][l][m][n][k][f]);
                                     // defect covering.
-                                    Expr fx = ((g == 0) ? xOffset : 0);
-                                    for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
-                                    for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
-                                    Expr fy;
-                                    for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
-                                    mp.addConstraint(fx - input.param.plateWidth * (1 - c[g][l][m][n][k][f]) <= aux.defects[*gf].x);
-                                    mp.addConstraint(fx + w3[g][l][m][n] + input.param.plateWidth * (1 - c[g][l][m][n][k][f]) >= aux.defects[*gf].x + aux.defects[*gf].w);
-                                    mp.addConstraint(fy - input.param.plateHeight * (1 - c[g][l][m][n][k][f]) <= aux.defects[*gf].y);
-                                    mp.addConstraint(fy + h4[g][l][m][n][k] + input.param.plateHeight * (1 - c[g][l][m][n][k][f]) >= aux.defects[*gf].y + aux.defects[*gf].h);
+                                    mp.addConstraint(fx - input.param.plateWidth * (1 - c[g][l][m][n][k][f]) <= flaw.x);
+                                    mp.addConstraint(fx + w3[g][l][m][n] + input.param.plateWidth * (1 - c[g][l][m][n][k][f]) >= flaw.x + flaw.w);
+                                    mp.addConstraint(fy - input.param.plateHeight * (1 - c[g][l][m][n][k][f]) <= flaw.y);
+                                    mp.addConstraint(fy + h4[g][l][m][n][k] + input.param.plateHeight * (1 - c[g][l][m][n][k][f]) >= flaw.y + flaw.h);
                                 }
                             }
                         }
@@ -1219,15 +1220,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
                 ID f = 0;
                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
-                    if ((aux.defects[*gf].x + aux.defects[*gf].w) <= xOffset) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
+                    RectArea &flaw(aux.defects[*gf]);
+                    if ((g == 0) && ((flaw.x + flaw.w) <= xOffset)) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
                     Expr defectCovered;
-                    for (ID g = 0; g < maxBinNum[L0]; ++g) {
-                        for (ID l = 0; l < maxBinNum[L1]; ++l) {
-                            for (ID m = 0; m < maxBinNum[L2]; ++m) {
-                                for (ID n = 0; n < maxBinNum[L3]; ++n) {
-                                    for (ID k = 0; k < maxBinNum[L4]; ++k) {
-                                        defectCovered += c[g][l][m][n][k][f];
-                                    }
+                    for (ID l = 0; l < maxBinNum[L1]; ++l) {
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                for (ID k = 0; k < maxBinNum[L4]; ++k) {
+                                    defectCovered += c[g][l][m][n][k][f];
                                 }
                             }
                         }
@@ -1236,7 +1236,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     mp.addConstraint(cr[g][f] + defectCovered == 1);
                     // defect covering (residual).
                     Length fixedWidth = ((g == 0) ? xOffset : 0);
-                    mp.addConstraint(fixedWidth + l1BinWidthSum - input.param.plateWidth * (1 - cr[g][f]) <= aux.defects[*gf].x);
+                    mp.addConstraint(fixedWidth + l1BinWidthSum - input.param.plateWidth * (1 - cr[g][f]) <= flaw.x);
                 }
             }
         }
@@ -1496,6 +1496,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 sln.totalWidth = input.param.plateWidth * plateId + xOffset;
                 break;
             }
+            // OPTIMIZE[szx][2]: use new plate when the width of the residual is less than any item.
         } else {
             // TODO[szx][0]: what if there are defects and there must be an empty L1 bin or leave it empty will be better?
             ++usedPlateNum;
