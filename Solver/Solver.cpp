@@ -1394,7 +1394,11 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
             }
 
+            #if SZX_DEBUG
             // visualization.
+            constexpr double DefectHintRadius = 32;
+            const char FontColor[] = "000000";
+            const char FillColor[] = "CCFFCC";
             constexpr double PlateGap = 100;
             double offset = (input.param.plateHeight + PlateGap) * plateId;
             for (ID g = 0; g < PlateStep; ++g, offset += (input.param.plateHeight + PlateGap)) {
@@ -1451,6 +1455,26 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
             }
 
+            Drawer draw;
+            draw.begin(env.visualizPath(), input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
+            for (auto g = plates.begin(); g != plates.end(); ++g) {
+                draw.rect(g->x, g->y, g->w, g->h);
+            }
+            for (auto i = items.begin(); i != items.end(); ++i) {
+                draw.rect(i->x, i->y, i->w, i->h, i->d, to_string(i->i), FontColor, FillColor);
+            }
+            for (auto c = cuts.begin(); c != cuts.end(); ++c) {
+                draw.line(c->x0, c->y0, c->x1, c->y1, c->l);
+            }
+            for (auto f = flaws.begin(); f != flaws.end(); ++f) {
+                if ((f->w < (2 * DefectHintRadius)) || (f->h < (2 * DefectHintRadius))) {
+                    draw.circle(f->x + f->w * 0.5, f->y + f->h * 0.5, DefectHintRadius);
+                }
+                draw.rect(f->x, f->y, f->w, f->h, false, "", FontColor, FontColor);
+            }
+            draw.end();
+            #endif // SZX_DEBUG
+
             // statistics.
             double width = (PlateStep > 1) ? 0 : xOffset;
             for (ID l = 0; l < L1BinStep; ++l) { width += mp.getValue(w1[PlateStep - 1][l]); }
@@ -1468,31 +1492,6 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             if (timer.isTimeOut() || (placedItemNum >= itemNum)) {
                 // record obj.
                 sln.totalWidth = input.param.plateWidth * plateId + xOffset;
-
-                // visualization.
-                constexpr double DefectHintRadius = 32;
-                const char FontColor[] = "000000";
-                const char FillColor[] = "CCFFCC";
-                Drawer draw;
-                draw.begin(env.visualizPath(), input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
-
-                for (auto g = plates.begin(); g != plates.end(); ++g) {
-                    draw.rect(g->x, g->y, g->w, g->h);
-                }
-                for (auto i = items.begin(); i != items.end(); ++i) {
-                    draw.rect(i->x, i->y, i->w, i->h, i->d, to_string(i->i), FontColor, FillColor);
-                }
-                for (auto c = cuts.begin(); c != cuts.end(); ++c) {
-                    draw.line(c->x0, c->y0, c->x1, c->y1, c->l);
-                }
-                for (auto f = flaws.begin(); f != flaws.end(); ++f) {
-                    if ((f->w < (2 * DefectHintRadius)) || (f->h < (2 * DefectHintRadius))) {
-                        draw.circle(f->x + f->w * 0.5, f->y + f->h * 0.5, DefectHintRadius);
-                    }
-                    draw.rect(f->x, f->y, f->w, f->h, false, "", FontColor, FontColor);
-                }
-
-                draw.end();
                 break;
             }
         } else {
