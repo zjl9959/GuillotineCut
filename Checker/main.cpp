@@ -162,7 +162,6 @@ int main(int argc, char* argv[]) {
         file_idx = (p == NULL) ? argv[1] : (p + 1);
         solutionPath = argv[2];
         verbose = false;
-        active_log = 0;
     } else if (argc == 2) {
         //Read the parameter as used batch to check
         file_idx = argv[1];
@@ -241,6 +240,12 @@ int main(int argc, char* argv[]) {
         cout << file_idx << " => ";
         if (constraint_error > 0) {
             cout << "INVALID SOLUTION" << endl;
+            verifyItemProduction();
+            verifyDefects();
+            verifyIdt_Sequence();
+            verifyDimensions();
+            displayPlatesAreaUsage();
+            violatedConstraints();
             return ~constraint_error;
         } else {
             cout << "VALID SOLUTION"

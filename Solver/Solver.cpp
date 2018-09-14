@@ -921,7 +921,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     Length xOffset = 0; // left of current L1 bin in current plate.
     ID placedItemNum = 0;
     List<bool> isItemPlaced(itemNum, false);
-    while (!timer.isTimeOut()) {
+    for (;;) {
         List<bool> skipItem(isItemPlaced); // select items to be considered in model.
         if (placedItemNum + cfg.maxItemToConsiderPerIteration < itemNum) {
             // OPTIMIZE[szx][0]: add some randomness?
@@ -1465,7 +1465,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
 
             // exit criteria.
-            if (placedItemNum >= itemNum) {
+            if (timer.isTimeOut() || (placedItemNum >= itemNum)) {
                 // record obj.
                 sln.totalWidth = input.param.plateWidth * plateId + xOffset;
 
