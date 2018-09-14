@@ -178,12 +178,13 @@ void Solver::record() const {
 
     Length obj = output.totalWidth * input.param.plateHeight - totalItemArea();
     Length checkerObj = -1;
+    bool feasible = check(checkerObj);
 
     // record basic information.
     log << env.friendlyLocalTime() << ","
         << env.rid << ","
         << env.instName << ","
-        << check(checkerObj) << "," << (obj - checkerObj) << ","
+        << feasible << "," << (obj - checkerObj) << ","
         << output.totalWidth << ","
         << timer.elapsedSeconds() << ","
         << mu.physicalMemory << "," << mu.virtualMemory << ","

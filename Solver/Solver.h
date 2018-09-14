@@ -134,7 +134,7 @@ public:
 
             // strategy.
             double minSecTimeoutPerIteration = 45;
-            double approxPlacedItemNumPerIteration = 4;
+            double approxPlacedItemNumPerIteration = 6;
             ID maxItemToConsiderPerIteration = 120;
             double initCoverageRatio = 0.9;
             bool setMipFocus = true;
@@ -146,10 +146,10 @@ public:
             bool minWasteArea = false;
 
             // user cut.
-            bool addBinSizeOrderCut = true;
+            bool addBinSizeOrderCut = false;
             bool addEmptyBinMergingCut = false;
-            bool addAreaBoundCut = true;
-            bool addL1BinWidthSumCut = true;
+            bool addAreaBoundCut = false;
+            bool addL1BinWidthSumCut = false;
         };
 
 
