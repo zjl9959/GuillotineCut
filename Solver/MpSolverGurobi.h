@@ -101,6 +101,8 @@ public:
         DefaultPresolveMode = -1
     };
 
+    static constexpr int MaxInt = GRB_MAXINT;
+    static constexpr double MaxReal = GRB_INFINITY;
     static constexpr double Infinity = GRB_INFINITY;
     static constexpr double Undefined = GRB_UNDEFINED;
 
@@ -317,6 +319,14 @@ public:
     // [Tune] the effort on presolve.
     void setPresolveLevel(PresolveLevel level) { model.set(GRB_IntParam_Presolve, level); }
 
+    void setPoolingMode(PoolingMode poolingMode) { model.set(GRB_IntParam_PoolSearchMode, poolingMode); }
+    void setMaxSolutionPoolSize(int maxSolutionNum) { model.set(GRB_IntParam_PoolSolutions, maxSolutionNum); }
+    void setMaxSolutionRelPoolGap(double maxRelPoolGap) { model.set(GRB_DoubleParam_PoolGap, maxRelPoolGap); }
+
+    void setMaxThread(int threadNum = AutoThreading) { model.set(GRB_IntParam_Threads, threadNum); }
+
+    void setSeed(int seed) { model.set(GRB_IntParam_Seed, (seed & (std::numeric_limits<int>::max)())); }
+
 protected:
     bool optimizeWithGurobiMultiObjective();
     bool optimizeWithManualMultiObjective();
@@ -341,10 +351,6 @@ protected:
 
     // determines which alternative solution will be retrieved when calling var.get(GRB_DoubleAttr_Xn).
     void setAltSolutionIndex(int solutionIndex) { model.set(GRB_IntParam_SolutionNumber, solutionIndex); }
-
-    void setPoolingMode(PoolingMode poolingMode) { model.set(GRB_IntParam_PoolSearchMode, poolingMode); }
-    void setMaxSolutionPoolSize(int maxSolutionNum) { model.set(GRB_IntParam_PoolSolutions, maxSolutionNum); }
-    void setMaxSolutionRelPoolGap(double maxRelPoolGap) { model.set(GRB_DoubleParam_PoolGap, maxRelPoolGap); }
 
     bool isConstant(const LinearExpr &expr) { return (expr.size() == 0); }
     void updateModel() { model.update(); }

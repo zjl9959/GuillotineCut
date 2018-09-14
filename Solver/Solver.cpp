@@ -938,8 +938,9 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
         }
 
-        MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, true);
+        MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, false);
         MpSolver mp(mpcfg);
+        //mp.setMaxThread(2);
 
         Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
 
