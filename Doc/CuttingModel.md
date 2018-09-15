@@ -236,6 +236,11 @@ all of the following constraints must be satisfied.
   H^{-}_{4} \cdot \tau^{4}_{lmnk} - H \cdot p_{lmnk} \le \eta^{4}_{lmnk} \le H \cdot \tau^{4}_{lmnk} + H \cdot p_{lmnk}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall k \in L^{4}_{lmn}
   $$
 
+- **HTI.O (triviality inheritance)** L4 virtual bin $(l, m, n, k)$ should be trivial if its parent L3 virtual bin $(l, m, n)$ is trivial.
+  $$
+  \tau^{4}_{lmnk} \le \tau^{3}_{lmn}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall k \in L^{4}_{lmn}
+  $$
+
 - **HSP (single placement)** each item should be placed in exactly 1 L4 virtual bin.
   the $=$ should be $\le$ if **OPI (placed items)** is enabled.
   $$
@@ -255,12 +260,11 @@ all of the following constraints must be satisfied.
   $$
 
 - **HDB (defect bypassing)** cutting through defects is forbidden, i.e., each defect should be covered by single L4 virtual bin or the residual entirely.
-  the $=$ can be replaced by $\ge$ if **HDF (defect free)** and **HDD.L (defect covering)** is enabled.
   $$
   c^{1}_{f} + \sum_{l \in L^{1}} \sum_{m \in L^{2}_{l}} \sum_{n \in L^{3}_{lm}} \sum_{n \in L^{4}_{lmn}} c_{lmnkf} = 1, \quad \forall f \in F
   $$
 
-- **HDD.L (defect covering)** $c_{lmnkf}$ should be false if L4 virtual bin $(l, m, n, k)$ does not cover flaw $f$ (this constraint can not guarantee its converse-negative proposition).
+- **HDC (defect covering)** $c_{lmnkf}$ should be false if L4 virtual bin $(l, m, n, k)$ does not cover flaw $f$ (this constraint can not guarantee its converse-negative proposition).
   - for the L4 virtual bin.
     $$
     \textrm{x}(l, m, n) - W \cdot (1 - c_{lmnkf}) \le X_{f}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
@@ -279,6 +283,11 @@ all of the following constraints must be satisfied.
     $$
     \sum_{l \in L^{1}} \omega^{1}_{l} - W \cdot (1 - c^{1}_{f}) \le X_{f}, \quad \forall f \in F
     $$
+
+- **HDT.O (defect fitting)** defects can be covered by non-trivial bins only.
+  $$
+  c_{lmnkf} \le \tau^{4}_{lmnk}, \quad \forall l \in L^{1}, \forall m \in L^{2}_{l}, \forall n \in L^{3}_{lm}, \forall n \in L^{4}_{lmn}, \forall f \in F
+  $$
 
 - **HIO (item order)** if item $i$ is placed in L4 virtual bin $(l, m, n, k)$ then its next item in stack should only be in L4 virtual bin $(l', m', n', k')$ where $\textrm{seq}(l, m, n, k) < \textrm{seq}(l', m', n', k')$.
   it will make **HIL (item label)** & **HLO (label order)** trivial constraints.

@@ -1131,12 +1131,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     mp.addConstraint(input.param.minL2Height * p2[g][l][m] <= h2[g][l][m]);
                     for (ID n = 0; n < maxBinNum[L3]; ++n) {
                         // L3 min width.
-                        mp.addConstraint(input.param.minWasteWidth * t3[g][l][m][n] - input.param.plateWidth * p3[g][l][m][n] <= w3[g][l][m][n]);
-                        mp.addConstraint(w3[g][l][m][n] <= input.param.plateWidth * t3[g][l][m][n] + input.param.plateWidth * p3[g][l][m][n]);
+                        mp.addConstraint(input.param.minWasteWidth * t3[g][l][m][n] <= w3[g][l][m][n]); // - input.param.plateWidth * p3[g][l][m][n]
+                        mp.addConstraint(w3[g][l][m][n] <= input.param.plateWidth * t3[g][l][m][n]); // + input.param.plateWidth * p3[g][l][m][n]
                         for (ID k = 0; k < maxBinNum[L4]; ++k) {
                             // L4 min height.
-                            mp.addConstraint(input.param.minWasteHeight * t4[g][l][m][n][k] - input.param.plateHeight * p4[g][l][m][n][k] <= h4[g][l][m][n][k]);
-                            mp.addConstraint(h4[g][l][m][n][k] <= input.param.plateHeight * t4[g][l][m][n][k] + input.param.plateHeight * p4[g][l][m][n][k]);
+                            mp.addConstraint(input.param.minWasteHeight * t4[g][l][m][n][k] <= h4[g][l][m][n][k]); // - input.param.plateHeight * p4[g][l][m][n][k]
+                            mp.addConstraint(h4[g][l][m][n][k] <= input.param.plateHeight * t4[g][l][m][n][k]); // + input.param.plateHeight * p4[g][l][m][n][k]
+                            // triviality inheritance cut.
+                            if (cfg.addTrivialityInheritanceCut) { mp.addConstraint(t4[g][l][m][n][k] <= t3[g][l][m][n]); }
                         }
                     }
                 }
@@ -1202,6 +1204,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                 for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
                                 Expr fy;
                                 for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
+                                for (ID kk = 0; kk < k; ++kk) { fy += h4[g][l][m][n][k]; }
                                 ID f = 0;
                                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
                                     RectArea &flaw(aux.defects[*gf]);
@@ -1213,6 +1216,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                     mp.addConstraint(fx + w3[g][l][m][n] + input.param.plateWidth * (1 - c[g][l][m][n][k][f]) >= flaw.x + flaw.w);
                                     mp.addConstraint(fy - input.param.plateHeight * (1 - c[g][l][m][n][k][f]) <= flaw.y);
                                     mp.addConstraint(fy + h4[g][l][m][n][k] + input.param.plateHeight * (1 - c[g][l][m][n][k][f]) >= flaw.y + flaw.h);
+                                    // defect fitting cut.
+                                    if (cfg.addDefectFittingCut) { mp.addConstraint(t4[g][l][m][n][k] <= t3[g][l][m][n]); }
                                 }
                             }
                         }

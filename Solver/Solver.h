@@ -125,6 +125,8 @@ public:
                     + ";sf=" + std::to_string(setMipFocus)
                     + ";or=" + std::to_string(maxCoverRatio)
                     + ";ow=" + std::to_string(minWasteArea)
+                    + ";ui=" + std::to_string(addTrivialityInheritanceCut)
+                    + ";uf=" + std::to_string(addDefectFittingCut)
                     + ";ub=" + std::to_string(addBinSizeOrderCut)
                     + ";ue=" + std::to_string(addEmptyBinMergingCut)
                     + ";ua=" + std::to_string(addAreaBoundCut)
@@ -146,6 +148,8 @@ public:
             bool minWasteArea = false;
 
             // user cut.
+            bool addTrivialityInheritanceCut = true;
+            bool addDefectFittingCut = true;
             bool addBinSizeOrderCut = false;
             bool addEmptyBinMergingCut = false;
             bool addAreaBoundCut = false;
