@@ -1194,17 +1194,15 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Model) << "add defect constraints." << endl;
             for (ID g = 0; g < maxBinNum[L0]; ++g) {
                 Expr l1BinWidthSum;
+                Expr x1 = (g == 0) ? xOffset : 0;
                 for (ID l = 0; l < maxBinNum[L1]; ++l) {
                     l1BinWidthSum += w1[g][l];
+                    Expr y2;
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        Expr x3 = x1;
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                            Expr y4 = y2;
                             for (ID k = 0; k < maxBinNum[L4]; ++k) {
-                                Expr fx = ((g == 0) ? xOffset : 0);
-                                for (ID ll = 0; ll < l; ++ll) { fx += w1[g][ll]; }
-                                for (ID nn = 0; nn < n; ++nn) { fx += w3[g][l][m][nn]; }
-                                Expr fy;
-                                for (ID mm = 0; mm < m; ++mm) { fy += h2[g][l][mm]; }
-                                for (ID kk = 0; kk < k; ++kk) { fy += h4[g][l][m][n][k]; }
                                 ID f = 0;
                                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
                                     RectArea &flaw(aux.defects[*gf]);
@@ -1212,16 +1210,20 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                     // defect free.
                                     mp.addConstraint(p4[g][l][m][n][k] <= 1 - c[g][l][m][n][k][f]);
                                     // defect covering.
-                                    mp.addConstraint(fx - input.param.plateWidth * (1 - c[g][l][m][n][k][f]) <= flaw.x);
-                                    mp.addConstraint(fx + w3[g][l][m][n] + input.param.plateWidth * (1 - c[g][l][m][n][k][f]) >= flaw.x + flaw.w);
-                                    mp.addConstraint(fy - input.param.plateHeight * (1 - c[g][l][m][n][k][f]) <= flaw.y);
-                                    mp.addConstraint(fy + h4[g][l][m][n][k] + input.param.plateHeight * (1 - c[g][l][m][n][k][f]) >= flaw.y + flaw.h);
+                                    mp.addConstraint(x3 - input.param.plateWidth * (1 - c[g][l][m][n][k][f]) <= flaw.x);
+                                    mp.addConstraint(x3 + w3[g][l][m][n] + input.param.plateWidth * (1 - c[g][l][m][n][k][f]) >= flaw.x + flaw.w);
+                                    mp.addConstraint(y4 - input.param.plateHeight * (1 - c[g][l][m][n][k][f]) <= flaw.y);
+                                    mp.addConstraint(y4 + h4[g][l][m][n][k] + input.param.plateHeight * (1 - c[g][l][m][n][k][f]) >= flaw.y + flaw.h);
                                     // defect fitting cut.
                                     if (cfg.addDefectFittingCut) { mp.addConstraint(t4[g][l][m][n][k] <= t3[g][l][m][n]); }
                                 }
+                                y4 += h4[g][l][m][n][k];
                             }
+                            x3 += w3[g][l][m][n];
                         }
+                        y2 += h2[g][l][m];
                     }
+                    x1 += w1[g][l];
                 }
                 ID f = 0;
                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
