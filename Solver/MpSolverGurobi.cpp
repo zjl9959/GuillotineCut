@@ -82,14 +82,14 @@ bool MpSolverGurobi::optimizeWithGurobiMultiObjective() {
     // single objective optimization
     if (getObjectiveCount() == 1) {
         setObjective(i->expr, i->optimaOrientation);
-        setTimeLimitInSecond((i->timeoutInSecond > 0) ? i->timeoutInSecond : (cfg.timeoutInSecond - getDurationInSecond()));
+        setTimeLimitInSecond((i->timeoutInSecond > 0) ? min(i->timeoutInSecond, timer.restSeconds()) : timer.restSeconds());
     } else {
         // multiple objective optimization
         setOptimaOrientation();
         for (; i != objectives.end(); ++i) {
             totalTimeoutInSecond += max(i->timeoutInSecond, 0.0);
             setSubObjective(*i);
-            setTimeLimitInSecond(i->index, (i->timeoutInSecond > 0) ? i->timeoutInSecond : (cfg.timeoutInSecond - getDurationInSecond()));
+            setTimeLimitInSecond(i->index, (i->timeoutInSecond > 0) ? min(i->timeoutInSecond, timer.restSeconds()) : timer.restSeconds());
         }
     }
 
@@ -111,7 +111,7 @@ bool MpSolverGurobi::optimizeWithManualMultiObjective() {
             Log(LogSwitch::Szx::MpSolver) << "obj[" << subObj.priority << "].opt = " << subObj.expr.getValue() << endl;
             continue;
         }
-        double restSeconds = (subObj.timeoutInSecond > 0) ? subObj.timeoutInSecond : (cfg.timeoutInSecond - getDurationInSecond());
+        double restSeconds = (subObj.timeoutInSecond > 0) ? min(subObj.timeoutInSecond, timer.restSeconds()) : timer.restSeconds();
         if (restSeconds <= 0) { return reportStatus(status); }
         setTimeLimitInSecond(restSeconds);
         subObjTimer = Timer(Timer::toMillisecond(restSeconds));

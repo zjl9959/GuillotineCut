@@ -224,8 +224,7 @@ public:
 
     // status.
     static bool reportStatus(ResultStatus status);
-    Millisecond getDuration() const { return static_cast<Millisecond>(getDurationInSecond() * MillisecondsPerSecond); }
-    double getDurationInSecond() const { return timer.elapsedSeconds(); }
+    Millisecond getDuration() const { return static_cast<Millisecond>(timer.elapsedSeconds() * MillisecondsPerSecond); }
 
     // decisions.
     DecisionVar addVar(VariableType type, double lb, double ub, const String &name) { return model.addVar(lb, ub, 0, static_cast<char>(type), name); }
