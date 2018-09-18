@@ -12,6 +12,7 @@
 
 #include <chrono>
 #include <functional>
+#include <sstream>
 
 #include "Common.h"
 #include "Utility.h"
@@ -43,7 +44,7 @@ public:
         static String AuthorNameSwitch() { return "-name"; }
         static String HelpSwitch() { return "-h"; }
 
-        static String AuthorName() { return "S28"; }
+        static String AuthorName() { return "J29"; }
         static String HelpInfo() {
             return "Pattern (args can be in any order):\n"
                 "  exe (-p path) (-o path) [-s int] [-t seconds] [-name]\n"
@@ -84,16 +85,18 @@ public:
     struct Configuration {
         struct CompleteModel {
             String toBriefStr() const {
-                return "cp=" + std::to_string(placeAllItems)
-                    + ";oc=" + std::to_string(maxCoveredArea)
-                    + ";or=" + std::to_string(maxCoveredRatio)
-                    + ";ow=" + std::to_string(minWastedArea)
-                    + ";ub=" + std::to_string(addBinSizeOrderCut)
-                    + ";ue=" + std::to_string(addEmptyBinMergingCut)
-                    + ";ug=" + std::to_string(addGlassOrderCut)
-                    + ";up=" + std::to_string(addPlacementOrderCut)
-                    + ";ua=" + std::to_string(addAreaBoundCut)
-                    + ";uw=" + std::to_string(addL1BinWidthSumCut);
+                std::ostringstream oss;
+                oss << "cp=" << placeAllItems
+                    << ";oc=" << maxCoveredArea
+                    << ";or=" << maxCoveredRatio
+                    << ";ow=" << minWastedArea
+                    << ";ub=" << addBinSizeOrderCut
+                    << ";ue=" << addEmptyBinMergingCut
+                    << ";ug=" << addGlassOrderCut
+                    << ";up=" << addPlacementOrderCut
+                    << ";ua=" << addAreaBoundCut
+                    << ";uw=" << addL1BinWidthSumCut;
+                return oss.str();
             }
 
 
@@ -118,24 +121,26 @@ public:
 
         struct IteratedModel {
             String toBriefStr() const {
-                return "st=" + std::to_string(minSecTimeoutPerIteration)
-                    + ";sn=" + std::to_string(approxPlacedItemNumPerIteration)
-                    + ";sc=" + std::to_string(maxItemToConsiderPerIteration)
-                    + ";sr=" + std::to_string(initCoverageRatio)
-                    + ";sf=" + std::to_string(setMipFocus)
-                    + ";or=" + std::to_string(maxCoverRatio)
-                    + ";ow=" + std::to_string(minWasteArea)
-                    + ";ui=" + std::to_string(addTrivialityInheritanceCut)
-                    + ";uf=" + std::to_string(addDefectFittingCut)
-                    + ";ub=" + std::to_string(addBinSizeOrderCut)
-                    + ";ue=" + std::to_string(addEmptyBinMergingCut)
-                    + ";ua=" + std::to_string(addAreaBoundCut)
-                    + ";uw=" + std::to_string(addL1BinWidthSumCut);
+                std::ostringstream oss;
+                oss << "st=" << std::setprecision(2) << minSecTimeoutPerIteration
+                    << ";sn=" << std::setprecision(2) << approxPlacedItemNumPerIteration
+                    << ";sc=" << maxItemToConsiderPerIteration
+                    << ";sr=" << std::setprecision(4) << initCoverageRatio
+                    << ";sf=" << setMipFocus
+                    << ";or=" << maxCoverRatio
+                    << ";ow=" << minWasteArea
+                    << ";ui=" << addTrivialityInheritanceCut
+                    << ";uf=" << addDefectFittingCut
+                    << ";ub=" << addBinSizeOrderCut
+                    << ";ue=" << addEmptyBinMergingCut
+                    << ";ua=" << addAreaBoundCut
+                    << ";uw=" << addL1BinWidthSumCut;
+                return oss.str();
             }
 
 
             // strategy.
-            double minSecTimeoutPerIteration = 45;
+            double minSecTimeoutPerIteration = 30;
             double approxPlacedItemNumPerIteration = 4;
             ID maxItemToConsiderPerIteration = 80;
             double initCoverageRatio = 0.9;
@@ -148,8 +153,8 @@ public:
             bool minWasteArea = false;
 
             // user cut.
-            bool addTrivialityInheritanceCut = true;
-            bool addDefectFittingCut = true;
+            bool addTrivialityInheritanceCut = false;
+            bool addDefectFittingCut = false;
             bool addBinSizeOrderCut = false;
             bool addEmptyBinMergingCut = false;
             bool addAreaBoundCut = false;
@@ -303,7 +308,7 @@ public:
 public:
     Solver(const Problem::Input &inputData, const Environment &environment, const Configuration &config)
         : input(inputData), env(environment), cfg(config), rand(environment.randSeed),
-        timer(std::chrono::milliseconds(environment.msTimeout)) {}
+        timer(std::chrono::milliseconds(environment.msTimeout)), iteration(1) {}
     #pragma endregion Constructor
 
     #pragma region Method
@@ -347,6 +352,7 @@ public:
 
     Random rand; // all random number in Solver must be generated by this.
     Timer timer; // the solve() should return before it is timeout.
+    Iteration iteration;
     #pragma endregion Field
 }; // Solver 
 

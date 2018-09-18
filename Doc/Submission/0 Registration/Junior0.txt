@@ -1,4 +1,4 @@
-﻿To register (before the deadline), send names, status (student, professor, etc.), affiliations and emails of the team members with the selected category(ies) (junior, senior) to the organisers with the subject "ROADEF/EURO challenge 2018 registration".
+To register (before the deadline), send names, status (student, professor, etc.), affiliations and emails of the team members with the selected category(ies) (junior, senior) to the organisers with the subject "ROADEF/EURO challenge 2018 registration".
 
 Sender of the registration request will be the official contact of the team.
 
@@ -18,27 +18,14 @@ ROADEF/EURO challenge 2018 registration
 
 Dear organizers,
 
-Here is the information of our team for the registration.
+We would like to participate in the junior category and the information of our team members is as follows:
 
-category: 
-    junior
+Jialu Zhang  -  zjl9959@hust.edu.cn
+Dong Liu     -  lotty_hust@163.com
+Yuan Fang    -  fang_110@hust.edu.cn
 
-team members:
-    Dong Liu,
-    Master student,
-    SMART, School of Computer Science and Technology, Huazhong University of Science and Technology, China
-    lotty_hust@163.com
-
-    Jialu Zhang,
-    Undergraduate student,
-    School of Optoelectronic Science and Engineering, University of Electronic Science and Technology of China, China
-    zjluestc@outlook.com
-
-    Yuan Fang,
-    Undergraduate student,
-    School of Computer Science and Technology, Huazhong University of Science and Technology, China
-    fang_110@hust.edu.cn
+All of us are master students from SMART, School of Computer Science and Technology, Huazhong University of Science and Technology, China.
 
 
 Best regards,
-Dong Liu
+Jialu Zhang

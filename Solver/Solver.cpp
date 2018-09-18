@@ -170,7 +170,7 @@ void Solver::solve() {
 
 void Solver::record() const {
     #if SZX_DEBUG
-    int generation = 0, iteration = 0;
+    int generation = 0;
 
     ostringstream log;
 
@@ -906,10 +906,6 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
 
-    double approxIter = max(1.5, itemNum / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
-    double timeoutPerIteration = max(cfg.minSecTimeoutPerIteration, timer.restSeconds() / approxIter);
-    Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
-
     // for visualization.
     List<Drawer::Rect> plates;
     List<Drawer::Item> items;
@@ -921,7 +917,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     Length xOffset = 0; // left of current L1 bin in current plate.
     ID placedItemNum = 0;
     List<bool> isItemPlaced(itemNum, false);
-    for (;;) {
+    for (;; ++iteration) {
         List<bool> skipItem(isItemPlaced); // select items to be considered in model.
         if (placedItemNum + cfg.maxItemToConsiderPerIteration < itemNum) {
             // OPTIMIZE[szx][0]: add some randomness?
@@ -1332,6 +1328,12 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         // minimize the wasted area.
         // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
         double optRatio = cfg.initCoverageRatio;
+        double approxIter = max(1.5, (itemNum - placedItemNum) / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
+        double timeoutPerIteration = timer.restSeconds() / approxIter;
+        if ((timeoutPerIteration < cfg.minSecTimeoutPerIteration) && (2 * timeoutPerIteration > cfg.minSecTimeoutPerIteration)) { // TODO[szx][5]: parameterize the constant!
+            timeoutPerIteration = cfg.minSecTimeoutPerIteration; // ignore min timeout if the remaining time is too short (probably in sprint track).
+        }
+        Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
         // solve.
@@ -1511,6 +1513,10 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             xOffset = 0;
             Log(LogSwitch::Szx::Postprocess) << "use new plate " << plateId << endl;
         }
+
+        double averageItemPerIteration = static_cast<double>(placedItemNum) / iteration;
+        cfg.approxPlacedItemNumPerIteration = max(1.0, (3 * cfg.approxPlacedItemNumPerIteration + averageItemPerIteration) / 4); // TODO[szx][5]: parameterize the constant!
+        Log(LogSwitch::Szx::Postprocess) << "approxItemPerIter=" << cfg.approxPlacedItemNumPerIteration << " avgItemPerIter=" << averageItemPerIteration << endl;
     }
 }
 #pragma endregion Solver
