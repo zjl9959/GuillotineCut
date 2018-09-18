@@ -228,7 +228,6 @@ public:
         String batchPath() const { return instName + BatchSuffix(); }
         String defectsPath() const { return instName + DefectsSuffix(); }
         String solutionPath() const { return slnPath; }
-        String solutionPathWithSuffix() const { return slnPath + SolutionSuffix(); }
         String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
 
         String visualizPath() const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + ".html"; }

@@ -67,10 +67,10 @@ int Solver::Cli::run(int argc, char * argv[]) {
     Solver solver(input, env, cfg);
     solver.solve();
     solver.output.save(env.solutionPath());
-    // OPTIMIZE[szx][9]: confirm arg format for solution file.
-    //solver.output.save(env.solutionPathWithSuffix());
+    #if SZX_DEBUG
     solver.output.save(env.solutionPathWithTime());
     solver.record();
+    #endif // SZX_DEBUG
 
     return 0;
 }
@@ -1322,7 +1322,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         // TODO[szx][0]: minimize (width used to place in this iteration) + (estimated width to be used in later iteration) and remove the following constraint?
         // in case the optimal ratio is below optRatio (then the optima of this transformed obj will be 0 and nothing will be placed).
-        mp.addConstraint(placedItem >= 1);
+        mp.addConstraint(placedItem >= maxBinNum[L1]);
 
         Log(LogSwitch::Szx::Model) << "add objectives." << endl;
         // minimize the wasted area.
@@ -1333,7 +1333,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         if ((timeoutPerIteration < cfg.minSecTimeoutPerIteration) && (2 * timeoutPerIteration > cfg.minSecTimeoutPerIteration)) { // TODO[szx][5]: parameterize the constant!
             timeoutPerIteration = cfg.minSecTimeoutPerIteration; // ignore min timeout if the remaining time is too short (probably in sprint track).
         }
-        Log(LogSwitch::Szx::Model) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
+        Log(LogSwitch::Szx::Config) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
         // solve.
@@ -1493,9 +1493,20 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
             Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
             for (ID i = 0; i < itemNum; ++i) {
-                if (!mp.isTrue(pi[i])) { continue; }
-                ++placedItemNum;
-                isItemPlaced[i] = true;
+                if (skipItem[i]) { continue; }
+                for (ID g = 0; g < PlateStep; ++g) {
+                    for (ID l = 0; l < L1BinStep; ++l) {
+                        for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                            for (ID n = 0; n < maxBinNum[L3]; ++n) {
+                                for (ID k = 0; k < maxBinNum[L4]; ++k) {
+                                    if (!mp.isTrue(pi4[i][g][l][m][n][k])) { continue; }
+                                    ++placedItemNum;
+                                    isItemPlaced[i] = true;
+                                }
+                            }
+                        }
+                    }
+                }
             }
             Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
 
@@ -1516,7 +1527,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         double averageItemPerIteration = static_cast<double>(placedItemNum) / iteration;
         cfg.approxPlacedItemNumPerIteration = max(1.0, (3 * cfg.approxPlacedItemNumPerIteration + averageItemPerIteration) / 4); // TODO[szx][5]: parameterize the constant!
-        Log(LogSwitch::Szx::Postprocess) << "approxItemPerIter=" << cfg.approxPlacedItemNumPerIteration << " avgItemPerIter=" << averageItemPerIteration << endl;
+        Log(LogSwitch::Szx::Config) << "approxItemPerIter=" << cfg.approxPlacedItemNumPerIteration << " avgItemPerIter=" << averageItemPerIteration << endl;
     }
 }
 #pragma endregion Solver
