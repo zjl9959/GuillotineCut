@@ -10,9 +10,11 @@
 
 #include "Config.h"
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <sstream>
+#include <thread>
 
 #include "Common.h"
 #include "Utility.h"
@@ -173,11 +175,12 @@ public:
 
         String toBriefStr() const {
             String threshold(std::to_string(itemNumThresholdForCompleteModel));
+            String threadNum(std::to_string(threadNumPerWorker));
             switch (alg) {
             case Algorithm::CompleteMp:
-                return "[C" + threshold + "]" + cm.toBriefStr();
+                return "[C" + threshold + "x" + threadNum + "]" + cm.toBriefStr();
             case Algorithm::IteratedMp:
-                return "[I" + threshold + "]" + im.toBriefStr();
+                return "[I" + threshold + "x" + threadNum + "]" + im.toBriefStr();
             default:
                 return "";
             }
@@ -185,6 +188,7 @@ public:
 
 
         Algorithm alg = Configuration::Algorithm::IteratedMp; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
+        int threadNumPerWorker = (std::min)(8, static_cast<int>(std::thread::hardware_concurrency()));
         ID itemNumThresholdForCompleteModel = 0; // TODO[szx][2]: enable complete model?
         CompleteModel cm;
         IteratedModel im;

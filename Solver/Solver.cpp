@@ -1,5 +1,6 @@
 #include "Solver.h"
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -151,17 +152,18 @@ void Solver::Configuration::save(const String &filePath) const {
 void Solver::solve() {
     init();
 
-    List<Solution> solutions(env.jobNum, Solution(this));
+    int workerNum = (max)(1, env.jobNum / cfg.threadNumPerWorker);
+    List<Solution> solutions(workerNum, Solution(this));
 
-    Log(LogSwitch::Szx::Framework) << "launch " << env.jobNum << " workers." << endl;
+    Log(LogSwitch::Szx::Framework) << "launch " << workerNum << " workers." << endl;
     List<thread> threadList;
-    threadList.reserve(env.jobNum);
-    for (int i = 0; i < env.jobNum; ++i) {
+    threadList.reserve(workerNum);
+    for (int i = 0; i < workerNum; ++i) {
         // TODO[szx][0]: as *this is captured by ref, the solver should support concurrency itself, i.e., data members should be read-only or independent for each worker.
         // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
         threadList.emplace_back([&, i]() { optimize(solutions[i], i); });
     }
-    for (int i = 0; i < env.jobNum; ++i) { threadList.at(i).join(); }
+    for (int i = 0; i < workerNum; ++i) { threadList.at(i).join(); }
 
     Log(LogSwitch::Szx::Framework) << "collect best result among all workers." << endl;
     output = *min_element(solutions.begin(), solutions.end(),
@@ -943,7 +945,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, false);
         MpSolver mp(mpcfg);
-        //mp.setMaxThread(2);
+        mp.setMaxThread(this->cfg.threadNumPerWorker);
 
         Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
 
