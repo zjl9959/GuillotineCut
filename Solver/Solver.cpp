@@ -248,6 +248,8 @@ Length Solver::totalItemArea() const {
 }
 
 void Solver::init() {
+    constexpr ID InvalidItemId = Problem::InvalidItemId;
+
     aux.items.reserve(input.batch.size());
     aux.stacks.reserve(input.batch.size());
 
@@ -263,12 +265,12 @@ void Solver::init() {
         if (aux.stacks.size() <= stackId) { aux.stacks.push_back(List<ID>()); } // create a new stack.
         List<ID> &stack(aux.stacks[stackId]);
         // OPTIMIZE[szx][6]: what if the sequence number could be negative or very large?
-        if (stack.size() <= i->seq) { stack.resize(i->seq + 1, Problem::InvalidItemId); }
+        if (stack.size() <= i->seq) { stack.resize(i->seq + 1, InvalidItemId); }
         stack[i->seq] = itemId;
     }
     // clear invalid items in stacks.
     for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
-        s->erase(remove(s->begin(), s->end(), Problem::InvalidItemId), s->end());
+        s->erase(remove(s->begin(), s->end(), InvalidItemId), s->end());
     }
 
     aux.defects.reserve(input.defects.size());
