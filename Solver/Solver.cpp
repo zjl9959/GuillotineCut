@@ -1358,6 +1358,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 Length x1 = ((g == 0) ? xOffset : 0);
                 double margin1 = 0; // cumulative length loss due to truncation from double to int.
                 for (ID l = 0; l < L1BinStep; ++l) {
+                    double lastMargin1 = margin1;
                     Length l1BinWidth = getLen(w1[g][l], margin1);
                     if (l1BinWidth <= 0) { continue; }
                     plate.children.push_back(Bin(x1, 0, l1BinWidth, input.param.plateHeight, Node::SpecialType::Waste));
@@ -1365,19 +1366,20 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     Length y2 = 0;
                     double margin2 = 0; // cumulative length loss due to truncation from double to int.
                     for (ID m = 0; m < maxBinNum[L2]; ++m) {
+                        double lastMargin2 = margin2;
                         Length l2BinHeight = getLen(h2[g][l][m], margin2);
                         if (l2BinHeight <= 0) { continue; }
                         l1Bin.children.push_back(Bin(x1, y2, l1BinWidth, l2BinHeight, Node::SpecialType::Waste));
                         Bin &l2Bin(l1Bin.children.back());
                         Length x3 = x1;
-                        double margin3 = 0; // cumulative length loss due to truncation from double to int.
+                        double margin3 = lastMargin1; // cumulative length loss due to truncation from double to int.
                         for (ID n = 0; n < maxBinNum[L3]; ++n) {
                             Length l3BinWidth = getLen(w3[g][l][m][n], margin3);
                             if (l3BinWidth <= 0) { continue; }
                             l2Bin.children.push_back(Bin(x3, y2, l3BinWidth, l2BinHeight, Node::SpecialType::Waste));
                             Bin &l3Bin(l2Bin.children.back());
                             Length y4 = y2;
-                            double margin4 = 0;
+                            double margin4 = lastMargin2;
                             for (ID k = 0; k < maxBinNum[L4]; ++k) {
                                 Length l4BinHeight = getLen(h4[g][l][m][n][k], margin4);
                                 if (l4BinHeight <= 0) { continue; }
