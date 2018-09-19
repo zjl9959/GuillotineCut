@@ -923,6 +923,7 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
     ID plateId = 0; // current plate.
     Length xOffset = 0; // left of current L1 bin in current plate.
+    Length minLenOfRestItems = input.param.plateWidth;
     ID placedItemNum = 0;
     List<bool> isItemPlaced(itemNum, false);
     for (;; ++iteration) {
@@ -1524,8 +1525,16 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 sln.totalWidth = input.param.plateWidth * plateId + xOffset;
                 break;
             }
-            // OPTIMIZE[szx][2]: use new plate when the width of the residual is less than any item.
-        } else {
+
+            // use new plate when the width of the residual is less than the length of any item.
+            minLenOfRestItems = input.param.plateWidth;
+            for (ID i = 0; i < itemNum; ++i) {
+                if (isItemPlaced[i]) { continue; }
+                if (aux.items[i].h < minLenOfRestItems) { minLenOfRestItems = aux.items[i].h; }
+            }
+        }
+
+        if (!feasible || (xOffset + minLenOfRestItems > input.param.plateWidth)) {
             // TODO[szx][0]: what if there are defects and there must be an empty L1 bin or leave it empty will be better?
             ++usedPlateNum;
             ++plateId;
