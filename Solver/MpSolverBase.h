@@ -11,12 +11,13 @@
 #include "Config.h"
 
 #include <exception>
+#include <stdexcept>
 #include <string>
 
 
 namespace szx {
 
-using MpException = std::exception;
+using MpException = std::runtime_error;
 
 class MpSolverBase {
 public:

@@ -14,6 +14,7 @@
 
 #include "Config.h"
 
+#include <algorithm>
 #include <iostream>
 #include <functional>
 
@@ -111,7 +112,7 @@ public:
     static constexpr int DefaultObjectivePriority = 0;
     static constexpr OptimaOrientation DefaultObjectiveOptimaOrientation = Maximize;
 
-    static constexpr int MillisecondsPerSecond = 1000;
+    static constexpr double MillisecondsPerSecond = 1000;
 
     static constexpr int MaxObjectivePriority = 32;
 
@@ -301,9 +302,9 @@ public:
     int getObjectiveCount() const { return static_cast<int>(objectives.size()); }
 
     // configurations.
-    void setTimeLimit(Millisecond millisecond) { setTimeLimitInSecond(static_cast<double>(millisecond / MillisecondsPerSecond)); }
-    void setTimeLimitInSecond(double second) { model.set(GRB_DoubleParam_TimeLimit, second); }
-    void setTimeLimitInSecond(int objIndex, double second) { model.getMultiobjEnv(objIndex).set(GRB_DoubleParam_TimeLimit, second); }
+    void setTimeLimit(Millisecond millisecond) { setTimeLimitInSecond(millisecond / MillisecondsPerSecond); }
+    void setTimeLimitInSecond(double second) { model.set(GRB_DoubleParam_TimeLimit, (std::max)(second, 0.0)); }
+    void setTimeLimitInSecond(int objIndex, double second) { model.getMultiobjEnv(objIndex).set(GRB_DoubleParam_TimeLimit, (std::max)(second, 0.0)); }
     void setOutput(bool enable = Configuration::DefaultOutputState) { model.set(GRB_IntParam_OutputFlag, enable); }
 
     void setCallback(GRBCallback *callback) {

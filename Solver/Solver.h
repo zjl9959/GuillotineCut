@@ -198,6 +198,8 @@ public:
         // preserved time for IO in the total given time.
         static constexpr int SaveSolutionTimeInMillisecond = 1000;
 
+        static constexpr Duration RapidModeTimeoutThreshold = 600 * Timer::MillisecondsPerSecond;
+
         static String BatchSuffix() { return "_batch.csv"; }
         static String DefectsSuffix() { return "_defects.csv"; }
         static String SolutionSuffix() { return "_solution.csv"; }

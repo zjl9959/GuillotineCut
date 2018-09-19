@@ -296,7 +296,11 @@ void Solver::optimize(Solution &sln, ID workerId) {
         cfg.cm.maxCoveredArea = true;
         optimizeCompleteModel(sln, cfg.cm); break;
     case Configuration::Algorithm::IteratedMp:
-        //cfg.im.minWastedArea = false;
+        if (env.msTimeout < Environment::RapidModeTimeoutThreshold) {
+            cfg.im.maxItemToConsiderPerIteration = 40;
+            cfg.im.initCoverageRatio = 0.85;
+            cfg.im.setMipFocus = true;
+        }
         optimizeIteratedModel(sln, cfg.im); break;
     }
 
@@ -1329,10 +1333,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
         double optRatio = cfg.initCoverageRatio;
         double approxIter = max(1.5, (itemNum - placedItemNum) / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
-        double timeoutPerIteration = timer.restSeconds() / approxIter;
-        if ((timeoutPerIteration < cfg.minSecTimeoutPerIteration) && (2 * timeoutPerIteration > cfg.minSecTimeoutPerIteration)) { // TODO[szx][5]: parameterize the constant!
-            timeoutPerIteration = cfg.minSecTimeoutPerIteration; // ignore min timeout if the remaining time is too short (probably in sprint track).
-        }
+        double timeoutPerIteration = max(1.0, timer.restSeconds() / approxIter);
+        if (timeoutPerIteration < cfg.minSecTimeoutPerIteration) { timeoutPerIteration = cfg.minSecTimeoutPerIteration; }
         Log(LogSwitch::Szx::Config) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
