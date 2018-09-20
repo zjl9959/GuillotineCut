@@ -149,11 +149,12 @@ void Solver::Configuration::save(const String &filePath) const {
 #pragma endregion Solver::Configuration
 
 #pragma region Solver
-void Solver::solve() {
+bool Solver::solve() {
     init();
 
     int workerNum = (max)(1, env.jobNum / cfg.threadNumPerWorker);
     List<Solution> solutions(workerNum, Solution(this));
+    List<bool> success(workerNum);
 
     Log(LogSwitch::Szx::Framework) << "launch " << workerNum << " workers." << endl;
     List<thread> threadList;
@@ -161,13 +162,23 @@ void Solver::solve() {
     for (int i = 0; i < workerNum; ++i) {
         // TODO[szx][0]: as *this is captured by ref, the solver should support concurrency itself, i.e., data members should be read-only or independent for each worker.
         // OPTIMIZE[szx][3]: add a list to specify a series of algorithm to be used by each threads in sequence.
-        threadList.emplace_back([&, i]() { optimize(solutions[i], i); });
+        threadList.emplace_back([&, i]() { success[i] = optimize(solutions[i], i); });
     }
     for (int i = 0; i < workerNum; ++i) { threadList.at(i).join(); }
 
     Log(LogSwitch::Szx::Framework) << "collect best result among all workers." << endl;
-    output = *min_element(solutions.begin(), solutions.end(),
-        [](Solution &l, Solution &r) { return (l.totalWidth < r.totalWidth); });
+    int bestIndex = -1;
+    Length bestWidth = Problem::MaxPlateNum * input.param.plateWidth;
+    for (int i = 0; i < workerNum; ++i) {
+        if (!success[i]) { continue; }
+        if (solutions[i].totalWidth >= bestWidth) { continue; }
+        bestIndex = i;
+        bestWidth = solutions[i].totalWidth;
+    }
+
+    if (bestIndex < 0) { return false; }
+    output = solutions[bestIndex];
+    return true;
 }
 
 void Solver::record() const {
@@ -291,25 +302,31 @@ void Solver::init() {
     }
 }
 
-void Solver::optimize(Solution &sln, ID workerId) {
+bool Solver::optimize(Solution &sln, ID workerId) {
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " starts." << endl;
 
+    bool status;
     cfg.alg = (aux.items.size() > cfg.itemNumThresholdForCompleteModel) ? Configuration::Algorithm::IteratedMp : Configuration::Algorithm::CompleteMp;
     switch (cfg.alg) {
     case Configuration::Algorithm::CompleteMp:
         cfg.cm.maxCoveredArea = true;
-        optimizeCompleteModel(sln, cfg.cm); break;
+        status = optimizeCompleteModel(sln, cfg.cm);
+        break;
     case Configuration::Algorithm::IteratedMp:
         if (env.msTimeout < Environment::RapidModeTimeoutThreshold) {
             cfg.im.minSecTimeoutPerIteration = 1;
-            cfg.im.maxItemToConsiderPerIteration = 40;
+            cfg.im.steps[1] = 3;
+            cfg.im.steps[2] = 2;
+            cfg.im.maxItemToConsiderPerIteration = 60;
             cfg.im.initCoverageRatio = 0.85;
             cfg.im.setMipFocus = true;
         }
-        optimizeIteratedModel(sln, cfg.im); break;
+        status = optimizeIteratedModel(sln, cfg.im);
+        break;
     }
 
     Log(LogSwitch::Szx::Framework) << "worker " << workerId << " ends." << endl;
+    return status;
 }
 
 //  y ^
@@ -322,7 +339,7 @@ void Solver::optimize(Solution &sln, ID workerId) {
 //    |            w3
 // ---+------------------>
 //  O |                  x
-void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg) {
+bool Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg) {
     using Dvar = MpSolver::DecisionVar;
     using Expr = MpSolver::LinearExpr;
     using VarType = MpSolver::VariableType;
@@ -892,12 +909,14 @@ void Solver::optimizeCompleteModel(Solution &sln, Configuration::CompleteModel c
         }
 
         draw.end();
+        return true;
     } else {
         Log(Log::Error) << "unable to find feasible solution." << endl;
+        return false;
     }
 }
 
-void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg) {
+bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg) {
     using Dvar = MpSolver::DecisionVar;
     using Expr = MpSolver::LinearExpr;
     using VarType = MpSolver::VariableType;
@@ -907,8 +926,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
     // step control.
     enum Layer { L0, L1, L2, L3, L4 };
-    constexpr ID maxBinNum[] = { 1, 1, 6, 6, 2 }; // define how many bins will be considered in model. // EXTEND[szx][5]: parameterize the constant!
-    constexpr ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3] * maxBinNum[L4];
+    const ID maxBinNum[] = { 1, cfg.steps[0], cfg.steps[1], cfg.steps[2], 2 }; // define how many bins will be considered in model. // EXTEND[szx][5]: parameterize the constant!
+    const ID binNum = maxBinNum[L0] * maxBinNum[L1] * maxBinNum[L2] * maxBinNum[L3] * maxBinNum[L4];
     constexpr ID PlateStep = 1; // define how many plates will be accepted/recorded in each iteration.
     constexpr ID L1BinStep = 1; // define how many bins will be accepted/recorded in each iteration.
 
@@ -1561,6 +1580,8 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         cfg.approxPlacedItemNumPerIteration = max(1.0, (3 * cfg.approxPlacedItemNumPerIteration + averageItemPerIteration) / 4); // TODO[szx][5]: parameterize the constant!
         Log(LogSwitch::Szx::Config) << "approxItemPerIter=" << cfg.approxPlacedItemNumPerIteration << " avgItemPerIter=" << averageItemPerIteration << endl;
     }
+
+    return (placedItemNum == itemNum);
 }
 #pragma endregion Solver
 

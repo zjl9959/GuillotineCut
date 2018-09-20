@@ -129,6 +129,7 @@ public:
                     << ";sc=" << maxItemToConsiderPerIteration
                     << ";sr=" << std::setprecision(4) << initCoverageRatio
                     << ";sf=" << setMipFocus
+                    << ";ss=" << steps[0] << "-" << steps[1] << "-" << steps[2]
                     << ";or=" << maxCoverRatio
                     << ";ow=" << minWasteArea
                     << ";ui=" << addTrivialityInheritanceCut
@@ -142,11 +143,14 @@ public:
 
 
             // strategy.
-            double minSecTimeoutPerIteration = 30;
+            double minSecTimeoutPerIteration = 20;
             double approxPlacedItemNumPerIteration = 4;
             ID maxItemToConsiderPerIteration = 80;
             double initCoverageRatio = 0.9;
-            bool setMipFocus = true;
+            bool setMipFocus = true; // prefer true.
+
+            // step control.
+            List<ID> steps = { 1, 6, 6 };
 
             // constraint.
 
@@ -155,10 +159,10 @@ public:
             bool minWasteArea = false;
 
             // user cut.
-            bool addTrivialityInheritanceCut = false;
-            bool addDefectFittingCut = false;
-            bool addBinSizeOrderCut = false;
-            bool addEmptyBinMergingCut = false;
+            bool addTrivialityInheritanceCut = false; // prefer false.
+            bool addDefectFittingCut = false; // prefer false.
+            bool addBinSizeOrderCut = false; // prefer false. (except combined with addEmptyBinMergingCut?)
+            bool addEmptyBinMergingCut = false; // prefer false. (except combined with addBinSizeOrderCut?)
             bool addAreaBoundCut = false;
             bool addL1BinWidthSumCut = false;
         };
@@ -202,7 +206,7 @@ public:
         // preserved time for IO in the total given time.
         static constexpr int SaveSolutionTimeInMillisecond = 1000;
 
-        static constexpr Duration RapidModeTimeoutThreshold = 600 * Timer::MillisecondsPerSecond;
+        static constexpr Duration RapidModeTimeoutThreshold = 600 * static_cast<Duration>(Timer::MillisecondsPerSecond);
 
         static String BatchSuffix() { return "_batch.csv"; }
         static String DefectsSuffix() { return "_defects.csv"; }
@@ -318,7 +322,7 @@ public:
 
     #pragma region Method
 public:
-    void solve(); // solve by multiple workers together.
+    bool solve(); // return true if exit normally. solve by multiple workers together.
     bool check(Length &obj) const;
     void record() const; // save running log.
 
@@ -326,10 +330,10 @@ public:
 
 protected:
     void init();
-    void optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
+    bool optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
 
-    void optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
-    void optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
+    bool optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
+    bool optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
     #pragma endregion Method
 
     #pragma region Field
