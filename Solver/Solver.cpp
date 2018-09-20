@@ -301,6 +301,7 @@ void Solver::optimize(Solution &sln, ID workerId) {
         optimizeCompleteModel(sln, cfg.cm); break;
     case Configuration::Algorithm::IteratedMp:
         if (env.msTimeout < Environment::RapidModeTimeoutThreshold) {
+            cfg.im.minSecTimeoutPerIteration = 1;
             cfg.im.maxItemToConsiderPerIteration = 40;
             cfg.im.initCoverageRatio = 0.85;
             cfg.im.setMipFocus = true;
@@ -923,10 +924,11 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
     ID plateId = 0; // current plate.
     Length xOffset = 0; // left of current L1 bin in current plate.
-    Length minLenOfRestItems = input.param.plateWidth;
+    Length minLenOfRestItems;
+    Length avgLenOfRestItems;
     ID placedItemNum = 0;
     List<bool> isItemPlaced(itemNum, false);
-    for (;; ++iteration) {
+    for (; plateId < input.param.plateNum; ++iteration) {
         List<bool> skipItem(isItemPlaced); // select items to be considered in model.
         if (placedItemNum + cfg.maxItemToConsiderPerIteration < itemNum) {
             // OPTIMIZE[szx][0]: add some randomness?
@@ -1338,13 +1340,14 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
         double optRatio = cfg.initCoverageRatio;
         double approxIter = max(1.5, (itemNum - placedItemNum) / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
-        double timeoutPerIteration = max(1.0, timer.restSeconds() / approxIter);
+        double timeoutPerIteration = timer.restSeconds() / approxIter;
         if (timeoutPerIteration < cfg.minSecTimeoutPerIteration) { timeoutPerIteration = cfg.minSecTimeoutPerIteration; }
         Log(LogSwitch::Szx::Config) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
         mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
-        // solve.
         if (cfg.setMipFocus) { mp.setMipFocus(MpSolver::MipFocusMode::ImproveFeasibleSolution); }
+
+        // solve.
         bool feasible = mp.optimize();
         if (feasible) {
             // record solution.
@@ -1528,13 +1531,25 @@ void Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
             // use new plate when the width of the residual is less than the length of any item.
             minLenOfRestItems = input.param.plateWidth;
+            avgLenOfRestItems = 0;
             for (ID i = 0; i < itemNum; ++i) {
                 if (isItemPlaced[i]) { continue; }
-                if (aux.items[i].h < minLenOfRestItems) { minLenOfRestItems = aux.items[i].h; }
+                Length len = (aux.items[i].w < input.param.plateHeight) ? aux.items[i].h : aux.items[i].w;
+                if (len < minLenOfRestItems) { minLenOfRestItems = len; }
+                avgLenOfRestItems += len;
             }
+            avgLenOfRestItems /= (itemNum - placedItemNum);
         }
 
-        if (!feasible || (xOffset + minLenOfRestItems > input.param.plateWidth)) {
+        //bool ampleResidual = (xOffset + avgLenOfRestItems) < input.param.plateWidth;
+        //if ((retryCount < 1) && !feasible && ampleResidual) {
+        //    ++retryCount; // OPTIMIZE[szx][1]: try to resume the optimization if the residual is quite large.
+        //    mp.setTimeLimitInSecond(timeoutPerIteration);
+        //    goto Label_Reoptimize;
+        //}
+
+        bool enoughResidual = (xOffset + minLenOfRestItems) < input.param.plateWidth;
+        if (!feasible || !enoughResidual) {
             // TODO[szx][0]: what if there are defects and there must be an empty L1 bin or leave it empty will be better?
             ++usedPlateNum;
             ++plateId;

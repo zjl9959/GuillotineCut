@@ -102,6 +102,14 @@ public:
         DefaultPresolveMode = -1
     };
 
+    enum IisMethod {
+        FastIis = 0,
+        SmallIis = 1,
+        IgnoreBoundIis = 2, // ignores the bound constraints.
+        LpRelaxIis = 3,     // the IIS for the LP relaxation of a MIP model if the relaxation is infeasible, even though the result may not be minimal when integrality constraints are included. 
+        DefaultIisMethod = -1
+    };
+
     static constexpr int MaxInt = GRB_MAXINT;
     static constexpr double MaxReal = GRB_INFINITY;
     static constexpr double Infinity = GRB_INFINITY;
@@ -216,6 +224,7 @@ public:
     void computeIIS(const String &outputPath = DefaultIrreducibleInconsistentSubsystemPath) {
         updateModel();
         try {
+            model.set(GRB_IntParam_IISMethod, IisMethod::SmallIis);
             model.computeIIS();
             model.write(outputPath);
         } catch (GRBException&) {
@@ -303,8 +312,11 @@ public:
 
     // configurations.
     void setTimeLimit(Millisecond millisecond) { setTimeLimitInSecond(millisecond / MillisecondsPerSecond); }
-    void setTimeLimitInSecond(double second) { model.set(GRB_DoubleParam_TimeLimit, (std::max)(second, 0.0)); }
-    void setTimeLimitInSecond(int objIndex, double second) { model.getMultiobjEnv(objIndex).set(GRB_DoubleParam_TimeLimit, (std::max)(second, 0.0)); }
+    void setTimeLimitInSecond(double second) {
+        double timeout = (std::max)(second, 0.0);
+        timer = Timer(Timer::toMillisecond(timeout));
+        model.set(GRB_DoubleParam_TimeLimit, timeout);
+    }
     void setOutput(bool enable = Configuration::DefaultOutputState) { model.set(GRB_IntParam_OutputFlag, enable); }
 
     void setCallback(GRBCallback *callback) {
@@ -351,6 +363,9 @@ protected:
 
     // determines which alternative solution will be retrieved when calling var.get(GRB_DoubleAttr_Xn).
     void setAltSolutionIndex(int solutionIndex) { model.set(GRB_IntParam_SolutionNumber, solutionIndex); }
+
+    // only use it in gurobi multi-obj mode.
+    void setTimeLimitInSecond(int objIndex, double second) { model.getMultiobjEnv(objIndex).set(GRB_DoubleParam_TimeLimit, (std::max)(second, 0.0)); }
 
     bool isConstant(const LinearExpr &expr) { return (expr.size() == 0); }
     void updateModel() { model.update(); }
