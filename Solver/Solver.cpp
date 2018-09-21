@@ -47,11 +47,11 @@ int Solver::Cli::run(int argc, char * argv[]) {
 
     Log(LogSwitch::Szx::Cli) << "execute commands." << endl;
     if (switchSet.find(HelpSwitch()) != switchSet.end()) {
-        cout << HelpInfo << endl;
+        cout << HelpInfo() << endl;
     }
 
     if (switchSet.find(AuthorNameSwitch()) != switchSet.end()) {
-        cout << AuthorName << endl;
+        cout << AuthorName() << endl;
     }
 
     Solver::Environment env;
@@ -61,7 +61,7 @@ int Solver::Cli::run(int argc, char * argv[]) {
     Solver::Configuration cfg;
     cfg.load(env.cfgPath);
 
-    Log(LogSwitch::Szx::Cli) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
+    Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
@@ -318,7 +318,7 @@ bool Solver::optimize(Solution &sln, ID workerId) {
             cfg.im.steps[1] = 3;
             cfg.im.steps[2] = 2;
             cfg.im.maxItemToConsiderPerIteration = 60;
-            cfg.im.initCoverageRatio = 0.85;
+            cfg.im.initCoverageRatio = 0.875;
             cfg.im.setMipFocus = true;
         }
         status = optimizeIteratedModel(sln, cfg.im);

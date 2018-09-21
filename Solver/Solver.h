@@ -46,7 +46,7 @@ public:
         static String AuthorNameSwitch() { return "-name"; }
         static String HelpSwitch() { return "-h"; }
 
-        static String AuthorName() { return "J29"; }
+        static String AuthorName() { return "S28"; }
         static String HelpInfo() {
             return "Pattern (args can be in any order):\n"
                 "  exe (-p path) (-o path) [-s int] [-t seconds] [-name]\n"
@@ -129,7 +129,7 @@ public:
                     << ";sc=" << maxItemToConsiderPerIteration
                     << ";sr=" << std::setprecision(4) << initCoverageRatio
                     << ";sf=" << setMipFocus
-                    << ";ss=" << steps[0] << "-" << steps[1] << "-" << steps[2]
+                    << ";ss=" << steps[0] << "*" << steps[1] << "*" << steps[2]
                     << ";or=" << maxCoverRatio
                     << ";ow=" << minWasteArea
                     << ";ui=" << addTrivialityInheritanceCut

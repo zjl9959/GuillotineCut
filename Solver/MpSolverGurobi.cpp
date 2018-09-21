@@ -8,12 +8,12 @@ using namespace std;
 
 namespace szx {
 
-GRBEnv MpSolverGurobi::globalEnv;
+GRBEnv MpSolverGurobi::globalEnv(true);
 
-MpSolverGurobi::MpSolverGurobi() : model(globalEnv), status(ResultStatus::Ready),
+MpSolverGurobi::MpSolverGurobi() : model(getGlobalEnv()), status(ResultStatus::Ready),
     timer(Timer::toMillisecond(cfg.timeoutInSecond)), subObjTimer(0ms) {}
 
-MpSolverGurobi::MpSolverGurobi(Configuration &config) : model(globalEnv), cfg(config),
+MpSolverGurobi::MpSolverGurobi(Configuration &config) : model(getGlobalEnv()), cfg(config),
     status(ResultStatus::Ready), timer(Timer::toMillisecond(config.timeoutInSecond)), subObjTimer(0ms) {
     if (cfg.timeoutInSecond > Configuration::Forever) { setTimeLimitInSecond(cfg.timeoutInSecond); }
     setOutput(cfg.enableOutput);

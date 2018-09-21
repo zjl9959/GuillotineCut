@@ -17,7 +17,7 @@ struct LogSwitch {
     // TODO[szx][0]: turn off all logs before the release.
     enum Szx {
         Main = Log::Level::Info,
-        Cli = Log::Level::Debug,
+        Cli = Log::Level::Off,
         Framework = Log::Level::Debug,
         Input = Log::Level::On,
         Output = Log::Level::On,

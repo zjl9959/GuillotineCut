@@ -340,6 +340,15 @@ public:
     void setSeed(int seed) { model.set(GRB_IntParam_Seed, (seed & (std::numeric_limits<int>::max)())); }
 
 protected:
+    GRBEnv& getGlobalEnv() {
+        static bool initialized = false;
+        if (!initialized) {
+            globalEnv.start();
+            initialized = true;
+        }
+        return globalEnv;
+    }
+
     bool optimizeWithGurobiMultiObjective();
     bool optimizeWithManualMultiObjective();
     bool optimizeInPriorityMode(bool useGurobiMultiObjectiveMode = !Configuration::EnableCallbackForEachObj);

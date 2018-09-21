@@ -536,8 +536,13 @@ public:
     };
 
 
+    #if SZX_DEBUG
     static bool isTurnedOn(int level) { return (level == On); }
     static bool isTurnedOff(int level) { return !isTurnedOn(level); }
+    #else
+    static bool isTurnedOn(int level) { return false; }
+    static bool isTurnedOff(int level) { return true; }
+    #endif // SZX_DEBUG
 
 
     Log(int logLevel, std::ostream &logFile) : level(logLevel), os(logFile) {}
