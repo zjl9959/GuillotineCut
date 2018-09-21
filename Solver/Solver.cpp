@@ -318,7 +318,7 @@ bool Solver::optimize(Solution &sln, ID workerId) {
             cfg.im.steps[1] = 3;
             cfg.im.steps[2] = 2;
             cfg.im.maxItemToConsiderPerIteration = 60;
-            cfg.im.initCoverageRatio = 0.875;
+            cfg.im.initCoverageRatio = 0.8625;
             cfg.im.setMipFocus = true;
         }
         status = optimizeIteratedModel(sln, cfg.im);
@@ -1362,7 +1362,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         double timeoutPerIteration = timer.restSeconds() / approxIter;
         if (timeoutPerIteration < cfg.minSecTimeoutPerIteration) { timeoutPerIteration = cfg.minSecTimeoutPerIteration; }
         Log(LogSwitch::Szx::Config) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
-        mp.addObjective(coveredArea - optRatio * input.param.plateHeight * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
+        mp.addObjective(coveredArea / input.param.plateHeight - optRatio * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
         if (cfg.setMipFocus) { mp.setMipFocus(MpSolver::MipFocusMode::ImproveFeasibleSolution); }
 

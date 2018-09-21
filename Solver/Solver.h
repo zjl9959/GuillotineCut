@@ -161,8 +161,8 @@ public:
             // user cut.
             bool addTrivialityInheritanceCut = false; // prefer false.
             bool addDefectFittingCut = false; // prefer false.
-            bool addBinSizeOrderCut = false; // prefer false. (except combined with addEmptyBinMergingCut?)
-            bool addEmptyBinMergingCut = false; // prefer false. (except combined with addBinSizeOrderCut?)
+            bool addBinSizeOrderCut = false; // prefer false.
+            bool addEmptyBinMergingCut = false; // prefer false.
             bool addAreaBoundCut = false;
             bool addL1BinWidthSumCut = false;
         };
