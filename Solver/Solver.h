@@ -192,7 +192,7 @@ public:
 
 
         Algorithm alg = Configuration::Algorithm::IteratedMp; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
-        int threadNumPerWorker = (std::min)(8, static_cast<int>(std::thread::hardware_concurrency()));
+        int threadNumPerWorker = (std::min)(4, static_cast<int>(std::thread::hardware_concurrency()));
         ID itemNumThresholdForCompleteModel = 0; // TODO[szx][2]: enable complete model?
         CompleteModel cm;
         IteratedModel im;

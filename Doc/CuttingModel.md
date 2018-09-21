@@ -18,11 +18,11 @@
 | ---- | ---------------------- | ----------- | ------------ | ------------------------------------------------------------ |
 | $I$ | (**i**tem) item set | $[1, 700]$ | $i, i'$ |               |
 | $S$ | (**s**tack) set of ordered list of items | $[1, |I|]$ | $s$ |               |
-| $G$ | (**g**lass) ordered list of plate | $[1, 100]$ | $g$ | bins |
 | $F$ | (**f**law) defect set | $[0, 8 \cdot |G|]$ | $f$ |               |
-| $L^{1}$ | layer-1 virtual bin | need good estimation | $l, l'$ |  |
-| $L^{2}_{l}$ | layer-2 virtual bin | need good estimation | $m, m'$ |  |
-| $L^{3}_{lm}$ | layer-3 virtual bin |need good estimation  | $n, n'$ |  |
+| $G$ | (**g**lass) ordered list of plate | $[1, 100]$ | $g, g'$ | bins |
+| $L^{1}$ | layer-1 virtual bin | need good estimation | $l, l'$ | **parameter** |
+| $L^{2}_{l}$ | layer-2 virtual bin | need good estimation | $m, m'$ | **parameter** |
+| $L^{3}_{lm}$ | layer-3 virtual bin |need good estimation  | $n, n'$ | **parameter** |
 | $L^{4}_{lmn}$ | layer-4 virtual bin |2  | $k, k'$ |  |
 
 ### Constant
@@ -41,6 +41,7 @@
 | $X_{f}$     | horizontal position of the flaw $f$'s left bottom                        | real | $[0, W - \Omega_{f}]$ | in Cartesian coordinate system |
 | $Y_{f}$ | vertical position of the flaw $f$'s left bottom | real | $[0, H - \Eta_{f}]$ | in Cartesian coordinate system |
 | $L$ | the total number of L3 virtual bins | int | $[0, 10000]$ | $L = |G| \cdot |L^{1}| \cdot |L^{2}_{l}| \cdot |L^{3}_{lm}|$ |
+| $U$ | the estimated optimal utilization ratio | real | $[0, 1]$ | **parameter** |
 
 
 ## Decision
@@ -103,16 +104,42 @@ $$
 
 ### maximize the area of placed items **OPI (placed items)**
 
+the optima is an feasible solution to the original problem.
+
 $$
 \max \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
 $$
 
 ### minimize the wasted glass **OWG (wasted glass)**
 
-if every item must be placed (**HSP (single placement)** takes the $=$ form), it is the same as **OGW (glass width)**
+it is able to be used in **iterated models** that determine the placement of items in a single L1 virtual bin at each iteration.
+if every item must be placed (**HSP (single placement)** takes the $=$ form), it is the same as **OGW (glass width)**.
 
 $$
 \min W \cdot \sum_{g \in G} p_{g} - (W - \gamma) - \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)
+$$
+
+### maximize the utilization ratio **OUR (utilization ratio)**
+
+it is able to be used in **iterated models** that determine the placement of items in a single L1 virtual bin at each iteration.
+if every item must be placed (**HSP (single placement)** takes the $=$ form), it is the same as **OGW (glass width)**.
+
+$$
+\max \frac{\sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i)}{W \cdot \sum_{g \in G} p_{g} - (W - \gamma)}
+$$
+
+it can be transformed to linear form by introducing the estimation of the optimal utilization ratio $U$.
+an additional constraint to force putting at least 1 item may be needed if $U$ is overestimated.
+substituting the $U$ with the objective value and re-optimizing may get better results until $U$ converges.
+
+$$
+\max \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot \textrm{p}(i) - U \cdot W \cdot \sum_{g \in G} p_{g} - (W - \gamma)
+$$
+
+it can also be regarded as minimizing the estimated width of used glass **OEW (estimated width)**.
+
+$$
+\min W \cdot \sum_{g \in G} p_{g} - (W - \gamma) + U^{-1} \cdot \sum_{i \in I} \Omega_{i} \cdot \Eta_{i} \cdot (1 - \textrm{p}(i))
 $$
 
 

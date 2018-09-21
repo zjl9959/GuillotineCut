@@ -313,12 +313,15 @@ bool Solver::optimize(Solution &sln, ID workerId) {
         status = optimizeCompleteModel(sln, cfg.cm);
         break;
     case Configuration::Algorithm::IteratedMp:
+        if (workerId & 0x1) { // in case some instances whose optima has a low ratio.
+            cfg.im.initCoverageRatio = 0.844; // TODO[szx][5]: parameterize the constant!
+        }
         if (env.msTimeout < Environment::RapidModeTimeoutThreshold) {
             cfg.im.minSecTimeoutPerIteration = 1;
             cfg.im.steps[1] = 3;
             cfg.im.steps[2] = 2;
             cfg.im.maxItemToConsiderPerIteration = 60;
-            cfg.im.initCoverageRatio = 0.8625;
+            cfg.im.initCoverageRatio *= 0.96; // TODO[szx][5]: parameterize the constant!
             cfg.im.setMipFocus = true;
         }
         status = optimizeIteratedModel(sln, cfg.im);
@@ -967,7 +970,6 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         MpSolver::Configuration mpcfg(MpSolver::Configuration::DefaultSolver, timer.restSeconds(), true, false);
         MpSolver mp(mpcfg);
-        mp.setMaxThread(this->cfg.threadNumPerWorker);
 
         Arr<Dvar> d(itemNum); // direction (if i should rotate 90 degree).
 
@@ -1364,6 +1366,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         Log(LogSwitch::Szx::Config) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
         mp.addObjective(coveredArea / input.param.plateHeight - optRatio * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
+        mp.setMaxThread(this->cfg.threadNumPerWorker);
         if (cfg.setMipFocus) { mp.setMipFocus(MpSolver::MipFocusMode::ImproveFeasibleSolution); }
 
         // solve.
