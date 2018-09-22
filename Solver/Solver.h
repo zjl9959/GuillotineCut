@@ -132,7 +132,6 @@ public:
                     << ";sl=" << lookaheads[0] << "*" << lookaheads[1] << "*" << lookaheads[2] << "*" << lookaheads[3]
                     << ";ss=" << steps[0] << "*" << steps[1]
                     << ";or=" << maxCoverRatio
-                    << ";ow=" << minWasteArea
                     << ";ui=" << addTrivialityInheritanceCut
                     << ";uf=" << addDefectFittingCut
                     << ";ub=" << addBinSizeOrderCut
@@ -149,16 +148,16 @@ public:
             ID maxItemToConsiderPerIteration = 80;
             double initCoverageRatio = 0.9;
             bool setMipFocus = true; // prefer true.
+            bool placeAllItems = false; // all items must be placed once.
 
             // step control.
-            List<ID> lookaheads = { 1, 1, 6, 6 }; // L0, L1, L2, L3.
+            List<ID> lookaheads = { 1, 1, 6, 5 }; // L0, L1, L2, L3.
             List<ID> steps = { 1, 1 }; // L0, L1.
 
             // constraint.
 
             // objective.
             bool maxCoverRatio = true;
-            bool minWasteArea = false;
 
             // user cut.
             bool addTrivialityInheritanceCut = false; // prefer false.

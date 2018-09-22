@@ -153,6 +153,7 @@ bool Solver::solve() {
     init();
 
     int workerNum = (max)(1, env.jobNum / cfg.threadNumPerWorker);
+    cfg.threadNumPerWorker = env.jobNum / workerNum;
     List<Solution> solutions(workerNum, Solution(this));
     List<bool> success(workerNum);
 
@@ -318,8 +319,8 @@ bool Solver::optimize(Solution &sln, ID workerId) {
         }
         if (env.msTimeout < Environment::RapidModeTimeoutThreshold) {
             cfg.im.minSecTimeoutPerIteration = 1;
-            cfg.im.steps[1] = 3;
-            cfg.im.steps[2] = 2;
+            cfg.im.lookaheads[2] = 3;
+            cfg.im.lookaheads[3] = 2;
             cfg.im.maxItemToConsiderPerIteration = 60;
             cfg.im.initCoverageRatio *= 0.96; // TODO[szx][5]: parameterize the constant!
             cfg.im.setMipFocus = true;
@@ -929,8 +930,8 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
     // step control.
     enum Layer { L0, L1, L2, L3, L4 };
-    const ID PlateNum = cfg.lookaheads[L0];
-    const ID L1BinNum = cfg.lookaheads[L1];
+    const ID PlateNum = max(cfg.lookaheads[L0], cfg.steps[L0]);
+    const ID L1BinNum = max(cfg.lookaheads[L1], cfg.steps[L1]);
     const ID L2BinNum = cfg.lookaheads[L2];
     const ID L3BinNum = cfg.lookaheads[L3];
     const ID L4BinNum = 2;
@@ -945,7 +946,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     List<Drawer::Item> items;
     List<Drawer::Cut> cuts;
     List<Drawer::Rect> flaws;
-    ID usedPlateNum = 1;
+    ID usedPlateNum = PlateStep;
 
     ID plateId = 0; // current plate.
     Length xOffset = 0; // left of current L1 bin in current plate.
@@ -1045,6 +1046,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
         }
 
+        // TODO[szx][3]: the actual objective will be less than the calculated one if the last plate is not used at all.
         for (ID g = 1; g < PlateNum; ++g) { coveredWidth += input.param.plateWidth; }
         for (ID l = 0; l < L1BinNum; ++l) { coveredWidth += w1[PlateNum - 1][l]; }
 
@@ -1114,7 +1116,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 }
             }
             // single placement.
-            mp.addConstraint(putInBin <= 1);
+            mp.addConstraint(cfg.placeAllItems ? (putInBin == 1) : (putInBin <= 1));
             // covered area.
             coveredArea += (aux.items[i].w * aux.items[i].h * putInBin);
             placedItem += putInBin;
@@ -1360,12 +1362,13 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         mp.addConstraint(placedItem >= L1BinNum);
 
         Log(LogSwitch::Szx::Model) << "add objectives." << endl;
-        // minimize the wasted area.
-        // OPTIMIZE[szx][2]: set it to greater value or make more iterations? this may not get better result since the construction itself is empirical.
-        double optRatio = cfg.initCoverageRatio;
-        double approxIter = max(1.5, (itemNum - placedItemNum) / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
-        double timeoutPerIteration = timer.restSeconds() / approxIter;
-        if (timeoutPerIteration < cfg.minSecTimeoutPerIteration) { timeoutPerIteration = cfg.minSecTimeoutPerIteration; }
+        // minimize the utiliation ratio.
+        double optRatio = cfg.initCoverageRatio; // OPTIMIZE[szx][2]: set it to less value and make more iterations? this may not get better result since the construction itself is empirical.
+        double timeoutPerIteration = timer.restSeconds();
+        if (!cfg.placeAllItems && (timeoutPerIteration > cfg.minSecTimeoutPerIteration)) { // more than 1 iteration can be performed.
+            double approxIter = max(1.5, (itemNum - placedItemNum) / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
+            timeoutPerIteration = max(timeoutPerIteration / approxIter, cfg.minSecTimeoutPerIteration);
+        }
         Log(LogSwitch::Szx::Config) << "timeout per iteration=" << timeoutPerIteration << "s." << endl;
         mp.addObjective(coveredArea / input.param.plateHeight - optRatio * coveredWidth, MpSolver::OptimaOrientation::Maximize, 0, 0, 0, timeoutPerIteration);
 
@@ -1576,8 +1579,8 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         bool enoughResidual = (xOffset + minLenOfRestItems) < input.param.plateWidth;
         if (!feasible || !enoughResidual) {
             // TODO[szx][0]: what if there are defects and there must be an empty L1 bin or leave it empty will be better?
-            ++usedPlateNum;
-            ++plateId;
+            usedPlateNum += PlateStep;
+            plateId += PlateStep;
             xOffset = 0;
             Log(LogSwitch::Szx::Postprocess) << "use new plate " << plateId << endl;
         }
