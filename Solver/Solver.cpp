@@ -328,6 +328,7 @@ bool Solver::optimize(Solution &sln, ID workerId) {
                 cfg.im.placeAllItems = true;
             }
             if (workerId & 0x1) { // in case some instances whose optima has a low ratio.
+                cfg.im.lookaheads[2] = 5;
                 cfg.im.initCoverageRatio = 0.844; // TODO[szx][5]: parameterize the constant!
             }
         }

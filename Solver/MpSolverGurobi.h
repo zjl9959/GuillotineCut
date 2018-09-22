@@ -341,7 +341,7 @@ public:
 
 protected:
     GRBEnv& getGlobalEnv() {
-        static volatile bool initialized = false;
+        thread_local static bool initialized = false;
         if (!initialized) {
             globalEnv.start();
             initialized = true;
@@ -399,7 +399,7 @@ protected:
     #pragma region Field
 public:
 protected:
-    static GRBEnv globalEnv;
+    thread_local static GRBEnv globalEnv;
 
     // definition of the problem to solve.
     GRBModel model;

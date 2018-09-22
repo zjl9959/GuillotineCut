@@ -8,7 +8,7 @@ using namespace std;
 
 namespace szx {
 
-GRBEnv MpSolverGurobi::globalEnv(true);
+thread_local GRBEnv MpSolverGurobi::globalEnv(true);
 
 MpSolverGurobi::MpSolverGurobi() : model(getGlobalEnv()), status(ResultStatus::Ready),
     timer(Timer::toMillisecond(cfg.timeoutInSecond)), subObjTimer(0ms) {}
