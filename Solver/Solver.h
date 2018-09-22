@@ -85,42 +85,6 @@ public:
 
     // controls the I/O data format, exported contents and general usage of the solver.
     struct Configuration {
-        struct CompleteModel {
-            String toBriefStr() const {
-                std::ostringstream oss;
-                oss << "cp=" << placeAllItems
-                    << ";oc=" << maxCoveredArea
-                    << ";or=" << maxCoveredRatio
-                    << ";ow=" << minWastedArea
-                    << ";ub=" << addBinSizeOrderCut
-                    << ";ue=" << addEmptyBinMergingCut
-                    << ";ug=" << addGlassOrderCut
-                    << ";up=" << addPlacementOrderCut
-                    << ";ua=" << addAreaBoundCut
-                    << ";uw=" << addL1BinWidthSumCut;
-                return oss.str();
-            }
-
-
-            // strategy.
-
-            // constraint.
-            bool placeAllItems = false; // all items must be placed finally.
-
-            // objective.
-            bool maxCoveredArea = true; // (only work when (!placeAllItems == true)).
-            bool maxCoveredRatio = false;
-            bool minWastedArea = false;
-
-            // user cut.
-            bool addBinSizeOrderCut = true;
-            bool addEmptyBinMergingCut = false;
-            bool addGlassOrderCut = true;
-            bool addPlacementOrderCut = false;
-            bool addAreaBoundCut = true;
-            bool addL1BinWidthSumCut = true;
-        };
-
         struct IteratedModel {
             String toBriefStr() const {
                 std::ostringstream oss;
@@ -169,7 +133,7 @@ public:
         };
 
 
-        enum Algorithm { CompleteMp, IteratedMp };
+        enum Algorithm { IteratedMp };
 
 
         Configuration() {}
@@ -182,8 +146,6 @@ public:
             String threshold(std::to_string(itemNumThresholdForCompleteModel));
             String threadNum(std::to_string(threadNumPerWorker));
             switch (alg) {
-            case Algorithm::CompleteMp:
-                return "[C" + threshold + "x" + threadNum + "]" + cm.toBriefStr();
             case Algorithm::IteratedMp:
                 return "[I" + threshold + "x" + threadNum + "]" + im.toBriefStr();
             default:
@@ -194,8 +156,8 @@ public:
 
         Algorithm alg = Configuration::Algorithm::IteratedMp; // OPTIMIZE[szx][3]: make it a list to specify a series of algorithms to be used by each threads in sequence.
         int threadNumPerWorker = (std::min)(4, static_cast<int>(std::thread::hardware_concurrency()));
-        ID itemNumThresholdForCompleteModel = 0; // TODO[szx][2]: enable complete model?
-        CompleteModel cm;
+        ID itemNumThresholdForCompleteModel = 20;
+
         IteratedModel im;
     };
 
@@ -333,7 +295,6 @@ protected:
     void init();
     bool optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
 
-    bool optimizeCompleteModel(Solution &sln, Configuration::CompleteModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
     bool optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
     #pragma endregion Method
 

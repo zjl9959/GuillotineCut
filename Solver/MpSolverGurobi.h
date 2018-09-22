@@ -341,7 +341,7 @@ public:
 
 protected:
     GRBEnv& getGlobalEnv() {
-        static bool initialized = false;
+        static volatile bool initialized = false;
         if (!initialized) {
             globalEnv.start();
             initialized = true;
