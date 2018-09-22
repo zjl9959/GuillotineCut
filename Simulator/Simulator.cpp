@@ -99,9 +99,9 @@ void Simulator::debug() {
     task.instId = "1";
     task.randSeed = "1500972793";
     //task.randSeed = to_string(RandSeed::generate());
-    task.timeout = "3600";
+    task.timeout = "180";
     //task.maxIter = "1000000000";
-    task.jobNum = "1";
+    task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();
     task.logPath = Env::DefaultLogPath();
     task.runId = "0";
@@ -116,7 +116,7 @@ void Simulator::benchmark(int repeat) {
     //task.maxIter = "1000000000";
     task.timeout = "3600";
     //task.maxIter = "1000000000";
-    task.jobNum = "12";
+    task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();
     task.logPath = Env::DefaultLogPath();
 
@@ -125,7 +125,7 @@ void Simulator::benchmark(int repeat) {
     vector<int> instList;
     for (int inst = 1; inst <= 20; ++inst) { instList.push_back(inst); }
     for (int i = 0; i < repeat; ++i) {
-        shuffle(instList.begin(), instList.end(), rgen);
+        //shuffle(instList.begin(), instList.end(), rgen);
         for (auto inst = instList.begin(); inst != instList.end(); ++inst) {
             task.instId = to_string(*inst);
             task.randSeed = to_string(Random::generateSeed());
@@ -142,18 +142,18 @@ void Simulator::parallelBenchmark(int repeat) {
     //task.maxIter = "1000000000";
     task.timeout = "3600";
     //task.maxIter = "1000000000";
-    task.jobNum = "12";
+    task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();
     task.logPath = Env::DefaultLogPath();
 
-    ThreadPool<> tp(5);
+    ThreadPool<> tp(8);
 
     random_device rd;
     mt19937 rgen(rd());
     vector<int> instList;
     for (int inst = 1; inst <= 20; ++inst) { instList.push_back(inst); }
     for (int i = 0; i < repeat; ++i) {
-        shuffle(instList.begin(), instList.end(), rgen);
+        //shuffle(instList.begin(), instList.end(), rgen);
         for (auto inst = instList.begin(); inst != instList.end(); ++inst) {
             task.instId = to_string(*inst);
             task.randSeed = to_string(Random::generateSeed());
