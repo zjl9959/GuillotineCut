@@ -129,7 +129,8 @@ public:
                     << ";sc=" << maxItemToConsiderPerIteration
                     << ";sr=" << std::setprecision(4) << initCoverageRatio
                     << ";sf=" << setMipFocus
-                    << ";ss=" << steps[0] << "*" << steps[1] << "*" << steps[2]
+                    << ";sl=" << lookaheads[0] << "*" << lookaheads[1] << "*" << lookaheads[2] << "*" << lookaheads[3]
+                    << ";ss=" << steps[0] << "*" << steps[1]
                     << ";or=" << maxCoverRatio
                     << ";ow=" << minWasteArea
                     << ";ui=" << addTrivialityInheritanceCut
@@ -150,7 +151,8 @@ public:
             bool setMipFocus = true; // prefer true.
 
             // step control.
-            List<ID> steps = { 1, 6, 6 };
+            List<ID> lookaheads = { 1, 1, 6, 6 }; // L0, L1, L2, L3.
+            List<ID> steps = { 1, 1 }; // L0, L1.
 
             // constraint.
 
