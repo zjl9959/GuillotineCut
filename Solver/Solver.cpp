@@ -172,11 +172,13 @@ bool Solver::solve() {
     Length bestWidth = Problem::MaxPlateNum * input.param.plateWidth;
     for (int i = 0; i < workerNum; ++i) {
         if (!success[i]) { continue; }
+        Log(LogSwitch::Szx::Framework) << "worker " << i << " got " << solutions[i].totalWidth << endl;
         if (solutions[i].totalWidth >= bestWidth) { continue; }
         bestIndex = i;
         bestWidth = solutions[i].totalWidth;
     }
 
+    env.rid = to_string(bestIndex);
     if (bestIndex < 0) { return false; }
     output = solutions[bestIndex];
     return true;
@@ -308,31 +310,33 @@ bool Solver::optimize(Solution &sln, ID workerId) {
 
     ID itemNum = static_cast<ID>(aux.items.size());
 
+    Configuration::IteratedModel imCfg(cfg.im);
+
     bool status;
     switch (cfg.alg) {
     case Configuration::Algorithm::IteratedMp:
         if (env.msTimeout < Environment::RapidModeTimeoutThreshold) {
-            cfg.im.minSecTimeoutPerIteration = 1;
-            cfg.im.lookaheads[2] = 4;
-            cfg.im.lookaheads[3] = 3;
-            cfg.im.maxItemToConsiderPerIteration = 60;
-            cfg.im.initCoverageRatio *= 0.96; // TODO[szx][5]: parameterize the constant!
-            cfg.im.setMipFocus = true;
+            imCfg.minSecTimeoutPerIteration = 1;
+            imCfg.lookaheads[2] = 4;
+            imCfg.lookaheads[3] = 3;
+            imCfg.maxItemToConsiderPerIteration = 60;
+            imCfg.setMipFocus = true;
             if (workerId & 0x1) { // in case the model size is too big for some large instances.
-                cfg.im.lookaheads[3] = 2; // TODO[szx][5]: parameterize the constant!
+                imCfg.lookaheads[3] = 2; // TODO[szx][5]: parameterize the constant!
+                imCfg.initCoverageRatio = 0.86; // TODO[szx][5]: parameterize the constant!
             }
         } else {
             if (itemNum < cfg.itemNumThresholdForCompleteModel) {
-                cfg.im.steps[0] = 1;
-                cfg.im.steps[1] = min(6, itemNum);
-                cfg.im.placeAllItems = true;
+                imCfg.steps[0] = 1;
+                imCfg.steps[1] = min(6, itemNum);
+                imCfg.placeAllItems = true;
             }
             if (workerId & 0x1) { // in case some instances whose optima has a low ratio.
-                cfg.im.lookaheads[2] = 5;
-                cfg.im.initCoverageRatio = 0.844; // TODO[szx][5]: parameterize the constant!
+                imCfg.lookaheads[2] = 5;
+                imCfg.initCoverageRatio = 0.86; // TODO[szx][5]: parameterize the constant!
             }
         }
-        status = optimizeIteratedModel(sln, cfg.im);
+        status = optimizeIteratedModel(sln, imCfg);
         break;
     }
 
@@ -810,6 +814,43 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
         // solve.
         bool feasible = mp.optimize();
         if (feasible) {
+            // statistics.
+            double utilRatio = mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth));
+            Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << utilRatio << endl;
+            ID itemCount = 0;
+            for (ID i = 0; i < itemNum; ++i) {
+                if (skipItem[i]) { continue; }
+                for (ID g = 0; g < PlateStep; ++g) {
+                    for (ID l = 0; l < L1BinStep; ++l) {
+                        for (ID m = 0; m < L2BinNum; ++m) {
+                            for (ID n = 0; n < L3BinNum; ++n) {
+                                for (ID k = 0; k < L4BinNum; ++k) {
+                                    if (!mp.isTrue(pi4[i][g][l][m][n][k])) { continue; }
+                                    ++itemCount;
+                                    isItemPlaced[i] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            placedItemNum += itemCount;
+            Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
+
+            // fall back to use less bins to accelerrate and re-optimize.
+            if ((placedItemNum < itemNum) && (utilRatio < 0.75) && (itemCount <= 1)) {
+                if (cfg.lookaheads[L2] == 6) { // TODO[szx][5]: parameterize the constant!
+                    --cfg.lookaheads[L2];
+                    continue;
+                } else if (cfg.lookaheads[L3] == 5) {
+                    --cfg.lookaheads[L3];
+                    continue;
+                } else if (cfg.maxItemToConsiderPerIteration == 80) {
+                    cfg.maxItemToConsiderPerIteration = 64;
+                }
+                
+            }
+
             // record solution.
             using Node = Problem::Output::Node;
             auto getLen = [&](const Dvar &dvar, double &margin) {
@@ -958,29 +999,10 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             draw.end();
             #endif // SZX_DEBUG
 
-            // statistics.
             double width = (PlateStep > 1) ? 0 : xOffset;
             for (ID l = 0; l < L1BinStep; ++l) { width += mp.getValue(w1[PlateStep - 1][l]); }
             xOffset = Math::lfloor(width);
             Log(LogSwitch::Szx::Postprocess) << "x offset=" << xOffset << endl;
-            Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth)) << endl;
-            for (ID i = 0; i < itemNum; ++i) {
-                if (skipItem[i]) { continue; }
-                for (ID g = 0; g < PlateStep; ++g) {
-                    for (ID l = 0; l < L1BinStep; ++l) {
-                        for (ID m = 0; m < L2BinNum; ++m) {
-                            for (ID n = 0; n < L3BinNum; ++n) {
-                                for (ID k = 0; k < L4BinNum; ++k) {
-                                    if (!mp.isTrue(pi4[i][g][l][m][n][k])) { continue; }
-                                    ++placedItemNum;
-                                    isItemPlaced[i] = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
 
             // exit criteria.
             if (placedItemNum >= itemNum) {
