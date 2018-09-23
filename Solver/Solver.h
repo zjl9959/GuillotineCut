@@ -204,6 +204,8 @@ public:
         String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
 
         String visualizPath() const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + ".html"; }
+        template<typename T>
+        String visualizPath(const T &msg) const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + "." + std::to_string(msg) + ".html"; }
         String friendlyInstName() const { // friendly to file system (without special char).
             auto pos = instName.find_last_of('/');
             return (pos == String::npos) ? instName : instName.substr(pos + 1);
@@ -295,7 +297,7 @@ protected:
     void init();
     bool optimize(Solution &sln, ID workerId = 0); // optimize by a single worker.
 
-    bool optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg); // make a copy of cfg intentionally for the convenience of multi-threading.
+    bool optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg, ID workerId = 0); // make a copy of cfg intentionally for the convenience of multi-threading.
     #pragma endregion Method
 
     #pragma region Field

@@ -336,7 +336,7 @@ bool Solver::optimize(Solution &sln, ID workerId) {
                 imCfg.initCoverageRatio = 0.86; // TODO[szx][5]: parameterize the constant!
             }
         }
-        status = optimizeIteratedModel(sln, imCfg);
+        status = optimizeIteratedModel(sln, imCfg, workerId);
         break;
     }
 
@@ -354,7 +354,7 @@ bool Solver::optimize(Solution &sln, ID workerId) {
 //    |            w3
 // ---+------------------>
 //  O |                  x
-bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg) {
+bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel cfg, ID workerId) {
     using Dvar = MpSolver::DecisionVar;
     using Expr = MpSolver::LinearExpr;
     using VarType = MpSolver::VariableType;
@@ -818,6 +818,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             double utilRatio = mp.getValue(coveredArea) / (input.param.plateHeight * mp.getValue(coveredWidth));
             Log(LogSwitch::Szx::Postprocess) << "coverage ratio=" << utilRatio << endl;
             ID itemCount = 0;
+            List<bool> isItemPlacedBackup(isItemPlaced);
             for (ID i = 0; i < itemNum; ++i) {
                 if (skipItem[i]) { continue; }
                 for (ID g = 0; g < PlateStep; ++g) {
@@ -838,17 +839,22 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             Log(LogSwitch::Szx::Postprocess) << usedPlateNum << " plates are used to place " << placedItemNum << "/" << itemNum << " items." << endl;
 
             // fall back to use less bins to accelerrate and re-optimize.
-            if ((placedItemNum < itemNum) && (utilRatio < 0.75) && (itemCount <= 1)) {
+            if ((placedItemNum < itemNum) && (utilRatio < 0.75) && (itemCount <= 1)
+                && (xOffset + 1.5 * minLenOfRestItems < input.param.plateWidth)) {
                 if (cfg.lookaheads[L2] == 6) { // TODO[szx][5]: parameterize the constant!
                     --cfg.lookaheads[L2];
+                    isItemPlaced = isItemPlacedBackup;
+                    Log(LogSwitch::Szx::Config) << "L2 bin number fall back to " << cfg.lookaheads[L2] << endl;
                     continue;
                 } else if (cfg.lookaheads[L3] == 5) {
                     --cfg.lookaheads[L3];
+                    isItemPlaced = isItemPlacedBackup;
+                    Log(LogSwitch::Szx::Config) << "L3 bin number fall back to " << cfg.lookaheads[L3] << endl;
                     continue;
                 } else if (cfg.maxItemToConsiderPerIteration == 80) {
                     cfg.maxItemToConsiderPerIteration = 64;
+                    Log(LogSwitch::Szx::Config) << "considered item number fall back to " << cfg.maxItemToConsiderPerIteration << endl;
                 }
-                
             }
 
             // record solution.
@@ -980,7 +986,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
 
             Drawer draw;
-            draw.begin(env.visualizPath(), input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
+            draw.begin(env.visualizPath(workerId), input.param.plateWidth, input.param.plateHeight, usedPlateNum, PlateGap);
             for (auto g = plates.begin(); g != plates.end(); ++g) {
                 draw.rect(g->x, g->y, g->w, g->h);
             }
@@ -1012,7 +1018,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
 
             // use new plate when the width of the residual is less than the length of any item.
-            minLenOfRestItems = input.param.plateWidth;
+            minLenOfRestItems = input.param.plateWidth; // OPTIMIZE[szx][5]: only count unused items on top of the stack.
             avgLenOfRestItems = 0;
             for (ID i = 0; i < itemNum; ++i) {
                 if (isItemPlaced[i]) { continue; }
