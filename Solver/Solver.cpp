@@ -843,12 +843,16 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                 && (xOffset + 1.5 * minLenOfRestItems < input.param.plateWidth)) {
                 if (cfg.lookaheads[L2] == 6) { // TODO[szx][5]: parameterize the constant!
                     --cfg.lookaheads[L2];
+                    // revert modification.
                     isItemPlaced = isItemPlacedBackup;
+                    placedItemNum -= itemCount;
                     Log(LogSwitch::Szx::Config) << "L2 bin number fall back to " << cfg.lookaheads[L2] << endl;
                     continue;
                 } else if (cfg.lookaheads[L3] == 5) {
                     --cfg.lookaheads[L3];
+                    // revert modification.
                     isItemPlaced = isItemPlacedBackup;
+                    placedItemNum -= itemCount;
                     Log(LogSwitch::Szx::Config) << "L3 bin number fall back to " << cfg.lookaheads[L3] << endl;
                     continue;
                 } else if (cfg.maxItemToConsiderPerIteration == 80) {
