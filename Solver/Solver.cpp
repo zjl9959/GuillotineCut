@@ -384,6 +384,8 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
     List<Drawer::Rect> flaws;
     ID usedPlateNum = PlateStep;
 
+    double optRatio = cfg.initCoverageRatio; // OPTIMIZE[szx][2]: set it to less value and make more iterations? this may not get better result since the construction itself is empirical.
+
     ID plateId = 0; // current plate.
     Length xOffset = 0; // left of current L1 bin in current plate.
     Length minLenOfRestItems;
@@ -799,7 +801,6 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
         Log(LogSwitch::Szx::Model) << "add objectives." << endl;
         // minimize the utiliation ratio.
-        double optRatio = cfg.initCoverageRatio; // OPTIMIZE[szx][2]: set it to less value and make more iterations? this may not get better result since the construction itself is empirical.
         double timeoutPerIteration = timer.restSeconds();
         if (!cfg.placeAllItems && (timeoutPerIteration > cfg.minSecTimeoutPerIteration)) { // more than 1 iteration can be performed.
             double approxIter = max(1.5, (itemNum - placedItemNum) / cfg.approxPlacedItemNumPerIteration); // TODO[szx][5]: parameterize the constant!
@@ -841,23 +842,28 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             // fall back to use less bins to accelerrate and re-optimize.
             if ((placedItemNum < itemNum) && (utilRatio < 0.75) && (itemCount <= 1)
                 && (xOffset + 1.5 * minLenOfRestItems < input.param.plateWidth)) {
-                if (cfg.lookaheads[L2] == 6) { // TODO[szx][5]: parameterize the constant!
-                    --cfg.lookaheads[L2];
-                    // revert modification.
+                auto revertPlacement = [&]() { // revert modification.
                     isItemPlaced = isItemPlacedBackup;
                     placedItemNum -= itemCount;
+                };
+                if (cfg.lookaheads[L2] == 6) { // TODO[szx][5]: parameterize the constant!
+                    --cfg.lookaheads[L2];
+                    revertPlacement();
                     Log(LogSwitch::Szx::Config) << "L2 bin number fall back to " << cfg.lookaheads[L2] << endl;
                     continue;
                 } else if (cfg.lookaheads[L3] == 5) {
                     --cfg.lookaheads[L3];
-                    // revert modification.
-                    isItemPlaced = isItemPlacedBackup;
-                    placedItemNum -= itemCount;
+                    revertPlacement();
                     Log(LogSwitch::Szx::Config) << "L3 bin number fall back to " << cfg.lookaheads[L3] << endl;
                     continue;
-                } else if (cfg.maxItemToConsiderPerIteration == 80) {
-                    cfg.maxItemToConsiderPerIteration = 64;
-                    Log(LogSwitch::Szx::Config) << "considered item number fall back to " << cfg.maxItemToConsiderPerIteration << endl;
+                } else if (optRatio > 0.86) {
+                    optRatio = 0.86;
+                    revertPlacement();
+                    Log(LogSwitch::Szx::Config) << "reduce estimated util rate to " << optRatio << endl;
+                    continue;
+                //} else if (cfg.maxItemToConsiderPerIteration == 80) {
+                //    cfg.maxItemToConsiderPerIteration = 64;
+                //    Log(LogSwitch::Szx::Config) << "considered item number fall back to " << cfg.maxItemToConsiderPerIteration << endl;
                 }
             }
 
