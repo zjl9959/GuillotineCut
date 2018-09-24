@@ -1,0 +1,21 @@
+Checker.exe A1 Solution/A1_solution.csv
+Checker.exe A2 Solution/A2_solution.csv
+Checker.exe A3 Solution/A3_solution.csv
+Checker.exe A4 Solution/A4_solution.csv
+Checker.exe A5 Solution/A5_solution.csv
+Checker.exe A6 Solution/A6_solution.csv
+Checker.exe A7 Solution/A7_solution.csv
+Checker.exe A8 Solution/A8_solution.csv
+Checker.exe A9 Solution/A9_solution.csv
+Checker.exe A10 Solution/A10_solution.csv
+Checker.exe A11 Solution/A11_solution.csv
+Checker.exe A12 Solution/A12_solution.csv
+Checker.exe A13 Solution/A13_solution.csv
+Checker.exe A14 Solution/A14_solution.csv
+Checker.exe A15 Solution/A15_solution.csv
+Checker.exe A16 Solution/A16_solution.csv
+Checker.exe A17 Solution/A17_solution.csv
+Checker.exe A18 Solution/A18_solution.csv
+Checker.exe A19 Solution/A19_solution.csv
+Checker.exe A20 Solution/A20_solution.csv
+pause
