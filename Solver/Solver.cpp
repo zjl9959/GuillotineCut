@@ -366,13 +366,13 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
     // step control.
     enum Layer { L0, L1, L2, L3, L4 };
-    const ID PlateNum = max(cfg.lookaheads[L0], cfg.steps[L0]);
-    const ID L1BinNum = max(cfg.lookaheads[L1], cfg.steps[L1]);
-    const ID L2BinNum = cfg.lookaheads[L2];
-    const ID L3BinNum = cfg.lookaheads[L3];
-    const ID L4BinNum = 2;
-    const ID PlateStep = cfg.steps[L0]; // define how many plates will be accepted/recorded in each iteration.
-    const ID L1BinStep = cfg.steps[L1]; // define how many bins will be accepted/recorded in each iteration.
+    ID PlateNum = max(cfg.lookaheads[L0], cfg.steps[L0]);
+    ID L1BinNum = max(cfg.lookaheads[L1], cfg.steps[L1]);
+    ID L2BinNum = cfg.lookaheads[L2];
+    ID L3BinNum = cfg.lookaheads[L3];
+    ID L4BinNum = 2;
+    ID PlateStep = cfg.steps[L0]; // define how many plates will be accepted/recorded in each iteration.
+    ID L1BinStep = cfg.steps[L1]; // define how many bins will be accepted/recorded in each iteration.
 
     ID stackNum = static_cast<ID>(aux.stacks.size());
     ID itemNum = static_cast<ID>(aux.items.size());
@@ -846,20 +846,20 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     isItemPlaced = isItemPlacedBackup;
                     placedItemNum -= itemCount;
                 };
-                if (cfg.lookaheads[L2] == 6) { // TODO[szx][5]: parameterize the constant!
-                    --cfg.lookaheads[L2];
+                if (L2BinNum == 6) { // TODO[szx][5]: parameterize the constant!
+                    --L2BinNum;
                     revertPlacement();
-                    Log(LogSwitch::Szx::Config) << "L2 bin number fall back to " << cfg.lookaheads[L2] << endl;
-                    continue;
-                } else if (cfg.lookaheads[L3] == 5) {
-                    --cfg.lookaheads[L3];
-                    revertPlacement();
-                    Log(LogSwitch::Szx::Config) << "L3 bin number fall back to " << cfg.lookaheads[L3] << endl;
+                    Log(LogSwitch::Szx::Config) << "L2 bin number fall back to " << L2BinNum << endl;
                     continue;
                 } else if (optRatio > 0.86) {
                     optRatio = 0.86;
                     revertPlacement();
-                    Log(LogSwitch::Szx::Config) << "reduce estimated util rate to " << optRatio << endl;
+                    Log(LogSwitch::Szx::Config) << "estimated util rate fall back to " << optRatio << endl;
+                    continue;
+                } else if (L3BinNum == 5) {
+                    --L3BinNum;
+                    revertPlacement();
+                    Log(LogSwitch::Szx::Config) << "L3 bin number fall back to " << L3BinNum << endl;
                     continue;
                 //} else if (cfg.maxItemToConsiderPerIteration == 80) {
                 //    cfg.maxItemToConsiderPerIteration = 64;
