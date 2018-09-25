@@ -678,6 +678,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                                 for (auto gf = aux.plates[plateId + g].begin(); gf != aux.plates[plateId + g].end(); ++gf, ++f) {
                                     RectArea &flaw(aux.defects[*gf]);
                                     if ((g == 0) && ((flaw.x + flaw.w) <= xOffset)) { continue; } // skip passed flaws (it is impossible to cover them in any bins).
+                                    if (((g == 0) ? xOffset : 0) + input.param.maxL1Width <= flaw.x) { continue; } // skip flaws too far away.
                                     // defect free.
                                     mp.addConstraint(p4[g][l][m][n][k] <= 1 - c[g][l][m][n][k][f]);
                                     // defect covering.
@@ -841,7 +842,7 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
 
             // fall back to use less bins to accelerrate and re-optimize.
             if ((placedItemNum < itemNum) && (utilRatio < 0.75) && (itemCount <= 1)
-                && (xOffset + 1.5 * minLenOfRestItems < input.param.plateWidth)) {
+                && (xOffset + 2 * minLenOfRestItems < input.param.plateWidth)) {
                 auto revertPlacement = [&]() { // revert modification.
                     isItemPlaced = isItemPlacedBackup;
                     placedItemNum -= itemCount;
@@ -851,19 +852,27 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
                     revertPlacement();
                     Log(LogSwitch::Szx::Config) << "L2 bin number fall back to " << L2BinNum << endl;
                     continue;
-                } else if (optRatio > 0.86) {
-                    optRatio = 0.86;
-                    revertPlacement();
-                    Log(LogSwitch::Szx::Config) << "estimated util rate fall back to " << optRatio << endl;
-                    continue;
                 } else if (L3BinNum == 5) {
                     --L3BinNum;
                     revertPlacement();
                     Log(LogSwitch::Szx::Config) << "L3 bin number fall back to " << L3BinNum << endl;
                     continue;
+                //} else if (optRatio > 0.86) {
+                //    optRatio = 0.86;
+                //    revertPlacement();
+                //    Log(LogSwitch::Szx::Config) << "estimated util rate fall back to " << optRatio << endl;
+                //    continue;
                 //} else if (cfg.maxItemToConsiderPerIteration == 80) {
                 //    cfg.maxItemToConsiderPerIteration = 64;
                 //    Log(LogSwitch::Szx::Config) << "considered item number fall back to " << cfg.maxItemToConsiderPerIteration << endl;
+                }
+            } else if (placedItemNum + 40 > itemNum) { // recover to use more bins to improve quality.
+                if (L3BinNum == 4) { // TODO[szx][5]: parameterize the constant!
+                    ++L3BinNum;
+                    Log(LogSwitch::Szx::Config) << "L3 bin number recover to " << L3BinNum << endl;
+                } else if (L2BinNum == 5) {
+                    ++L2BinNum;
+                    Log(LogSwitch::Szx::Config) << "L2 bin number recover to " << L2BinNum << endl;
                 }
             }
 
