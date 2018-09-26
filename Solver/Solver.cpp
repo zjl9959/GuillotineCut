@@ -1029,15 +1029,15 @@ bool Solver::optimizeIteratedModel(Solution &sln, Configuration::IteratedModel c
             }
 
             // recover to use more bins to improve quality.
-            if (placedItemNum + 40 > itemNum) {
-                if (L3BinNum == 4) { // TODO[szx][5]: parameterize the constant!
-                    ++L3BinNum;
-                    Log(LogSwitch::Szx::Config) << "L3 bin number recover to " << L3BinNum << endl;
-                } else if (L2BinNum == 5) {
-                    ++L2BinNum;
-                    Log(LogSwitch::Szx::Config) << "L2 bin number recover to " << L2BinNum << endl;
-                }
-            }
+            //if (placedItemNum + 40 > itemNum) {
+            //    if (L3BinNum == 4) { // TODO[szx][5]: parameterize the constant!
+            //        ++L3BinNum;
+            //        Log(LogSwitch::Szx::Config) << "L3 bin number recover to " << L3BinNum << endl;
+            //    } else if (L2BinNum == 5) {
+            //        ++L2BinNum;
+            //        Log(LogSwitch::Szx::Config) << "L2 bin number recover to " << L2BinNum << endl;
+            //    }
+            //}
 
             // use new plate when the width of the residual is less than the length of any item.
             minLenOfRestItems = input.param.plateWidth; // OPTIMIZE[szx][5]: only count unused items on top of the stack.

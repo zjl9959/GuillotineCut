@@ -83,19 +83,24 @@ namespace Analyzer {
                 plates[defect.plateId].Add(defect.id);
             }
 
-            Console.WriteLine(instanceName);
-            Console.Write("  itemNum=" + items.Count);
-            Console.Write("  stackNum=" + stacks.Count);
-            Console.WriteLine("  defectNum=" + defects.Count);
+            Length area = 0;
             ID hNum = 0, vNum = 0;
             Length length = 0;
             foreach (var l in items.OrderBy(i => i.Value.h)) {
+                area += (l.Value.w * l.Value.h);
                 length += l.Value.h;
                 if (length < input.param.plateWidth) { ++hNum; }
                 if (length < input.param.plateHeight) { ++vNum; }
             }
-            Console.Write("  minLength=" + items.Min(o => o.Value.h) + "  maxLength=" + items.Max(o => o.Value.w));
-            Console.WriteLine("  max|L1|*|L3|=" + hNum + "  max|L2|=" + vNum);
+            Console.WriteLine(instanceName);
+            Console.Write("  itemNum=" + items.Count);
+            Console.Write("  stackNum=" + stacks.Count);
+            Console.WriteLine("  defectNum=" + defects.Count);
+            Console.Write("  area=" + area);
+            Console.Write("  minLength=" + items.Min(o => o.Value.h));
+            Console.Write("  maxLength=" + items.Max(o => o.Value.w));
+            Console.Write("  max|L1|*|L3|=" + hNum);
+            Console.WriteLine("  max|L2|=" + vNum);
         }
 
 
