@@ -250,3 +250,4 @@ ModelManifest.xml
 /Deploy/Solution/*.csv
 /Deploy/Visualization/*.html
 /Deploy/Log
+/Deploy/log*.csv
