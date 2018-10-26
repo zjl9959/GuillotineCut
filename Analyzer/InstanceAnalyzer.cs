@@ -50,9 +50,13 @@ namespace Analyzer {
 
 
         public static void analyzeAllInstances(string outputPath) {
-            for (int i = 1; i <= 20; ++i) {
+            //for (int i = 1; i <= 20; ++i) {
+            //    InstanceAnalyzer instAnalyzer = new InstanceAnalyzer();
+            //    instAnalyzer.analyzeInstance("A", i);
+            //}
+            for (int i = 1; i <= 15; ++i) {
                 InstanceAnalyzer instAnalyzer = new InstanceAnalyzer();
-                instAnalyzer.analyzeInstance("A", i);
+                instAnalyzer.analyzeInstance("B", i);
             }
         }
 
