@@ -171,6 +171,7 @@
     <ClInclude Include="MpSolverGurobi.h" />
     <ClInclude Include="Problem.h" />
     <ClInclude Include="Solver.h" />
+    <ClInclude Include="TreeSearch.h" />
     <ClInclude Include="Utility.h" />
     <ClInclude Include="Visualizer.h" />
   </ItemGroup>
@@ -180,6 +181,7 @@
     <ClCompile Include="MpSolverGurobi.cpp" />
     <ClCompile Include="Problem.cpp" />
     <ClCompile Include="Solver.cpp" />
+    <ClCompile Include="TreeSearch.cpp" />
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -171,6 +171,7 @@
     <ClInclude Include="..\Solver\MpSolverGurobi.h" />
     <ClInclude Include="..\Solver\Problem.h" />
     <ClInclude Include="..\Solver\Solver.h" />
+    <ClInclude Include="..\Solver\TreeSearch.h" />
     <ClInclude Include="..\Solver\Utility.h" />
     <ClInclude Include="..\Solver\Visualizer.h" />
     <ClInclude Include="Simulator.h" />
@@ -181,6 +182,7 @@
     <ClCompile Include="..\Solver\MpSolverGurobi.cpp" />
     <ClCompile Include="..\Solver\Problem.cpp" />
     <ClCompile Include="..\Solver\Solver.cpp" />
+    <ClCompile Include="..\Solver\TreeSearch.cpp" />
     <ClCompile Include="..\Solver\Utility.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Simulator.cpp" />
