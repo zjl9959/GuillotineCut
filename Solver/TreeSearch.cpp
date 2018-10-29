@@ -1,3 +1,5 @@
+/*note: use absolute coordinates in the algoritm
+*/
 #include "TreeSearch.h"
 
 #include <iostream>
@@ -71,15 +73,39 @@ void TreeSearch::init() {
         reverse(aux.stacks[i].begin(), aux.stacks[i].end());
 }
 
-void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Coord end, const List<List<ID>>& batch, List<TreeNode>& solution) {
+/* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector
+   use depth first search to optimize partial solution
+*/
+void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Length ub, const List<List<ID>>& batch, List<TreeNode>& solution) {
     // TODO: add code...
 }
 
-void TreeSearch::branch(const TreeNode &node,const Coord end, List<TreeNode> &live_nodes) {
-    // TODO: add code...
+void TreeSearch::branch(const TreeNode &node,const Coord bound, List<TreeNode> &live_nodes) {
+    List<TreeNode> nodes;
+    nodes.reserve(10);
+    for (int rotate = 0; rotate <= 1; ++rotate) {
+        for (auto stack : aux.stacks) {
+            // pretreatment
+            if (!stack.size())continue; // skip empty stack
+            ID itemId = stack.back();
+            Rect item = aux.items[itemId];
+            if (item.w == item.h && rotate)continue; // skip rectangle item                                     //no need to rotate square
+            if (rotate) { // rotate item                                                               //rotate item
+                item.w = aux.items[itemId].h;
+                item.h = aux.items[itemId].w;
+            }
+            // classify and try to branch
+            TreeNode temp_node(node, itemId);
+            if (rotate)temp_node.setFlagBit(FlagBit::ROTATE);
+            // TODO: what if item is too larger?
+            if (node.c2cpb == 0 && node.c2cpu == 0) {
+
+            }
+        }
+    }
 }
 
-const bool TreeSearch::constraintCheck(const TreeNode &node,const Coord end) {
+const bool TreeSearch::constraintCheck(const TreeNode &node,const Coord bound) {
     // TODO: add code...
     return false;
 }
