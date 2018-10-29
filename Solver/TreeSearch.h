@@ -23,6 +23,8 @@ namespace szx {
 class TreeSearch {
     #pragma region Type
 public:
+    enum FlagBit {DIR = 0, CREATE = 1, CHANGE = 2};
+
     struct Configuration {
         // TODO: add configuration data and method
     };
@@ -49,19 +51,22 @@ public:
         Coord c1cpr; // current 1-cut position right
         Coord c2cpb; // current 2-cut position bottom
         Coord c2cpu; // current 2-cut position up
-        Coord c3cp; // current 3-cut position
-        Coord c4cp; // current 4-cut position
+        Coord c3cp; // current 3-cut position right
+        Coord c4cp; // current 4-cut position up
         ID cut1; // 1-cut id
         ID cut2; // 2-cut id
-        Direction dir; // item direction
+        Status flag = 0; // (flag&0x0001)->(1:rotate);(flag&0x0002)->(1:create L4 not allowed);(flag&0x0004)->(1:c2cpu change not allowed)
 
         TreeNode(Depth node_depth, ID plate_id, ID item_id, Coord C1cpl, Coord C1cpr,
-            Coord C2cpb, Coord C2cpu, Length C3cp, Length C4cp, ID cut1_id, ID cut2_id, ID rotate)
+            Coord C2cpb, Coord C2cpu, Coord C3cp, Coord C4cp, ID cut1_id, ID cut2_id, Status flag)
             :depth(node_depth), plate(plate_id), item(item_id), c1cpl(C1cpl), c1cpr(C1cpr),
-            c2cpb(C2cpb), c2cpu(C2cpu), c3cp(C3cp), c4cp(C4cp), cut1(cut1_id), cut2(cut2_id), dir(rotate) {}
+            c2cpb(C2cpb), c2cpu(C2cpu), c3cp(C3cp), c4cp(C4cp), cut1(cut1_id), cut2(cut2_id), flag(flag) {}
 
-        TreeNode(TreeNode &node) :depth(node.depth), plate(node.plate), item(node.item), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
-            c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), cut1(node.cut1), cut2(node.cut2), dir(node.dir) {}
+        TreeNode(const TreeNode &node) :depth(node.depth), plate(node.plate), item(node.item), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
+            c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), cut1(node.cut1), cut2(node.cut2), flag(node.flag) {}
+        
+        void setFlagBit(const int bit_pos = FlagBit::DIR) { flag |= (0x0001 << bit_pos); }
+        const bool getFlagBit(const int bit_pos = FlagBit::DIR) const { return flag & (0x0001 << bit_pos); }
     };
     #pragma endregion Type
     
@@ -77,8 +82,8 @@ public:
 protected:
     void init();
     void depthFirstSearch(const ID plate, const Coord start, const Coord end, const List<List<ID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &node, List<TreeNode> &live_nodes);
-    bool constraintCheck(const TreeNode &node);
+    void branch(const TreeNode &node, const Coord end, List<TreeNode> &live_nodes);
+    const bool constraintCheck(const TreeNode &node, const Coord end);
     #pragma endregion Method
 
     #pragma region Field

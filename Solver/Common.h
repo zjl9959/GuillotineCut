@@ -17,21 +17,21 @@
 namespace szx {
 
 // zero-based consecutive integer identifier.
-using ID = int;
+using ID = short;
 // the unit of width and height.
-using Length = int;
+using Length = short;
 // the unit of x and y coordinates.
 using Coord = Length;
 // the unit of area size
 using Area = int;
-// the unit of item direction
-using Direction = int;
+// the unit of status or flag
+using Status = short;
 // the unit of elapsed computational time.
 using Duration = int;
 // number of neighborhood moves in local search.
 using Iteration = int;
-// the depth of tree node
-using Depth = int;
+// the depth of tree node (no lager than item numbers[800])
+using Depth = short;
 
 template<typename T>
 using List = std::vector<T>;

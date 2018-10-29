@@ -75,11 +75,11 @@ void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Coord
     // TODO: add code...
 }
 
-void TreeSearch::branch(const TreeNode & node, List<TreeNode> &live_nodes) {
+void TreeSearch::branch(const TreeNode &node,const Coord end, List<TreeNode> &live_nodes) {
     // TODO: add code...
 }
 
-bool TreeSearch::constraintCheck(const TreeNode & node) {
+const bool TreeSearch::constraintCheck(const TreeNode &node,const Coord end) {
     // TODO: add code...
     return false;
 }
