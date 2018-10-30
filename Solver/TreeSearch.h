@@ -1,5 +1,5 @@
 ///////////////////////////
-///usage: the tree search algorithm for the problem
+///usage: the tree search algorithm for the problem.
 ///
 //////////////////////////
 
@@ -23,10 +23,10 @@ namespace szx {
 class TreeSearch {
     #pragma region Type
 public:
-    enum FlagBit {ROTATE = 0, CREATE = 1, CHANGE = 2};
+    enum FlagBit {ROTATE = 0, DEFECT = 1, BIN4 = 2};
 
     struct Configuration {
-        // TODO: add configuration data and method
+        // TODO: add configuration data and method.
     };
 
     struct Rect {
@@ -44,18 +44,18 @@ public:
         Coord y; // bottom.
     };
     struct TreeNode {
-        Depth depth; // node depth in the tree
-        ID plate; // plate id
-        ID item = Problem::InvalidItemId; // item id
-        Coord c1cpl; // current 1-cut position left
-        Coord c1cpr; // current 1-cut position right
-        Coord c2cpb; // current 2-cut position bottom
-        Coord c2cpu; // current 2-cut position up
-        Coord c3cp; // current 3-cut position right
-        Coord c4cp; // current 4-cut position up
-        ID cut1; // 1-cut id
-        ID cut2; // 2-cut id
-        Status flag = 0; // (flag&0x0001)->(1:rotate);(flag&0x0002)->(1:create L4 not allowed);(flag&0x0004)->(1:c2cpu change not allowed)
+        Depth depth; // node depth in the tree.
+        ID plate; // plate id.
+        ID item = Problem::InvalidItemId; // item id.
+        Coord c1cpl; // current 1-cut position left.
+        Coord c1cpr; // current 1-cut position right.
+        Coord c2cpb; // current 2-cut position bottom.
+        Coord c2cpu; // current 2-cut position up.
+        Coord c3cp; // current 3-cut position right.
+        Coord c4cp; // current 4-cut position up.
+        ID cut1; // 1-cut id.
+        ID cut2; // 2-cut id.
+        Status flag = 0; // (flag&0x0001)->(1:rotate);(flag&0x0002)->(1:create L4 not allowed);(flag&0x0004)->(1:c2cpu change not allowed).
 
         TreeNode(Depth node_depth, ID plate_id, ID item_id, Coord C1cpl, Coord C1cpr,
             Coord C2cpb, Coord C2cpu, Coord C3cp, Coord C4cp, ID cut1_id, ID cut2_id, Status flag)
@@ -82,8 +82,8 @@ public:
 protected:
     void init();
     void depthFirstSearch(const ID plate, const Coord start, const Length ub, const List<List<ID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &node, const Coord bound, List<TreeNode> &live_nodes);
-    const bool constraintCheck(TreeNode &node, const Coord bound);
+    void branch(const TreeNode &old, const Coord bound, List<TreeNode> &live_nodes);
+    const bool constraintCheck(const TreeNode &old, TreeNode &node);
     #pragma endregion Method
 
     #pragma region Field
@@ -94,10 +94,11 @@ public:
     struct {
         List<Rect> items;
         List<RectArea> defects;
-        List<Area> item_area; // item area size of every item
+        List<Area> item_area; // item area size of every item.
 
         List<List<ID>> stacks; // stacks[s][i] is the itemId of the i_th item in the stack s.
-        List<List<ID>> plates; // plates[p][i] is the defectId of the i_th defect on plate p.
+        List<List<ID>> plates_x; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect x position.
+        List<List<ID>> plates_y; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect y position.
     } aux;
 
     struct {
@@ -108,7 +109,7 @@ public:
     } idMap;
 
     struct {
-        // TODO: add information about tree search
+        // TODO: add information about tree search.
     } info;
 
     Configuration cfg;
