@@ -83,7 +83,7 @@ protected:
     void init();
     void depthFirstSearch(const ID plate, const Coord start, const Length ub, const List<List<ID>> &batch, List<TreeNode> &solution);
     void branch(const TreeNode &node, const Coord bound, List<TreeNode> &live_nodes);
-    const bool constraintCheck(const TreeNode &node, const Coord bound);
+    const bool constraintCheck(TreeNode &node, const Coord bound);
     #pragma endregion Method
 
     #pragma region Field

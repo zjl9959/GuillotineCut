@@ -71,6 +71,12 @@ void TreeSearch::init() {
     // reverse item sequence convicent for pop_back
     for (int i = 0; i < aux.stacks.size(); i++)
         reverse(aux.stacks[i].begin(), aux.stacks[i].end());
+    // sort defects by it's x position
+    for (int p=0;p<aux.plates.size();++p)
+        for(int d=0;d<aux.plates[p].size();++d)
+            sort(aux.plates[p].begin(), aux.plates[p].end(), [&](ID &lhs, ID &rhs) {
+            return aux.defects[lhs].x < aux.defects[rhs].x; });
+            // TODO[DEBUG]: verify if defects.x smallest is in the first??? 
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector
@@ -89,8 +95,8 @@ void TreeSearch::branch(const TreeNode &node,const Coord bound, List<TreeNode> &
             if (!stack.size())continue; // skip empty stack
             ID itemId = stack.back();
             Rect item = aux.items[itemId];
-            if (item.w == item.h && rotate)continue; // skip rectangle item                                     //no need to rotate square
-            if (rotate) { // rotate item                                                               //rotate item
+            if (item.w == item.h && rotate)continue; // skip rectangle item
+            if (rotate) { // rotate item
                 item.w = aux.items[itemId].h;
                 item.h = aux.items[itemId].w;
             }
@@ -105,9 +111,19 @@ void TreeSearch::branch(const TreeNode &node,const Coord bound, List<TreeNode> &
     }
 }
 
-const bool TreeSearch::constraintCheck(const TreeNode &node,const Coord bound) {
+const bool TreeSearch::constraintCheck(TreeNode &node,const Coord bound) {
+    bool res = true, check_cutdefect = false;
+    /* check minwaste constraint
+       [1:item cut(c1cpl,c1cpr,c2cpb,c2cpu) minwaste; 2:cut bound minwaste]
+    */// if valid, try to fix it!
     // TODO: add code...
-    return false;
+    // check cutdefect constraint
+    if (check_cutdefect) {
+        // TODO: add code...
+    }
+    // check bound exceed constraint
+    // TODO: add code...
+    return res;
 }
 #pragma endregion Achievement
 
