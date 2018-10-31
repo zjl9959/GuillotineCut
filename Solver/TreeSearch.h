@@ -62,8 +62,8 @@ public:
             :depth(node_depth), plate(plate_id), item(item_id), c1cpl(C1cpl), c1cpr(C1cpr),
             c2cpb(C2cpb), c2cpu(C2cpu), c3cp(C3cp), c4cp(C4cp), cut1(cut1_id), cut2(cut2_id), flag(flag) {}
 
-        TreeNode(const TreeNode &node, ID item_id) :depth(node.depth + 1), plate(node.plate), item(item_id), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
-            c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), cut1(node.cut1), cut2(node.cut2), flag(0) {}
+        TreeNode(const TreeNode &node, const ID item_id, const int dir) :depth(node.depth + 1), plate(node.plate), item(item_id), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
+            c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), cut1(node.cut1), cut2(node.cut2), flag(dir) {}
         
         void setFlagBit(const int bit_pos = FlagBit::ROTATE) { flag |= (0x0001 << bit_pos); }
         const bool getFlagBit(const int bit_pos = FlagBit::ROTATE) const { return flag & (0x0001 << bit_pos); }
@@ -82,8 +82,10 @@ public:
 protected:
     void init();
     void depthFirstSearch(const ID plate, const Coord start, const Length ub, const List<List<ID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &old, const Coord bound, List<TreeNode> &live_nodes);
+    void branch(const TreeNode &old, List<TreeNode> &live_nodes);
     const bool constraintCheck(const TreeNode &old, TreeNode &node);
+    const Length sliptoDefectRight(const RectArea &area, const ID plate) const;
+    const Length sliptoDefectUp(const RectArea &area, const ID plate) const;
     #pragma endregion Method
 
     #pragma region Field

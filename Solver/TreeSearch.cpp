@@ -95,9 +95,14 @@ void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Lengt
     // TODO: add code...
 }
 
-void TreeSearch::branch(const TreeNode &old, const Coord bound, List<TreeNode> &live_nodes) {
+/* input:last tree node(branch point)
+   function:branch tree node by exceed method
+*/// output:push branched nodes into live_nodes
+void TreeSearch::branch(const TreeNode &old, List<TreeNode> &live_nodes) {
     List<TreeNode> nodes;
+    List<bool> fesible;
     nodes.reserve(10);
+    fesible.reserve(10);
     for (int rotate = 0; rotate <= 1; ++rotate) {
         for (auto stack : aux.stacks) {
             // pretreatment.
@@ -109,50 +114,57 @@ void TreeSearch::branch(const TreeNode &old, const Coord bound, List<TreeNode> &
                 item.w = aux.items[itemId].h;
                 item.h = aux.items[itemId].w;
             }
-            // classify and try to branch.
-            TreeNode temp_node(old, itemId);
-            if (rotate)temp_node.setFlagBit(FlagBit::ROTATE);
+            // check if item conflict with defect and try to fix it
+            const Length slip_r = sliptoDefectRight(
+                RectArea(old.c3cp, old.c4cp, item.w, item.h), old.plate);
+            const Length slip_u = sliptoDefectUp(
+                RectArea(old.c3cp, old.c4cp, item.w, item.h), old.plate);
             // TODO: what if item is too larger?
-            if (old.c2cpb == 0 && old.c2cpu == 0) {
+            if (old.c2cpu == 0) { // case A
+                if (slip_r) { // item conflict with defect(two choice)
+                    nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect right
+                    auto node_a1 = nodes.rbegin(); // get iterator to nodes last element
+                    node_a1->c3cp = node_a1->c1cpr = old.c1cpr + slip_r + item.w;
+                    node_a1->c4cp = node_a1->c2cpu = item.h;
+                    node_a1->cut1 = old.cut1 + 1;
+                    node_a1->cut2 = 0;
+                    fesible.push_back(constraintCheck(old, *node_a1));
+                    nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect up
+                    auto node_a2 = nodes.rbegin();
+                    node_a2->c3cp = node_a2->c1cpr = old.c1cpr + item.w;
+                    node_a2->c4cp = node_a2->c2cpu = slip_u + item.h;
+                    node_a2->cut1 = old.cut1 + 1;
+                    node_a2->cut2 = 0;
+                    fesible.push_back(constraintCheck(old, *node_a2));
+                } else { // item not conflict with defect(one choice)
+                    nodes.push_back(TreeNode(old, itemId, rotate));
+                    auto node_a3 = nodes.rbegin();
+                    node_a3->c3cp = node_a3->c1cpr = old.c1cpr + item.w;
+                    node_a3->c4cp = node_a3->c2cpu = item.h;
+                    node_a3->cut1 = old.cut1 + 1;
+                    node_a3->cut2 = 0;
+                }
+            } else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) { // case B
+                // TODO: add code...
+            } else { // case C
                 // TODO: add code...
             }
         }
     }
 }
 
+/* input: old branch node, new branch node
+   function: check if new branch satisfy all the constraints
+   if some constraints not staisfy, try to fix is by move item
+*/
 const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
     bool moved_cut1 = false, moved_cut2 = false;
 
     // precheck some important constraints to speed up
-    if (node.c1cpr > input.param.plateWidth) { // cut1 exceed stock right side.
+    if (node.c1cpr > input.param.plateWidth || node.c2cpu > input.param.plateHeight) {
         return false;
     }
-    if (node.c2cpu > input.param.plateHeight) { // cut2 exceed stock up side.
-        return false;
-    }
-    if (node.c1cpr - node.c1cpl > input.param.maxL1Width) { // maximum cut1 width not staisfy.
-        return false;
-    }
-
     // check minimum waste width/height constraint and try to fix it.
-    if (node.getFlagBit(FlagBit::DEFECT)) { // item placed in defect side.
-        // check item left side and old c3cp interval(when item palced in defect right).
-        if (node.c3cp - aux.items[node.item].w - old.c3cp < input.param.minWasteWidth) {
-            node.c3cp = old.c3cp + input.param.minWasteWidth + aux.items[node.item].w; // move item(c3cp) right to staisfy constraint.
-            if (node.c3cp > node.c1cpr) { // update c1cpr if c3cp exceed c1cpr after move right.
-                node.c1cpr = node.c3cp;
-                moved_cut1 = true;
-            }
-        }
-        // check item bottom side and c2cpb interval(when item palced in defect upper).
-        if (node.c4cp - aux.items[node.item].h - node.c2cpb < input.param.minWasteHeight) {
-            node.c4cp = node.c2cpb + input.param.minWasteHeight + aux.items[node.item].h; // move item(c4cp) up to staisfy constraint.
-            if (node.c4cp > node.c2cpu) { // update c2cpu if c4cp exceed c2cpu after move up.
-                node.c2cpu = node.c4cp;
-                moved_cut2 = true;
-            }
-        }
-    }
     if (node.c1cpr - node.c3cp < input.param.minWasteWidth &&
         node.c1cpr - node.c4cp > 0) { // check item right side and c1cpr interval.
         node.c1cpr = node.c3cp + input.param.minWasteWidth; // move c1cpr right to staisfy constraint.
@@ -167,21 +179,6 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
             moved_cut2 = true;
         }
     }
-    if (node.c1cpr - old.c1cpr > 0 && node.cut1 == old.cut1 &&
-        node.c1cpr - old.c1cpr < input.param.minWasteWidth) { // check new clcpr and old c1cpr interval.
-        node.c1cpr = old.c1cpr + input.param.minWasteWidth; // move c1cpr right.
-        moved_cut1 = true;
-    }
-    if (node.c2cpu - old.c2cpu > 0 && node.cut2 == old.cut2 &&
-        node.c2cpu - old.c2cpu < input.param.minWasteHeight) { // check new c2cpu and old c2cpu interval.
-        if (node.getFlagBit(FlagBit::BIN4)) { // c2cpu cant's move in this case.
-            return false;
-        } else {
-            node.c2cpu = old.c2cpu + input.param.minWasteHeight; // move c2cpu up.
-            moved_cut2 = true;
-        }
-    }
-
     // check not cut through defect constraint and try to fix it.
     if (moved_cut1 || old.c1cpr != node.c1cpr) {
         for (int i = 0; i < aux.plates_x[node.plate].size(); ++i) {
@@ -211,20 +208,11 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
             }
         }
     }
-
     // check stock bound exceed and minimum cut1/cut2 and maximum cut1 constraint.
     if (node.c1cpr > input.param.plateWidth) { // cut1 exceed stock right side.
         return false;
     }
     if (node.c2cpu > input.param.plateHeight) { // cut2 exceed stock up side.
-        return false;
-    }
-    if (input.param.plateWidth - node.c1cpr < input.param.minWasteWidth && 
-        input.param.plateWidth - node.c1cpr != 0) { // cut1 and stock right side interval less than minimum waste width.
-        return false;
-    }
-    if (input.param.plateHeight - node.c2cpu < input.param.minWasteHeight &&
-        input.param.plateHeight - node.c2cpu != 0) { // cut2 and stock up side interval less than minimum waste height.
         return false;
     }
     if (node.c1cpr - node.c1cpl > input.param.maxL1Width) { // maximum cut1 width not staisfy.
@@ -236,9 +224,60 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
     if (node.cut2 > old.cut2 && old.c2cpu - old.c2cpb < input.param.minL2Height) { // minimum cut2 height not staisfy.
         return false;
     }
-    // every constraints satisfied.
-    return true;
+    // check clcpr/c2cpu and stock side's minimum waste width/height constraint
+    if (input.param.plateWidth - node.c1cpr < input.param.minWasteWidth &&
+        input.param.plateWidth - node.c1cpr != 0) { // cut1 and stock right side interval less than minimum waste width.
+        return false;
+    }
+    if (input.param.plateHeight - node.c2cpu < input.param.minWasteHeight &&
+        input.param.plateHeight - node.c2cpu != 0) { // cut2 and stock up side interval less than minimum waste height.
+        return false;
+    }
+    return true; // every constraints satisfied.
 }
+
+/* input:rectangle area to place item, plate id
+   function: if rectangle area conflict with one or more defects
+   slip the area right to the rightmost defects right side
+*/// output: slip length to avoid conflict with defect
+const Length TreeSearch::sliptoDefectRight(const RectArea & area, const ID plate) const {
+    Length slip = area.x;
+    for (auto d : aux.plates_x[plate]) {
+        if (aux.defects[d].x > slip + area.w) {
+            break; // the defects is sorted by x position, so in this case just break
+        }
+        if (aux.defects[d].x > slip && aux.defects[d].y > area.y &&
+            aux.defects[d].x + aux.defects[d].w < slip + area.w &&
+            aux.defects[d].y + aux.defects[d].h < area.y + area.h) { // defect[d] conflict with area
+            slip = aux.defects[d].x + aux.defects[d].w; // slip to defect right side
+        }
+    }
+    if (slip - area.x < input.param.minWasteWidth && slip - area.x != 0)
+        return input.param.minWasteWidth;
+    return slip - area.x;
+}
+
+/* input:rectangle area to place item, plate id
+   function: if rectangle area conflict with one or more defects
+   slip the area up to the upmost defects up side
+*/// output: slip length to avoid conflict with defect
+const Length TreeSearch::sliptoDefectUp(const RectArea & area, const ID plate) const {
+    Length slip = area.y;
+    for (auto d : aux.plates_y[plate]) {
+        if (aux.defects[d].y > slip + area.h) {
+            break; // the defects is sorted by y position, so in this case just break
+        }
+        if (aux.defects[d].x > area.x && aux.defects[d].y > slip &&
+            aux.defects[d].x + aux.defects[d].w < area.x + area.w &&
+            aux.defects[d].y + aux.defects[d].h < slip + area.h) { // defect[d] conflict with area
+            slip = aux.defects[d].y + aux.defects[d].h; // slip to defect up side
+        }
+    }
+    if (slip - area.y < input.param.minWasteHeight&&slip - area.y != 0)
+        return input.param.minWasteHeight;
+    return slip - area.y;
+}
+
 #pragma endregion Achievement
 
 }
