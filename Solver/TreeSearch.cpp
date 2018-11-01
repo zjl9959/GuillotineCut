@@ -286,7 +286,7 @@ void TreeSearch::branch(const TreeNode &old, List<TreeNode> &live_nodes) {
             }
         }
     }
-
+    // TODO: add code...
 }
 
 /* input: old branch node, new branch node
@@ -416,13 +416,29 @@ const Length TreeSearch::sliptoDefectUp(const RectArea & area, const ID plate) c
 
 /* input: branch node to evaluate
    function: calculate the local waste area caused by the branch node
+   the evaluate is not so precise, just as reference
 */// output: waste area
-const Area TreeSearch::getBranchWaste(const TreeNode & node) const {
+const Area TreeSearch::getBranchWaste(const TreeNode &old, const TreeNode & node) const {
     Area waste = 0;
-    if (node.getFlagBit(FlagBit::DEFECT)) {
-
-    } else {
-
+    const Coord item_left = node.c3cp - aux.items[node.item].w;
+    const Coord item_bottom = node.c4cp - aux.items[node.item].h;
+    if (item_left > old.c3cp) { // place item in defect right caused waste
+        waste += (item_left - old.c3cp)*(node.c2cpu - node.c2cpb);
+    }
+    if (item_bottom > node.c2cpb && node.getFlagBit(FlagBit::DEFECT)) { // place item in defect upper caused waste
+        waste += (node.c3cp - old.c3cp)*(item_bottom - node.c2cpb);
+    }
+    if (node.c2cpu > node.c4cp) { // c2cpu and c4cp interval caused waste
+        waste += (node.c2cpu - node.c4cp)*aux.items[node.item].w;
+    }
+    if (node.c2cpu > old.c2cpu) { // move c2cpu caused waste
+        waste += (node.c2cpu - old.c2cpu)*(old.c3cp - old.c1cpl);
+    }
+    if (node.c1cpr > old.c1cpr) { // move c1cpr caused waste
+        waste += (node.c1cpr - old.c1cpr)*node.c2cpb;
+    }
+    if (node.cut2 > old.cut2) { // last L2 and last item waste when creat new L2
+        waste += (old.c1cpr - old.c3cp)*(old.c2cpu - old.c2cpb);
     }
     return waste;
 }
