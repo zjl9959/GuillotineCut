@@ -86,6 +86,7 @@ protected:
     const bool constraintCheck(const TreeNode &old, TreeNode &node);
     const Length sliptoDefectRight(const RectArea &area, const ID plate) const;
     const Length sliptoDefectUp(const RectArea &area, const ID plate) const;
+    const Area getBranchWaste(const TreeNode &node) const;
     #pragma endregion Method
 
     #pragma region Field

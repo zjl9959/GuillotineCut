@@ -114,43 +114,179 @@ void TreeSearch::branch(const TreeNode &old, List<TreeNode> &live_nodes) {
                 item.w = aux.items[itemId].h;
                 item.h = aux.items[itemId].w;
             }
-            // check if item conflict with defect and try to fix it
-            const Length slip_r = sliptoDefectRight(
-                RectArea(old.c3cp, old.c4cp, item.w, item.h), old.plate);
-            const Length slip_u = sliptoDefectUp(
-                RectArea(old.c3cp, old.c4cp, item.w, item.h), old.plate);
+            Length slip_r = 0, slip_u = 0;
             // TODO: what if item is too larger?
             if (old.c2cpu == 0) { // case A
-                if (slip_r) { // item conflict with defect(two choice)
-                    nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect right
-                    auto node_a1 = nodes.rbegin(); // get iterator to nodes last element
+                // check if item conflict with defect and try to fix it
+                slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                {
+                    nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect right(if no defect conflict, slip_r is 0)
+                    auto node_a1 = nodes.rbegin();
                     node_a1->c3cp = node_a1->c1cpr = old.c1cpr + slip_r + item.w;
                     node_a1->c4cp = node_a1->c2cpu = item.h;
                     node_a1->cut1 = old.cut1 + 1;
                     node_a1->cut2 = 0;
+                    if (slip_r)node_a1->setFlagBit(FlagBit::DEFECT);
                     fesible.push_back(constraintCheck(old, *node_a1));
+                }
+                if (slip_u) { // item conflict with defect(two choice)
                     nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect up
                     auto node_a2 = nodes.rbegin();
                     node_a2->c3cp = node_a2->c1cpr = old.c1cpr + item.w;
                     node_a2->c4cp = node_a2->c2cpu = slip_u + item.h;
                     node_a2->cut1 = old.cut1 + 1;
                     node_a2->cut2 = 0;
+                    node_a2->setFlagBit(FlagBit::DEFECT);
                     fesible.push_back(constraintCheck(old, *node_a2));
-                } else { // item not conflict with defect(one choice)
-                    nodes.push_back(TreeNode(old, itemId, rotate));
-                    auto node_a3 = nodes.rbegin();
-                    node_a3->c3cp = node_a3->c1cpr = old.c1cpr + item.w;
-                    node_a3->c4cp = node_a3->c2cpu = item.h;
-                    node_a3->cut1 = old.cut1 + 1;
-                    node_a3->cut2 = 0;
                 }
-            } else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) { // case B
-                // TODO: add code...
-            } else { // case C
-                // TODO: add code...
+            } 
+            else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) { // case B
+                // place in the right of old.c1cpr
+                slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                {
+                    nodes.push_back(TreeNode(old, itemId, rotate));
+                    auto node_b1 = nodes.rbegin();
+                    node_b1->c3cp = node_b1->c1cpr = old.c1cpr + slip_r + item.w;
+                    node_b1->c4cp = item.h;
+                    if (node_b1->c2cpu < node_b1->c4cp)
+                        node_b1->c2cpu = item.h;
+                    if (slip_r)node_b1->setFlagBit(FlagBit::DEFECT);
+                    fesible.push_back(constraintCheck(old, *node_b1));
+                }
+                if (slip_u) {
+                    nodes.push_back(TreeNode(old, itemId, rotate));
+                    auto node_b2 = nodes.rbegin();
+                    node_b2->c3cp = node_b2->c1cpr = old.c1cpr + item.w;
+                    node_b2->c4cp = slip_u + item.h;
+                    if (node_b2->c2cpu < node_b2->c4cp)
+                        node_b2->c2cpu = node_b2->c4cp;
+                    node_b2->setFlagBit(FlagBit::DEFECT);
+                    fesible.push_back(constraintCheck(old, *node_b2));
+                }
+                // place in the upper of old.c2cpu
+                slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                {
+                    nodes.push_back(TreeNode(old, itemId, rotate));
+                    auto node_b3 = nodes.rbegin();
+                    node_b3->c2cpb = old.c2cpu;
+                    node_b3->c4cp = node_b3->c2cpu = old.c2cpu + item.h;
+                    node_b3->c3cp = old.c1cpl + slip_r + item.w;
+                    if (node_b3->c1cpr < node_b3->c3cp)
+                        node_b3->c1cpr = node_b3->c3cp;
+                    node_b3->cut2 = old.cut2 + 1;
+                    if (slip_r)node_b3->setFlagBit(FlagBit::DEFECT);
+                    fesible.push_back(constraintCheck(old, *node_b3));
+                }
+                if (slip_u) {
+                    nodes.push_back(TreeNode(old, itemId, rotate));
+                    auto node_b4 = nodes.rbegin();
+                    node_b4->c2cpb = old.c2cpu;
+                    node_b4->c4cp = node_b4->c2cpu = old.c2cpu + slip_r + item.h;
+                    node_b4->c3cp = old.c1cpl + item.w;
+                    if (node_b4->c1cpr < node_b4->c3cp)
+                        node_b4->c1cpr = node_b4->c3cp;
+                    node_b4->cut2 = old.cut2 + 1;
+                    node_b4->setFlagBit(FlagBit::DEFECT);
+                    fesible.push_back(constraintCheck(old, *node_b4));
+                }
+            } 
+            else if(old.c3cp < old.c1cpr){ // case C
+                if (old.c4cp > old.c2cpb && !old.getFlagBit(FlagBit::DEFECT) && // last item in L3 and no defects in this L3
+                    old.c3cp - aux.items[old.item].w == item.w && old.c4cp+item.h >= old.c2cpu) { // the item just fit the L4
+                    if (sliptoDefectRight(RectArea(old.c3cp - aux.items[old.item].w, old.c4cp, item.w, item.h), old.plate) == 0) {
+                        nodes.push_back(TreeNode(old, itemId, rotate)); // place item in L4 bin
+                        auto node_c1 = nodes.rbegin();
+                        node_c1->c4cp = old.c4cp + item.h;
+                        if (old.getFlagBit(FlagBit::BIN4)) { // already have one bin4
+                            if (node_c1->c2cpu == node_c1->c4cp) { // c2cpu should equal to c4cp in this case 
+                                node_c1->setFlagBit(FlagBit::BIN4);
+                                fesible.push_back(constraintCheck(old, *node_c1));
+                            }
+                        } else { // this is the first bin4 in current cut2
+                            if (node_c1->c2cpu < node_c1->c4cp)
+                                node_c1->c2cpu = node_c1->c4cp;
+                            node_c1->setFlagBit(FlagBit::BIN4);
+                            fesible.push_back(constraintCheck(old, *node_c1));
+                        }
+                    }
+                }
+                { // place item in the right of current c3cp
+                    slip_r = sliptoDefectRight(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
+                    slip_u = sliptoDefectUp(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
+                    {
+                        nodes.push_back(TreeNode(old, itemId, rotate));
+                        auto node_c2 = nodes.rbegin();
+                        node_c2->c3cp = old.c3cp + slip_r + item.w;
+                        if (node_c2->c1cpr < node_c2->c3cp)
+                            node_c2->c1cpr = node_c2->c3cp;
+                        node_c2->c4cp = old.c2cpb + item.h;
+                        if (slip_r)node_c2->setFlagBit(FlagBit::DEFECT);
+                        if (old.getFlagBit(FlagBit::BIN4)) { // c2cpu can not move
+                            if (node_c2->c2cpu >= node_c2->c4cp) {
+                                node_c2->setFlagBit(FlagBit::BIN4);
+                                fesible.push_back(constraintCheck(old, *node_c2));
+                            }
+                        } else {
+                            if (node_c2->c2cpu < node_c2->c4cp)
+                                node_c2->c2cpu = node_c2->c4cp;
+                            fesible.push_back(constraintCheck(old, *node_c2));
+                        }
+                    }
+                    if (slip_u) {
+                        nodes.push_back(TreeNode(old, itemId, rotate));
+                        auto node_c3 = nodes.rbegin();
+                        node_c3->c3cp = old.c3cp + item.w;
+                        if (node_c3->c1cpr < node_c3->c3cp)
+                            node_c3->c1cpr = node_c3->c3cp;
+                        node_c3->c4cp = old.c2cpb + slip_u + item.h;
+                        node_c3->setFlagBit(FlagBit::DEFECT);
+                        if (old.getFlagBit(FlagBit::BIN4)) {
+                            if (node_c3->c2cpu >= node_c3->c4cp) {
+                                node_c3->setFlagBit(FlagBit::BIN4);
+                                fesible.push_back(constraintCheck(old, *node_c3));
+                            }
+                        } else {
+                            if (node_c3->c2cpu < node_c3->c4cp)
+                                node_c3->c2cpu = node_c3->c4cp;
+                            fesible.push_back(constraintCheck(old, *node_c3));
+                        }
+                    }
+                }
+                if (old.c3cp + item.w > old.c1cpr) { // another branch, creat a new L2 and place item in it
+                    slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                    slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                    {
+                        nodes.push_back(TreeNode(old, itemId, rotate));
+                        auto node_c4 = nodes.rbegin();
+                        node_c4->c3cp = old.c1cpl + slip_r + item.w;
+                        if (node_c4->c1cpr < node_c4->c3cp)
+                            node_c4->c1cpr = node_c4->c3cp;
+                        node_c4->c2cpb = old.c2cpu;
+                        node_c4->c4cp = node_c4->c2cpu = old.c2cpu + item.h;
+                        node_c4->cut2 = old.cut2 + 1; // update new L2 id
+                        if (slip_r)node_c4->setFlagBit(FlagBit::DEFECT);
+                        fesible.push_back(constraintCheck(old, *node_c4));
+                    }
+                    if (slip_u) {
+                        nodes.push_back(TreeNode(old, itemId, rotate));
+                        auto node_c5 = nodes.rbegin();
+                        node_c5->c3cp = old.c1cpl + item.w;
+                        if (node_c5->c1cpr < node_c5->c3cp)
+                            node_c5->c1cpr = node_c5->c3cp;
+                        node_c5->c2cpb = old.c2cpu;
+                        node_c5->c4cp = node_c5->c2cpu = old.c2cpu + slip_u + item.h;
+                        node_c5->cut2 = old.cut2 + 1;
+                        node_c5->setFlagBit(FlagBit::DEFECT);
+                        fesible.push_back(constraintCheck(old, *node_c5));
+                    }
+                }
             }
         }
     }
+
 }
 
 /* input: old branch node, new branch node
@@ -273,9 +409,22 @@ const Length TreeSearch::sliptoDefectUp(const RectArea & area, const ID plate) c
             slip = aux.defects[d].y + aux.defects[d].h; // slip to defect up side
         }
     }
-    if (slip - area.y < input.param.minWasteHeight&&slip - area.y != 0)
+    if (slip - area.y < input.param.minWasteHeight && slip - area.y != 0)
         return input.param.minWasteHeight;
     return slip - area.y;
+}
+
+/* input: branch node to evaluate
+   function: calculate the local waste area caused by the branch node
+*/// output: waste area
+const Area TreeSearch::getBranchWaste(const TreeNode & node) const {
+    Area waste = 0;
+    if (node.getFlagBit(FlagBit::DEFECT)) {
+
+    } else {
+
+    }
+    return waste;
 }
 
 #pragma endregion Achievement
