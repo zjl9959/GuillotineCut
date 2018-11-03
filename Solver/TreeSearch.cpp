@@ -29,6 +29,7 @@ void TreeSearch::init() {
 
     aux.items.reserve(input.batch.size());
     aux.stacks.reserve(input.batch.size());
+    aux.defect2stack.resize(input.batch.size());
 
     // assign internal id to items and stacks, then push items into stacks.
     for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
@@ -44,6 +45,7 @@ void TreeSearch::init() {
         // OPTIMIZE[szx][6]: what if the sequence number could be negative or very large?
         if (stack.size() <= i->seq) { stack.resize(i->seq + 1, InvalidItemId); }
         stack[i->seq] = itemId;
+        aux.defect2stack[itemId] = stackId;
     }
     // clear invalid items in stacks.
     for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
@@ -91,8 +93,68 @@ void TreeSearch::init() {
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution.
 */
-void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Length ub, List<List<ID>> &batch, List<TreeNode> &solution) {
-    // TODO: add code...
+void TreeSearch::depthFirstSearch(const int ub, List<List<ID>> &batch, List<TreeNode> &solution) {
+    int left_items = 0; // left item number in the batch
+    for (auto stack : batch)
+        left_items += stack.size();
+    int best_obj = input.param.plateWidth*input.param.plateNum; // record the best objective up to now
+    List<TreeNode> live_nodes; // the tree nodes to be branched
+    TreeNode temp = solution.back();
+    temp.depth = -1; // start search from depth 0
+    branch(temp, batch, live_nodes);
+    List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution
+    int explored_nodes = 0, cutted_nodes = 0;
+    Depth pre_depth = -1; // last node depth
+    while (live_nodes.size() && !timer.isTimeOut()) {
+        TreeNode node = live_nodes.back();
+        live_nodes.pop_back();
+        explored_nodes++;
+        //TODO: add get low bound...
+        /*if () {
+            cutted_nodes++;
+            continue;
+        }*/
+        if (node.depth - pre_depth == 1) { // search froward
+            cur_parsol.push_back(node);
+            batch[aux.defect2stack[node.item]].pop_back();
+            left_items--;
+            if (left_items > 0) {
+                branch(node, batch, live_nodes);
+            }
+        } else if (node.depth - pre_depth < 1) { // search back
+            for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack
+                batch[aux.defect2stack[cur_parsol[i].item]].push_back(
+                    cur_parsol[i].item);
+                left_items++;
+            }
+            cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes
+            cur_parsol.push_back(node); // push current node into cur_parsol
+            batch[aux.defect2stack[node.item]].pop_back();
+            left_items--;
+            if (left_items > 0) {
+                branch(node, batch, live_nodes);
+            }
+        } else {
+            Log(Log::Error) << "[ERROR]Depth first search: delt depth is " 
+                << node.depth - pre_depth << endl;
+        }
+        pre_depth = node.depth;
+        if (left_items == 0) { // find a complate solution
+            int cur_obj = 0;
+            for (TreeNode solnode : cur_parsol) {
+                if (cur_obj < solnode.c1cpr)
+                    cur_obj = solnode.c1cpr;
+            }
+            // TODO: evalute original objective or usage rate???
+            if (best_obj > cur_obj) {
+                best_obj = cur_obj;
+                best_parsol = cur_parsol;
+            }
+        }
+    }
+    for (TreeNode sol : best_parsol) { // record this turn's best partial solution
+        solution.push_back(sol);
+    }
 }
 
 /* input:last tree node(branch point)

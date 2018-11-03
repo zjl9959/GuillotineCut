@@ -89,7 +89,7 @@ public:
     void solve();
 protected:
     void init();
-    void depthFirstSearch(const ID plate, const Coord start, const Length ub, List<List<ID>> &batch, List<TreeNode> &solution);
+    void depthFirstSearch(const int upbound, List<List<ID>> &batch, List<TreeNode> &solution);
     void branch(const TreeNode &old, const List<List<ID>> &batch, List<TreeNode> &live_nodes);
     const bool constraintCheck(const TreeNode &old, TreeNode &node);
     const Length sliptoDefectRight(const RectArea &area, const ID plate) const;
@@ -106,6 +106,7 @@ public:
         List<Rect> items;
         List<RectArea> defects;
         List<Area> item_area; // item area size of every item.
+        List<ID> defect2stack; //defect identity to stack identity
 
         List<List<ID>> stacks; // stacks[s][i] is the itemId of the i_th item in the stack s.
         List<List<ID>> plates_x; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect x position.
