@@ -91,20 +91,20 @@ void TreeSearch::init() {
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution.
 */
-void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Length ub, const List<List<ID>>& batch, List<TreeNode>& solution) {
+void TreeSearch::depthFirstSearch(const ID plate, const Coord start, const Length ub, List<List<ID>> &batch, List<TreeNode> &solution) {
     // TODO: add code...
 }
 
 /* input:last tree node(branch point)
    function:branch tree node by exceed method
 */// output:push branched nodes into live_nodes
-void TreeSearch::branch(const TreeNode &old, List<TreeNode> &live_nodes) {
+void TreeSearch::branch(const TreeNode &old, const List<List<ID>> &batch, List<TreeNode> &live_nodes) {
     List<TreeNode> nodes;
     List<bool> fesible;
     nodes.reserve(10);
     fesible.reserve(10);
     for (int rotate = 0; rotate <= 1; ++rotate) {
-        for (auto stack : aux.stacks) {
+        for (auto stack : batch) {
             // pretreatment.
             if (!stack.size())continue; // skip empty stack.
             ID itemId = stack.back();
@@ -286,7 +286,45 @@ void TreeSearch::branch(const TreeNode &old, List<TreeNode> &live_nodes) {
             }
         }
     }
-    // TODO: add code...
+    // choose the fesible and evaluate it
+    List<NodeInfo> node_pool;
+    node_pool.reserve(10);
+    for (int i = 0; i < nodes.size(); ++i) {
+        if (fesible[i]) { // a fesible node
+            node_pool.push_back(NodeInfo(
+                i, getBranchScore(old, nodes[i]), aux.items[nodes[i].item].w));
+        }
+    }
+    if (node_pool.size()) {
+        // sort the node by it's score, if score is the same, bigger item first
+        sort(node_pool.begin(), node_pool.end(), [](NodeInfo &lhs, NodeInfo &rhs) {
+            return lhs.item_w > rhs.item_w; }); // place bigger item first
+        stable_sort(node_pool.begin(), node_pool.end(), [](NodeInfo &lhs, NodeInfo &rhs) {
+            return lhs.score < rhs.score; }); // sort by score
+        // random choose some nodes to branch
+        int left_nodes = node_pool.size()*cfg.cut_rate;
+        if (left_nodes < 1) // make sure at least choose one branch node
+            left_nodes = 1;
+        if (left_nodes < cfg.sampling_num) { // no need to sampling, just copy nodes to live_nodes
+            for (int i = 0; i < left_nodes; ++i) {
+                live_nodes.push_back(nodes[node_pool[i].id]);
+            }
+        } else { // sampling cfg.sampling_num branch nodes and push into live_nodes
+            for (int i = left_nodes; i > left_nodes - cfg.sampling_num; --i) {
+                const int rd_num = rand.pick(i); // random number range from 0 to i-1
+                live_nodes.push_back(nodes[node_pool[i].id]);
+                swap(node_pool.begin() + rd_num, node_pool.begin() + i - 1);
+            }
+        }
+    } else { // no place to put item, creat new
+        if (old.c2cpu == 0) { // place item in new plate
+            TreeNode false_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            branch(false_node, batch, live_nodes);
+        } else { // place item in new cut1
+            TreeNode false_node(old.depth, old.plate, -1, old.c1cpr, old.c1cpr, 0, 0, old.c1cpr, 0, old.cut1 + 1, 0, 0);
+            branch(false_node, batch, live_nodes);
+        }
+    }
 }
 
 /* input: old branch node, new branch node
@@ -418,7 +456,7 @@ const Length TreeSearch::sliptoDefectUp(const RectArea & area, const ID plate) c
    function: calculate the local waste area caused by the branch node
    the evaluate is not so precise, just as reference
 */// output: waste area
-const Area TreeSearch::getBranchWaste(const TreeNode &old, const TreeNode & node) const {
+const double TreeSearch::getBranchScore(const TreeNode &old, const TreeNode & node) const {
     Area waste = 0;
     const Coord item_left = node.c3cp - aux.items[node.item].w;
     const Coord item_bottom = node.c4cp - aux.items[node.item].h;
@@ -440,7 +478,7 @@ const Area TreeSearch::getBranchWaste(const TreeNode &old, const TreeNode & node
     if (node.cut2 > old.cut2) { // last L2 and last item waste when creat new L2
         waste += (old.c1cpr - old.c3cp)*(old.c2cpu - old.c2cpb);
     }
-    return waste;
+    return waste/aux.item_area[node.item];
 }
 
 #pragma endregion Achievement

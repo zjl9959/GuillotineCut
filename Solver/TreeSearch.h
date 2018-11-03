@@ -26,7 +26,8 @@ public:
     enum FlagBit {ROTATE = 0, DEFECT = 1, BIN4 = 2};
 
     struct Configuration {
-        // TODO: add configuration data and method.
+        ID sampling_num = 3; // maximum sample node number from the good branch nodes
+        double cut_rate = 0.5; // cut half of the branch node and sample
     };
 
     struct Rect {
@@ -68,6 +69,13 @@ public:
         void setFlagBit(const int bit_pos = FlagBit::ROTATE) { flag |= (0x0001 << bit_pos); }
         const bool getFlagBit(const int bit_pos = FlagBit::ROTATE) const { return flag & (0x0001 << bit_pos); }
     };
+    struct NodeInfo {
+        int id;
+        double score;
+        Length item_w;
+        NodeInfo(int ID, double Score, Length item_width)
+            :id(ID), score(Score), item_w(item_width) {}
+    };
     #pragma endregion Type
     
     #pragma region Constructor
@@ -81,12 +89,12 @@ public:
     void solve();
 protected:
     void init();
-    void depthFirstSearch(const ID plate, const Coord start, const Length ub, const List<List<ID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &old, List<TreeNode> &live_nodes);
+    void depthFirstSearch(const ID plate, const Coord start, const Length ub, List<List<ID>> &batch, List<TreeNode> &solution);
+    void branch(const TreeNode &old, const List<List<ID>> &batch, List<TreeNode> &live_nodes);
     const bool constraintCheck(const TreeNode &old, TreeNode &node);
     const Length sliptoDefectRight(const RectArea &area, const ID plate) const;
     const Length sliptoDefectUp(const RectArea &area, const ID plate) const;
-    const Area getBranchWaste(const TreeNode &old, const TreeNode &node) const;
+    const double getBranchScore(const TreeNode &old, const TreeNode &node) const;
     #pragma endregion Method
 
     #pragma region Field
