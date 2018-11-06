@@ -543,6 +543,169 @@ const double TreeSearch::getBranchScore(const TreeNode &old, const TreeNode & no
     return waste/aux.item_area[node.item];
 }
 
+// this function convert TreeNode type solution into output type 
+void TreeSearch::toOutput(const List<TreeNode> &sol) {
+    using SpecialType = Problem::Output::Node::SpecialType;
+    const Length PW = input.param.plateWidth, PH = input.param.plateHeight;
+    // define current plate/cut1/cut2 identity in solution node
+    ID cur_plate = -1, cur_cut1 = -1, cur_cut2 = -1;
+    // define current node/parentL0.. identity in output solution tree node
+    ID nodeId = 0, parent_L0 = -1, parent_L1 = -1, parent_L2 = -1, parent_L3 = -1;
+    // define current c1cpl/c1cpr... when constructing solution tree
+    Coord c1cpl = 0, c1cpr = 0, c2cpb=0, c2cpu = 0, c3cp = 0;
+    // construct solution tree by visit each sol TreeNode
+    for (int n = 0; n < sol.size(); ++n) {
+        if (cur_plate < sol[n].plate) { // a new plate
+            // add waste for last plate
+            if (c3cp < c1cpr) { // add waste between c3cp and c1cpr
+                output.nodes.push_back(Problem::Output::Node(
+                    cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
+            }
+            if (c2cpu < input.param.plateHeight) { // add waste between c2cpu and plate up bound
+                output.nodes.push_back(Problem::Output::Node(
+                    cur_plate, nodeId++, c1cpl, c2cpu, c1cpr - c1cpl, PH - c2cpu, SpecialType::Waste, 2, parent_L1));
+            }
+            if (c1cpr < input.param.plateWidth) { // add waste between c1cpr and plate right bound
+                output.nodes.push_back(Problem::Output::Node(
+                    cur_plate, nodeId++, c1cpr, 0, PW - c1cpr, PH, SpecialType::Waste, 1, parent_L0));
+            }
+            // update cut position and cut identity information
+            cur_plate = sol[n].plate;
+            cur_cut1 = 0;
+            cur_cut2 = 0;
+            c1cpl = 0;
+            c1cpr = getC1cpr(sol, n, cur_cut1);
+            c2cpb = 0;
+            c2cpu = getC2cpu(sol, n, cur_cut2);
+            c3cp = 0;
+            // creat new nodes
+            parent_L0 = nodeId;
+            output.nodes.push_back(Problem::Output::Node( // creat a new plate
+                cur_plate, nodeId++, 0, 0, PW, PH, SpecialType::Branch, 0, -1));
+            parent_L1 = nodeId;
+            output.nodes.push_back(Problem::Output::Node( // creat a new L1
+                cur_plate, nodeId++, 0, 0, c1cpr, PH, SpecialType::Branch, 1, parent_L0));
+            parent_L2 = nodeId;
+            output.nodes.push_back(Problem::Output::Node( // creat a new L2
+                cur_plate, nodeId++, 0, 0, c1cpr, c2cpu, SpecialType::Branch, 2, parent_L1));
+        } 
+        else if (cur_cut1 < sol[n].cut1) { // a new cut1
+            // add waste for last L1
+            if (c3cp < c1cpr) { // add waste between c3cp and c1cpr
+                output.nodes.push_back(Problem::Output::Node(
+                    cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
+            }
+            if (c2cpu < input.param.plateHeight) { // add waste between c2cpu and plate up bound
+                output.nodes.push_back(Problem::Output::Node(
+                    cur_plate, nodeId++, c1cpl, c2cpu, c1cpr - c1cpl, PH - c2cpu, SpecialType::Waste, 2, parent_L1));
+            }
+            // update cut position and cut identity information
+            cur_cut1 = sol[n].cut1;
+            cur_cut2 = 0;
+            c1cpl = c1cpr;
+            c1cpr = getC1cpr(sol, n, cur_cut1);
+            c2cpb = 0;
+            c2cpu = getC2cpu(sol, n, cur_cut2);
+            c3cp = c1cpl;
+            // creat new nodes
+            parent_L1 = nodeId;
+            output.nodes.push_back(Problem::Output::Node( // creat a new L1
+                cur_plate, nodeId++, c1cpl, 0, c1cpr - c1cpl, PH, SpecialType::Branch, 1, parent_L0));
+            parent_L2 = nodeId;
+            output.nodes.push_back(Problem::Output::Node( // creat a new L2
+                cur_plate, nodeId++, c1cpl, 0, c1cpr - c1cpl, c2cpu, SpecialType::Branch, 2, parent_L1));
+        } 
+        else if (cur_cut2 < sol[n].cut2) { // a new cut2
+            // add waste for last L2
+            if (c3cp < c1cpr) { // add waste between c3cp and c1cpr
+                output.nodes.push_back(Problem::Output::Node(
+                    cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
+            }
+            // update cut position and cut identity information
+            cur_cut2 = sol[n].cut2;
+            c2cpb = c2cpu;
+            c2cpu = getC2cpu(sol, n, cur_cut2);
+            c3cp = c1cpl;
+            // creat new nodes
+            parent_L2 = nodeId;
+            output.nodes.push_back(Problem::Output::Node( // creat a new L2
+                cur_plate, nodeId++, c1cpl, c2cpb, c1cpr - c1cpl, c2cpu - c2cpb, SpecialType::Branch, 2, parent_L1));
+        }
+        const Length item_w = sol[n].getFlagBit(FlagBit::ROTATE) ? aux.items[sol[n].item].h : aux.items[sol[n].item].w;
+        const Length item_h = sol[n].getFlagBit(FlagBit::ROTATE) ?aux.items[sol[n].item].w : aux.items[sol[n].item].h;
+        // if item placed in defect right bound, creat waste between c3cp and item left bound
+        if (sol[n].getFlagBit(FlagBit::DEFECT) && sol[n].c3cp - item_w > c3cp) {
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - item_w - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
+        }
+        // if has bin4, place this node into last L3, creat a new L3
+        if (!sol[n].getFlagBit(FlagBit::BIN4)) {
+            parent_L3 = nodeId;
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - c3cp, c2cpu - c2cpb, SpecialType::Branch, 3, parent_L2));
+        }
+        // if item placed in defect up bound, creat waste between item bottom and c2cpb
+        if (sol[n].getFlagBit(FlagBit::DEFECT) && sol[n].c4cp - item_h > c2cpb) {
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - c3cp, sol[n].c4cp - item_h - c2cpb, SpecialType::Waste, 4, parent_L3));
+        }
+        // creat a item in L3
+        output.nodes.push_back(Problem::Output::Node(
+            cur_plate, nodeId++, c3cp, sol[n].c4cp - item_h, item_w, item_h, sol[n].item, 4, parent_L3));
+        // if item up and c2cpu have interval, creat waste between item up and c2cpu
+        if (c2cpu > sol[n].c4cp) {
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, c3cp, sol[n].c4cp, sol[n].c3cp - c3cp, c2cpu -  sol[n].c4cp, SpecialType::Waste, 4, parent_L3));
+        }
+        // if next item is not in the same L3, update c3cp
+        if (n+1 < sol.size() && !sol[n + 1].getFlagBit(FlagBit::BIN4)) {
+            c3cp = sol[n].c3cp;
+        }
+    }
+    if (c3cp < c1cpr) { // add last waste between c3cp and c1cpr
+        output.nodes.push_back(Problem::Output::Node(
+            cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
+    }
+    if (c2cpu < input.param.plateHeight) { // add last waste between c2cpu and plate up bound
+        output.nodes.push_back(Problem::Output::Node(
+            cur_plate, nodeId++, c1cpl, c2cpu, c1cpr - c1cpl, PH - c2cpu, SpecialType::Waste, 2, parent_L1));
+    }
+    if (c1cpr < input.param.plateWidth) { // add last residual between c1cpr and plate right bound
+        output.nodes.push_back(Problem::Output::Node(
+            cur_plate, nodeId++, c1cpr, 0, PW - c1cpr, PH, SpecialType::Residual, 1, parent_L0));
+    }
+}
+
+/* input: solution TreeNode type, solution start index, current cut1 id
+*/// ouput: current cut1's c1cpr
+const Coord TreeSearch::getC1cpr(const List<TreeNode> &sol, const int index, const ID cur_cut1) const {
+    Coord res = 0;
+    for (int i = index; i < sol.size(); ++i) {
+        if (cur_cut1 == sol[i].cut1) {
+            if (res < sol[i].c1cpr)
+                res = sol[i].c1cpr;
+        } else {
+            break;
+        }
+    }
+    return res;
+}
+
+/* input: solution TreeNode type, solution start index, current cut2 id
+*/// ouput: current cut2's c2cpu
+const Coord TreeSearch::getC2cpu(const List<TreeNode> &sol, const int index, const ID cur_cut2) const {
+    Coord res = 0;
+    for (int i = index; i < sol.size(); ++i) {
+        if (cur_cut2 == sol[i].cut2) {
+            if (res < sol[i].c2cpu)
+                res = sol[i].c2cpu;
+        } else {
+            break;
+        }
+    }
+    return res;
+}
+
 #pragma endregion Achievement
 
 }
