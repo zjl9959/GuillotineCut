@@ -17,11 +17,17 @@
 namespace szx {
 
 // zero-based consecutive integer identifier.
-using ID = short;
+using ID = int;
 // the unit of width and height.
-using Length = short;
+using Length = int;
 // the unit of x and y coordinates.
 using Coord = Length;
+// zero-based consecutive integer identifier for tree search
+using TID = short;
+// the unit of tree search width and height
+using TLength = short;
+// the unit of tree search x and y coordinates.
+using TCoord = TLength;
 // the unit of area size
 using Area = int;
 // the unit of status or flag
