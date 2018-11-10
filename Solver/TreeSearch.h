@@ -23,7 +23,7 @@ namespace szx {
 class TreeSearch {
     #pragma region Type
 public:
-    enum FlagBit {ROTATE = 0, DEFECT = 1, BIN4 = 2, LOCKC2 = 3};
+    enum FlagBit {ROTATE = 0, DEFECT_R = 1, DEFECT_U = 2, BIN4 = 3, LOCKC2 = 4};
 
     struct Configuration {
         TID sampling_num = 3; // maximum sample node number from the good branch nodes

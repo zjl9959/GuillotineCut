@@ -163,7 +163,6 @@ void TreeSearch::depthFirstSearch(const int ub, List<List<TID>> &batch, List<Tre
 void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<TreeNode> &live_nodes) {
     List<TreeNode> nodes; // store considered nodes, the node in it maybe not satisfy some constraints
     List<bool> fesible; // if nodes[i] satisfy all the constraints, fesible[i] is true
-    const bool defect_inL3 = old.getFlagBit(FlagBit::DEFECT); // status: have defect in this L3
     const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked
     nodes.reserve(10);
     fesible.reserve(10);
@@ -180,6 +179,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     item.w = aux.items[itemId].h;
                     item.h = aux.items[itemId].w;
                 }
+                if (old.c1cpr + item.w > input.param.plateWidth)continue;
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up
                 TLength slip_r = 0, slip_u = 0;
                 // TODO: what if item is too larger?
@@ -193,7 +193,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     node_a1->c4cp = node_a1->c2cpu = item.h;
                     node_a1->cut1 = old.cut1 + 1;
                     node_a1->cut2 = 0;
-                    if (slip_r)node_a1->setFlagBit(FlagBit::DEFECT);
+                    if (slip_r)node_a1->setFlagBit(FlagBit::DEFECT_R);
                     fesible.push_back(constraintCheck(old, *node_a1));
                 }
                 if (slip_u) { // item conflict with defect(two choice)
@@ -203,7 +203,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     node_a2->c4cp = node_a2->c2cpu = slip_u + item.h;
                     node_a2->cut1 = old.cut1 + 1;
                     node_a2->cut2 = 0;
-                    node_a2->setFlagBit(FlagBit::DEFECT);
+                    node_a2->setFlagBit(FlagBit::DEFECT_U);
                     fesible.push_back(constraintCheck(old, *node_a2));
                 }
             }
@@ -234,7 +234,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     node_b1->c4cp = item.h;
                     if (node_b1->c2cpu < node_b1->c4cp)
                         node_b1->c2cpu = item.h;
-                    if (slip_r)node_b1->setFlagBit(FlagBit::DEFECT);
+                    if (slip_r)node_b1->setFlagBit(FlagBit::DEFECT_R);
                     fesible.push_back(constraintCheck(old, *node_b1));
                 }
                 if (slip_u) {
@@ -242,9 +242,9 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     auto node_b2 = nodes.rbegin();
                     node_b2->c3cp = node_b2->c1cpr = old.c1cpr + item.w;
                     node_b2->c4cp = slip_u + item.h;
-                    if (node_b2->c2cpu < node_b2->c4cp)
+                    if (node_b2->c2cpu < node_b2->c4cp) // if place item in defect up, c4cp must equal to c2cpu
                         node_b2->c2cpu = node_b2->c4cp;
-                    node_b2->setFlagBit(FlagBit::DEFECT);
+                    node_b2->setFlagBit(FlagBit::DEFECT_U);
                     fesible.push_back(constraintCheck(old, *node_b2));
                 }
                 // place in the upper of old.c2cpu
@@ -259,25 +259,25 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     if (node_b3->c1cpr < node_b3->c3cp)
                         node_b3->c1cpr = node_b3->c3cp;
                     node_b3->cut2 = old.cut2 + 1;
-                    if (slip_r)node_b3->setFlagBit(FlagBit::DEFECT);
+                    if (slip_r)node_b3->setFlagBit(FlagBit::DEFECT_R);
                     fesible.push_back(constraintCheck(old, *node_b3));
                 }
                 if (slip_u) {
                     nodes.push_back(TreeNode(old, itemId, rotate));
                     auto node_b4 = nodes.rbegin();
                     node_b4->c2cpb = old.c2cpu;
-                    node_b4->c4cp = node_b4->c2cpu = old.c2cpu + slip_r + item.h;
+                    node_b4->c4cp = node_b4->c2cpu = old.c2cpu + slip_u + item.h;
                     node_b4->c3cp = old.c1cpl + item.w;
                     if (node_b4->c1cpr < node_b4->c3cp)
                         node_b4->c1cpr = node_b4->c3cp;
                     node_b4->cut2 = old.cut2 + 1;
-                    node_b4->setFlagBit(FlagBit::DEFECT);
+                    node_b4->setFlagBit(FlagBit::DEFECT_U);
                     fesible.push_back(constraintCheck(old, *node_b4));
                 }
             }
         }
     }
-    // case C, place item in the old L2 or a new L2 when item extend c1cpr to much
+    // case C, place item in the old L2 or a new L2 when item extend c1cpr too much
     else if (old.c3cp < old.c1cpr) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
             for (auto stack : batch) {
@@ -293,21 +293,21 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up
                 TLength slip_r = 0, slip_u = 0;
                 // place item in the up of current c4cp
-                if (aux.items[old.item].w == item.w && !defect_inL3 && // item fit the L4 and no defect in this L3
-                    ((c2cpu_locked && old.c4cp == old.c2cpb) || (!c2cpu_locked && old.c4cp >= old.c2cpb)) &&
+                if (aux.items[old.item].w == item.w && !old.getFlagBit(FlagBit::DEFECT_U) && // item fit the L4 and no defect in this L3
+                    ((c2cpu_locked && old.c4cp + item.h == old.c2cpb) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpb)) &&
                     !sliptoDefectRight(RectArea(old.c3cp - item.w, old.c4cp, item.w, item.h), old.plate)) {
                     nodes.push_back(TreeNode(old, itemId, rotate)); // place item in L4 bin
                     auto node_c1 = nodes.rbegin();
-                    node_c1->c4cp = old.c4cp + item.h;
-                    node_c1->c2cpu = node_c1->c4cp;
+                    node_c1->c2cpu = node_c1->c4cp = old.c4cp + item.h;
                     node_c1->setFlagBit(FlagBit::BIN4);
                     node_c1->setFlagBit(FlagBit::LOCKC2);
                     fesible.push_back(constraintCheck(old, *node_c1));
+                    continue;
                 }
                 { // place item in the right of current c3cp
                     slip_r = sliptoDefectRight(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
                     slip_u = sliptoDefectUp(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
-                    // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu must meet
+                    // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu constraint must meet
                     if (!c2cpu_locked || (c2cpu_locked && old.c2cpb + item.h <= old.c2cpu)) {
                         nodes.push_back(TreeNode(old, itemId, rotate));
                         auto node_c2 = nodes.rbegin();
@@ -318,7 +318,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                         if (node_c2->c2cpu < node_c2->c4cp) // c4cp exceed c2cpu
                             node_c2->c2cpu = node_c2->c4cp;
                         if (slip_r)
-                            node_c2->setFlagBit(FlagBit::DEFECT);
+                            node_c2->setFlagBit(FlagBit::DEFECT_R);
                         if (c2cpu_locked)
                             node_c2->setFlagBit(FlagBit::LOCKC2);
                         fesible.push_back(constraintCheck(old, *node_c2));
@@ -332,7 +332,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                         node_c3->c4cp = old.c2cpb + slip_u + item.h;
                         if (node_c3->c2cpu < node_c3->c4cp)
                             node_c3->c2cpu = node_c3->c4cp;
-                        node_c3->setFlagBit(FlagBit::DEFECT);
+                        node_c3->setFlagBit(FlagBit::DEFECT_U);
                         if (c2cpu_locked)
                             node_c3->setFlagBit(FlagBit::LOCKC2);
                         fesible.push_back(constraintCheck(old, *node_c3));
@@ -350,7 +350,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                         node_c4->c2cpb = old.c2cpu;
                         node_c4->c4cp = node_c4->c2cpu = old.c2cpu + item.h;
                         node_c4->cut2 = old.cut2 + 1; // update new L2 id
-                        if (slip_r)node_c4->setFlagBit(FlagBit::DEFECT);
+                        if (slip_r)node_c4->setFlagBit(FlagBit::DEFECT_R);
                         fesible.push_back(constraintCheck(old, *node_c4));
                     }
                     if (slip_u) {
@@ -362,7 +362,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                         node_c5->c2cpb = old.c2cpu;
                         node_c5->c4cp = node_c5->c2cpu = old.c2cpu + slip_u + item.h;
                         node_c5->cut2 = old.cut2 + 1;
-                        node_c5->setFlagBit(FlagBit::DEFECT);
+                        node_c5->setFlagBit(FlagBit::DEFECT_U);
                         fesible.push_back(constraintCheck(old, *node_c5));
                     }
                 }
@@ -380,9 +380,9 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
     }
     if (node_pool.size()) {
         // sort the node by it's score, if score is the same, bigger item first
-        sort(node_pool.begin(), node_pool.end(), [](NodeInfo &lhs, NodeInfo &rhs) {
+        sort(node_pool.begin(), node_pool.end(), [](const NodeInfo &lhs, const NodeInfo &rhs) {
             return lhs.item_w > rhs.item_w; }); // place bigger item first
-        stable_sort(node_pool.begin(), node_pool.end(), [](NodeInfo &lhs, NodeInfo &rhs) {
+        stable_sort(node_pool.begin(), node_pool.end(), [](const NodeInfo &lhs, const NodeInfo &rhs) {
             return lhs.score < rhs.score; }); // sort by score
         // random choose some nodes to branch
         int left_nodes = node_pool.size()*cfg.cut_rate;
@@ -401,10 +401,10 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
         }
     } else { // no place to put item, creat new
         if (old.c2cpu == 0) { // place item in new plate
-            TreeNode false_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            TreeNode false_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, -1, 0, 0);
             branch(false_node, batch, live_nodes);
         } else { // place item in new L1
-            TreeNode false_node(old.depth, old.plate, -1, old.c1cpr, old.c1cpr, 0, 0, old.c1cpr, 0, old.cut1 + 1, 0, 0);
+            TreeNode false_node(old.depth, old.plate, -1, old.c1cpr, old.c1cpr, 0, 0, old.c1cpr, 0, old.cut1, 0, 0);
             branch(false_node, batch, live_nodes);
         }
     }
@@ -416,19 +416,31 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
 */
 const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
     bool moved_cut1 = false, moved_cut2 = false;
-
-    // check minimum waste width/height constraint and try to fix it.
-    if (node.c1cpr - node.c3cp < input.param.minWasteWidth &&
-        node.c1cpr - node.c4cp > 0) { // check item right side and c1cpr interval.
+    // check if item right side and c1cpr interval less than minWasteWidth.
+    if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < input.param.minWasteWidth) {
         node.c1cpr = node.c3cp + input.param.minWasteWidth; // move c1cpr right to staisfy constraint.
         moved_cut1 = true;
     }
-    if (node.c2cpu - node.c4cp < input.param.minWasteHeight &&
-        node.c2cpu - node.c4cp > 0) { // check item up side and c2cpu interval.
+    // check if new c1cpr and old c1cpr interval less than minWasteWidth.
+    if (node.c1cpr!=old.c1cpr && node.c1cpr - old.c1cpr < input.param.minWasteWidth) {
+        node.c1cpr = old.c1cpr + input.param.minWasteWidth;
+        moved_cut1 = true;
+    }
+    // check if item up side and c2cpu interval less than minWasteHeight.
+    if (node.c4cp != node.c2cpu && node.c2cpu - node.c4cp < input.param.minWasteHeight) {
         if (node.getFlagBit(FlagBit::LOCKC2)) { // c2cpu cant's move in this case.
             return false;
         } else {
             node.c2cpu = node.c4cp + input.param.minWasteHeight; // move c2cpu up to satisfy constraint.
+            moved_cut2 = true;
+        }
+    }
+    // check if new c2cpu and old c2cpu interval less than minWasteHeight
+    if (node.c2cpu!=old.c2cpu && node.c2cpu - old.c2cpu < input.param.minWasteHeight) {
+        if (node.getFlagBit(FlagBit::LOCKC2)) {
+            return false;
+        } else {
+            node.c2cpu = old.c2cpu + input.param.minWasteHeight;
             moved_cut2 = true;
         }
     }
@@ -461,29 +473,34 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
             }
         }
     }
-    // check stock bound exceed and minimum cut1/cut2 and maximum cut1 constraint.
-    if (node.c1cpr > input.param.plateWidth) { // cut1 exceed stock right side.
+    // check if cut1 exceed stock right side.
+    if (node.c1cpr > input.param.plateWidth) {
         return false;
     }
-    if (node.c2cpu > input.param.plateHeight) { // cut2 exceed stock up side.
+    // check if cut2 exceed stock up side.
+    if (node.c2cpu > input.param.plateHeight) {
         return false;
     }
-    if (node.c1cpr - node.c1cpl > input.param.maxL1Width) { // maximum cut1 width not staisfy.
+    // check if maximum cut1 width not staisfy.
+    if (node.c1cpr - node.c1cpl > input.param.maxL1Width) {
         return false;
     }
-    if (node.cut1 > old.cut1 && old.c1cpr - old.c1cpl < input.param.minL1Width) { // minimum cut1 width not staisfy.
+    // check if minimum cut1 width not staisfy.
+    if (node.cut1 > old.cut1 && old.c1cpr - old.c1cpl < input.param.minL1Width) {
         return false;
     }
-    if (node.cut2 > old.cut2 && old.c2cpu - old.c2cpb < input.param.minL2Height) { // minimum cut2 height not staisfy.
+    // check if minimum cut2 height not staisfy.
+    if (node.cut2 > old.cut2 && old.c2cpu - old.c2cpb < input.param.minL2Height) {
         return false;
     }
-    // check clcpr/c2cpu and stock side's minimum waste width/height constraint
-    if (input.param.plateWidth - node.c1cpr < input.param.minWasteWidth &&
-        input.param.plateWidth - node.c1cpr != 0) { // cut1 and stock right side interval less than minimum waste width.
+    // check if cut1 and stock right side interval less than minimum waste width.
+    if (input.param.plateWidth - node.c1cpr != 0 &&
+        input.param.plateWidth - node.c1cpr < input.param.minWasteWidth) {
         return false;
     }
-    if (input.param.plateHeight - node.c2cpu < input.param.minWasteHeight &&
-        input.param.plateHeight - node.c2cpu != 0) { // cut2 and stock up side interval less than minimum waste height.
+    // check if cut2 and stock up side interval less than minimum waste height.
+    if (input.param.plateHeight - node.c2cpu != 0 &&
+        input.param.plateHeight - node.c2cpu < input.param.minWasteHeight) {
         return false;
     }
     return true; // every constraints satisfied.
@@ -505,7 +522,7 @@ const TLength TreeSearch::sliptoDefectRight(const RectArea & area, const TID pla
             slip = aux.defects[d].x + aux.defects[d].w; // slip to defect right side
         }
     }
-    if (slip - area.x < input.param.minWasteWidth && slip - area.x != 0)
+    if (slip - area.x != 0 && slip - area.x < input.param.minWasteWidth)
         return input.param.minWasteWidth;
     return slip - area.x;
 }
@@ -526,7 +543,7 @@ const TLength TreeSearch::sliptoDefectUp(const RectArea & area, const TID plate)
             slip = aux.defects[d].y + aux.defects[d].h; // slip to defect up side
         }
     }
-    if (slip - area.y < input.param.minWasteHeight && slip - area.y != 0)
+    if (slip - area.y != 0 && slip - area.y < input.param.minWasteHeight)
         return input.param.minWasteHeight;
     return slip - area.y;
 }
@@ -542,7 +559,7 @@ const double TreeSearch::getBranchScore(const TreeNode &old, const TreeNode & no
     if (item_left > old.c3cp) { // place item in defect right caused waste
         waste += (item_left - old.c3cp)*(node.c2cpu - node.c2cpb);
     }
-    if (item_bottom > node.c2cpb && node.getFlagBit(FlagBit::DEFECT)) { // place item in defect upper caused waste
+    if (item_bottom > node.c2cpb && node.getFlagBit(FlagBit::DEFECT_U)) { // place item in defect upper caused waste
         waste += (node.c3cp - old.c3cp)*(item_bottom - node.c2cpb);
     }
     if (node.c2cpu > node.c4cp) { // c2cpu and c4cp interval caused waste
@@ -565,7 +582,7 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
     using SpecialType = Problem::Output::Node::SpecialType;
     const TLength PW = input.param.plateWidth, PH = input.param.plateHeight;
     // define current plate/cut1/cut2 identity in solution node
-    TID cur_plate = -1, cur_cut1 = -1, cur_cut2 = -1;
+    TID cur_plate = 0, cur_cut1 = 0, cur_cut2 = 0;
     // define current node/parentL0.. identity in output solution tree node
     TID nodeId = 0, parent_L0 = -1, parent_L1 = -1, parent_L2 = -1, parent_L3 = -1;
     // define current c1cpl/c1cpr... when constructing solution tree
@@ -605,7 +622,7 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
             parent_L2 = nodeId;
             output.nodes.push_back(Problem::Output::Node( // creat a new L2
                 cur_plate, nodeId++, 0, 0, c1cpr, c2cpu, SpecialType::Branch, 2, parent_L1));
-        } 
+        }
         else if (cur_cut1 < sol[n].cut1) { // a new cut1
             // add waste for last L1
             if (c3cp < c1cpr) { // add waste between c3cp and c1cpr
@@ -631,7 +648,7 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
             parent_L2 = nodeId;
             output.nodes.push_back(Problem::Output::Node( // creat a new L2
                 cur_plate, nodeId++, c1cpl, 0, c1cpr - c1cpl, c2cpu, SpecialType::Branch, 2, parent_L1));
-        } 
+        }
         else if (cur_cut2 < sol[n].cut2) { // a new cut2
             // add waste for last L2
             if (c3cp < c1cpr) { // add waste between c3cp and c1cpr
@@ -649,40 +666,39 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
                 cur_plate, nodeId++, c1cpl, c2cpb, c1cpr - c1cpl, c2cpu - c2cpb, SpecialType::Branch, 2, parent_L1));
         }
         const TLength item_w = sol[n].getFlagBit(FlagBit::ROTATE) ? aux.items[sol[n].item].h : aux.items[sol[n].item].w;
-        const TLength item_h = sol[n].getFlagBit(FlagBit::ROTATE) ?aux.items[sol[n].item].w : aux.items[sol[n].item].h;
+        const TLength item_h = sol[n].getFlagBit(FlagBit::ROTATE) ? aux.items[sol[n].item].w : aux.items[sol[n].item].h;
         // if item placed in defect right bound, creat waste between c3cp and item left bound
-        if (sol[n].getFlagBit(FlagBit::DEFECT) && sol[n].c3cp - item_w > c3cp) {
+        if (sol[n].getFlagBit(FlagBit::DEFECT_R)) {
             output.nodes.push_back(Problem::Output::Node(
                 cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - item_w - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
         }
-        // if has bin4, place this node into last L3, creat a new L3
-        if (!sol[n].getFlagBit(FlagBit::BIN4)) {
+        // if has bin4, place this node into last L3, else creat a new L3
+        if (sol[n].getFlagBit(FlagBit::BIN4)) {
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, sol[n].c3cp - item_w, c2cpu - item_h, item_w, item_h, sol[n].item, 4, parent_L3));
+            continue;
+        } else {
             parent_L3 = nodeId;
             output.nodes.push_back(Problem::Output::Node(
-                cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - c3cp, c2cpu - c2cpb, SpecialType::Branch, 3, parent_L2));
+                cur_plate, nodeId++, sol[n].c3cp - item_w, c2cpb, item_w, c2cpu - c2cpb, SpecialType::Branch, 3, parent_L2));
         }
         // if item placed in defect up bound, creat waste between item bottom and c2cpb
-        if (sol[n].getFlagBit(FlagBit::DEFECT) && sol[n].c4cp - item_h > c2cpb) {
-            if (c2cpu == sol[n].c4cp) { // just an item and a waste in L3, add the waste
+        if (sol[n].getFlagBit(FlagBit::DEFECT_U)) {
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, sol[n].c3cp - item_w, c2cpb, item_w, c2cpu - item_h - c2cpb, SpecialType::Waste, 4, parent_L3));
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, sol[n].c3cp - item_w, c2cpu - item_h, item_w, item_h, sol[n].item, 4, parent_L3));
+        } else {
+            // creat a item in L3
+            output.nodes.push_back(Problem::Output::Node(
+                cur_plate, nodeId++, sol[n].c3cp - item_w, c2cpb, item_w, item_h, sol[n].item, 4, parent_L3));
+            // add waste between c4cp and c2cpu
+            if (c2cpu > sol[n].c4cp && n + 1 < sol.size() && !sol[n + 1].getFlagBit(FlagBit::BIN4)) {
                 output.nodes.push_back(Problem::Output::Node(
-                    cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - c3cp, sol[n].c4cp - item_h - c2cpb, SpecialType::Waste, 4, parent_L3));
-            } else { // item up and c2cpu has interval, so move item up to fit it
-                sol[n].c4cp = c2cpu;
-                output.nodes.push_back(Problem::Output::Node(
-                    cur_plate, nodeId++, c3cp, c2cpb, sol[n].c3cp - c3cp, sol[n].c4cp - item_h - c2cpb, SpecialType::Waste, 4, parent_L3));
+                    cur_plate, nodeId++, sol[n].c3cp - item_w, sol[n].c4cp, item_w, c2cpu - sol[n].c4cp, SpecialType::Waste, 4, parent_L3));
             }
         }
-        // creat a item in L3
-        output.nodes.push_back(Problem::Output::Node(
-            cur_plate, nodeId++, c3cp, sol[n].c4cp - item_h, item_w, item_h, sol[n].item, 4, parent_L3));
-        if (c2cpu > sol[n].c4cp) { // add waste between c4cp and c2cpu
-            output.nodes.push_back(Problem::Output::Node(
-                cur_plate, nodeId++, c3cp, sol[n].c4cp, sol[n].c3cp - c3cp, c2cpu - sol[n].c4cp, SpecialType::Waste, 4, parent_L3));
-        }
-        // if next item is not in the same L3, update c3cp
-        if (n+1 < sol.size() && !sol[n + 1].getFlagBit(FlagBit::BIN4)) {
-            c3cp = sol[n].c3cp;
-        }
+        c3cp = sol[n].c3cp;
     }
     if (c3cp < c1cpr) { // add last waste between c3cp and c1cpr
         output.nodes.push_back(Problem::Output::Node(
