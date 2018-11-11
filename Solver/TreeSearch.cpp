@@ -19,7 +19,55 @@ namespace szx {
 
 #pragma region Interface
 void TreeSearch::solve() {
-    // TODO: add code...
+    init();
+    List<TreeNode> sol;
+    TreeNode start_node(TreeNode(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+    depthFirstSearch(INT32_MAX, start_node, aux.stacks, sol);
+    toOutput(sol);
+}
+
+void TreeSearch::record() const {
+    #if SZX_DEBUG
+    int generation = 0;
+
+    ostringstream log;
+
+    System::MemoryUsage mu = System::peakMemoryUsage();
+
+    Length obj = output.totalWidth * input.param.plateHeight - total_item_area;
+    Length checkerObj = -1;
+    bool feasible = check(checkerObj);
+
+    // record basic information.
+    log << env.friendlyLocalTime() << ","
+        << env.rid << ","
+        << env.instName << ","
+        << feasible << "," << (obj - checkerObj) << ","
+        << output.totalWidth << ","
+        << timer.elapsedSeconds() << ","
+        << mu.physicalMemory << "," << mu.virtualMemory << ","
+        << env.randSeed << ","
+        << cfg.toBriefStr() << ","
+        << generation << "," << iteration << ","
+        << total_item_area / (output.totalWidth * input.param.plateHeight / 100.0) << "%," // util ratio.
+        << checkerObj; // wasted area.
+
+    // record solution vector.
+    // EXTEND[szx][2]: save solution in log.
+    log << endl;
+
+    // append all text atomically.
+    static mutex logFileMutex;
+    lock_guard<mutex> logFileGuard(logFileMutex);
+
+    ofstream logFile(env.logPath, ios::app);
+    logFile.seekp(0, ios::end);
+    if (logFile.tellp() <= 0) {
+        logFile << "Time,ID,Instance,Feasible,ObjMatch,Width,Duration,PhysMem,VirtMem,RandSeed,Config,Generation,Iteration,Util,Waste,Solution" << endl;
+    }
+    logFile << log.str();
+    logFile.close();
+    #endif // SZX_DEBUG
 }
 #pragma endregion Interface
 
@@ -72,8 +120,10 @@ void TreeSearch::init() {
 
     aux.item_area.reserve(aux.items.size());
     //calculate item areas.
-    for (int i = 0; i < aux.items.size(); ++i)
+    for (int i = 0; i < aux.items.size(); ++i) {
         aux.item_area.push_back(aux.items[i].h*aux.items[i].w);
+        total_item_area += aux.items[i].h*aux.items[i].w;
+    }
     // reverse item sequence convicent for pop_back.
     for (int i = 0; i < aux.stacks.size(); i++)
         reverse(aux.stacks[i].begin(), aux.stacks[i].end());
@@ -87,21 +137,17 @@ void TreeSearch::init() {
         for (int d = 0; d < aux.plates_y[p].size(); ++d)
             sort(aux.plates_y[p].begin(), aux.plates_y[p].end(), [&](TID &lhs, TID &rhs) {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
-    // TODO[DEBUG]: verify if defects.x smallest is in the first??? 
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
-   use depth first search to optimize partial solution.
-*/
-void TreeSearch::depthFirstSearch(const int ub, List<List<TID>> &batch, List<TreeNode> &solution) {
+   use depth first search to optimize partial solution. */
+void TreeSearch::depthFirstSearch(const int ub, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     int left_items = 0; // left item number in the batch
     for (auto stack : batch)
         left_items += stack.size();
     int best_obj = input.param.plateWidth*input.param.plateNum; // record the best objective up to now
     List<TreeNode> live_nodes; // the tree nodes to be branched
-    TreeNode temp = solution.back();
-    temp.depth = -1; // start search from depth 0
-    branch(temp, batch, live_nodes);
+    branch(resume_point, batch, live_nodes);
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution
     int explored_nodes = 0, cutted_nodes = 0;
     Depth pre_depth = -1; // last node depth
@@ -142,8 +188,9 @@ void TreeSearch::depthFirstSearch(const int ub, List<List<TID>> &batch, List<Tre
         if (left_items == 0) { // find a complate solution
             int cur_obj = 0;
             for (TreeNode solnode : cur_parsol) {
-                if (cur_obj < solnode.c1cpr)
-                    cur_obj = solnode.c1cpr;
+                if (cur_obj < solnode.plate*input.param.plateWidth + solnode.c1cpr) {
+                    cur_obj = solnode.plate*input.param.plateWidth + solnode.c1cpr;
+                }
             }
             // TODO: evalute original objective or usage rate???
             if (best_obj > cur_obj) {
@@ -155,6 +202,7 @@ void TreeSearch::depthFirstSearch(const int ub, List<List<TID>> &batch, List<Tre
     for (TreeNode sol : best_parsol) { // record this turn's best partial solution
         solution.push_back(sol);
     }
+    cout << "explored nodes=" << explored_nodes << endl;
 }
 
 /* input:last tree node(branch point)
@@ -191,7 +239,6 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     auto node_a1 = nodes.rbegin();
                     node_a1->c3cp = node_a1->c1cpr = old.c1cpr + slip_r + item.w;
                     node_a1->c4cp = node_a1->c2cpu = item.h;
-                    node_a1->cut1 = old.cut1 + 1;
                     node_a1->cut2 = 0;
                     if (slip_r)node_a1->setFlagBit(FlagBit::DEFECT_R);
                     fesible.push_back(constraintCheck(old, *node_a1));
@@ -201,7 +248,6 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     auto node_a2 = nodes.rbegin();
                     node_a2->c3cp = node_a2->c1cpr = old.c1cpr + item.w;
                     node_a2->c4cp = node_a2->c2cpu = slip_u + item.h;
-                    node_a2->cut1 = old.cut1 + 1;
                     node_a2->cut2 = 0;
                     node_a2->setFlagBit(FlagBit::DEFECT_U);
                     fesible.push_back(constraintCheck(old, *node_a2));
@@ -258,7 +304,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     node_b3->c3cp = old.c1cpl + slip_r + item.w;
                     if (node_b3->c1cpr < node_b3->c3cp)
                         node_b3->c1cpr = node_b3->c3cp;
-                    node_b3->cut2 = old.cut2 + 1;
+                    ++node_b3->cut2;
                     if (slip_r)node_b3->setFlagBit(FlagBit::DEFECT_R);
                     fesible.push_back(constraintCheck(old, *node_b3));
                 }
@@ -270,7 +316,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     node_b4->c3cp = old.c1cpl + item.w;
                     if (node_b4->c1cpr < node_b4->c3cp)
                         node_b4->c1cpr = node_b4->c3cp;
-                    node_b4->cut2 = old.cut2 + 1;
+                    ++node_b4->cut2;
                     node_b4->setFlagBit(FlagBit::DEFECT_U);
                     fesible.push_back(constraintCheck(old, *node_b4));
                 }
@@ -278,7 +324,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
         }
     }
     // case C, place item in the old L2 or a new L2 when item extend c1cpr too much
-    else if (old.c3cp < old.c1cpr) {
+    else {
         for (int rotate = 0; rotate <= 1; ++rotate) {
             for (auto stack : batch) {
                 // pretreatment.
@@ -304,7 +350,8 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                     fesible.push_back(constraintCheck(old, *node_c1));
                     continue;
                 }
-                { // place item in the right of current c3cp
+                // TODO: make this constraint more tighter ???
+                if (old.c3cp < old.c1cpr) { // place item in the right of current c3cp
                     slip_r = sliptoDefectRight(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
                     slip_u = sliptoDefectUp(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
                     // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu constraint must meet
@@ -338,7 +385,8 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                         fesible.push_back(constraintCheck(old, *node_c3));
                     }
                 }
-                if (old.c3cp + item.w > old.c1cpr) { // another branch, creat a new L2 and place item in it
+                if (old.c3cp + item.w > old.c1cpr) {
+                    // creat a new L2 and place item in it
                     slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
                     slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
                     {
@@ -349,7 +397,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                             node_c4->c1cpr = node_c4->c3cp;
                         node_c4->c2cpb = old.c2cpu;
                         node_c4->c4cp = node_c4->c2cpu = old.c2cpu + item.h;
-                        node_c4->cut2 = old.cut2 + 1; // update new L2 id
+                        ++node_c4->cut2; // update new L2 id
                         if (slip_r)node_c4->setFlagBit(FlagBit::DEFECT_R);
                         fesible.push_back(constraintCheck(old, *node_c4));
                     }
@@ -361,9 +409,36 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
                             node_c5->c1cpr = node_c5->c3cp;
                         node_c5->c2cpb = old.c2cpu;
                         node_c5->c4cp = node_c5->c2cpu = old.c2cpu + slip_u + item.h;
-                        node_c5->cut2 = old.cut2 + 1;
+                        ++node_c5->cut2;
                         node_c5->setFlagBit(FlagBit::DEFECT_U);
                         fesible.push_back(constraintCheck(old, *node_c5));
+                    }
+                    // creat a new L1 and place item in it
+                    slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                    slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                    {
+                        nodes.push_back(TreeNode(old, itemId, rotate));
+                        auto node_c6 = nodes.rbegin();
+                        node_c6->c1cpl = old.c1cpr;
+                        node_c6->c3cp = node_c6->c1cpr = old.c1cpr + item.w + slip_r;
+                        node_c6->c2cpb = 0;
+                        node_c6->c4cp = node_c6->c2cpu = item.h;
+                        if (slip_r)node_c6->setFlagBit(FlagBit::DEFECT_R);
+                        ++node_c6->cut1;
+                        node_c6->cut2 = 0;
+                        fesible.push_back(constraintCheck(old, *node_c6));
+                    }
+                    if (slip_u) {
+                        nodes.push_back(TreeNode(old, itemId, rotate));
+                        auto node_c7 = nodes.rbegin();
+                        node_c7->c1cpl = old.c1cpr;
+                        node_c7->c3cp = node_c7->c1cpr = old.c1cpr + item.w;
+                        node_c7->c2cpb = 0;
+                        node_c7->c4cp = node_c7->c2cpu = slip_u + item.h;
+                        node_c7->setFlagBit(FlagBit::DEFECT_U);
+                        ++node_c7->cut1;
+                        node_c7->cut2 = 0;
+                        fesible.push_back(constraintCheck(old, *node_c7));
                     }
                 }
             }
@@ -400,13 +475,8 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, List<
             }
         }
     } else { // no place to put item, creat new
-        if (old.c2cpu == 0) { // place item in new plate
-            TreeNode false_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, -1, 0, 0);
-            branch(false_node, batch, live_nodes);
-        } else { // place item in new L1
-            TreeNode false_node(old.depth, old.plate, -1, old.c1cpr, old.c1cpr, 0, 0, old.c1cpr, 0, old.cut1, 0, 0);
-            branch(false_node, batch, live_nodes);
-        }
+        TreeNode mask_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        branch(mask_node, batch, live_nodes);
     }
 }
 
@@ -436,7 +506,8 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
         }
     }
     // check if new c2cpu and old c2cpu interval less than minWasteHeight
-    if (node.c2cpu!=old.c2cpu && node.c2cpu - old.c2cpu < input.param.minWasteHeight) {
+    if (node.cut1 == old.cut1 && node.cut2 == old.cut2 && node.c2cpu!=old.c2cpu 
+        && node.c2cpu - old.c2cpu < input.param.minWasteHeight) {
         if (node.getFlagBit(FlagBit::LOCKC2)) {
             return false;
         } else {
@@ -486,7 +557,7 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
         return false;
     }
     // check if minimum cut1 width not staisfy.
-    if (node.cut1 > old.cut1 && old.c1cpr - old.c1cpl < input.param.minL1Width) {
+    if (node.cut1 > old.cut1 && old.cut1 > -1 && old.c1cpr - old.c1cpl < input.param.minL1Width) {
         return false;
     }
     // check if minimum cut2 height not staisfy.
@@ -582,7 +653,7 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
     using SpecialType = Problem::Output::Node::SpecialType;
     const TLength PW = input.param.plateWidth, PH = input.param.plateHeight;
     // define current plate/cut1/cut2 identity in solution node
-    TID cur_plate = 0, cur_cut1 = 0, cur_cut2 = 0;
+    TID cur_plate = -1, cur_cut1 = 0, cur_cut2 = 0;
     // define current node/parentL0.. identity in output solution tree node
     TID nodeId = 0, parent_L0 = -1, parent_L1 = -1, parent_L2 = -1, parent_L3 = -1;
     // define current c1cpl/c1cpr... when constructing solution tree
@@ -595,11 +666,11 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
                 output.nodes.push_back(Problem::Output::Node(
                     cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
             }
-            if (c2cpu < input.param.plateHeight) { // add waste between c2cpu and plate up bound
+            if (cur_plate != -1 && c2cpu < input.param.plateHeight) { // add waste between c2cpu and plate up bound
                 output.nodes.push_back(Problem::Output::Node(
                     cur_plate, nodeId++, c1cpl, c2cpu, c1cpr - c1cpl, PH - c2cpu, SpecialType::Waste, 2, parent_L1));
             }
-            if (c1cpr < input.param.plateWidth) { // add waste between c1cpr and plate right bound
+            if (cur_plate != -1 && c1cpr < input.param.plateWidth) { // add waste between c1cpr and plate right bound
                 output.nodes.push_back(Problem::Output::Node(
                     cur_plate, nodeId++, c1cpr, 0, PW - c1cpr, PH, SpecialType::Waste, 1, parent_L0));
             }
@@ -712,6 +783,13 @@ void TreeSearch::toOutput(List<TreeNode> &sol) {
         output.nodes.push_back(Problem::Output::Node(
             cur_plate, nodeId++, c1cpr, 0, PW - c1cpr, PH, SpecialType::Residual, 1, parent_L0));
     }
+    // calculate total width of output
+    output.totalWidth = 0;
+    for (int i = 0; i < sol.size(); ++i) {
+        if (output.totalWidth < sol[i].plate*input.param.plateWidth + sol[i].c1cpr) {
+            output.totalWidth = sol[i].plate*input.param.plateWidth + sol[i].c1cpr;
+        }
+    }
 }
 
 /* input: solution TreeNode type, solution start index, current cut1 id
@@ -742,6 +820,35 @@ const TCoord TreeSearch::getC2cpu(const List<TreeNode> &sol, const int index, co
         }
     }
     return res;
+}
+
+bool TreeSearch::check(Length & checkerObj) const {
+    #if SZX_DEBUG
+    enum CheckerFlag {
+        IoError = 0x0,
+        FormatError = 0x1,
+        ItemProductionError = 0x2,
+        DefectSuperposingError = 0x4,
+        ItemDimensionError = 0x8,
+        IdentityError = 0x10,
+        SequenceError = 0x20
+    };
+
+    checkerObj = System::exec("Checker.exe " + env.instName + " " + env.solutionPath());
+    if (checkerObj > 0) { return true; }
+    checkerObj = ~checkerObj;
+    if (checkerObj == CheckerFlag::IoError) { Log(LogSwitch::Checker) << "IoError." << endl; }
+    if (checkerObj & CheckerFlag::FormatError) { Log(LogSwitch::Checker) << "FormatError." << endl; }
+    if (checkerObj & CheckerFlag::ItemProductionError) { Log(LogSwitch::Checker) << "ItemProductionError." << endl; }
+    if (checkerObj & CheckerFlag::DefectSuperposingError) { Log(LogSwitch::Checker) << "DefectSuperposingError." << endl; }
+    if (checkerObj & CheckerFlag::ItemDimensionError) { Log(LogSwitch::Checker) << "ItemDimensionError." << endl; }
+    if (checkerObj & CheckerFlag::IdentityError) { Log(LogSwitch::Checker) << "IdentityError." << endl; }
+    if (checkerObj & CheckerFlag::SequenceError) { Log(LogSwitch::Checker) << "SequenceError." << endl; }
+    return false;
+    #else
+    checkerObj = 0;
+    return true;
+    #endif // SZX_DEBUG
 }
 
 #pragma endregion Achievement

@@ -1,4 +1,5 @@
 #include "Solver.h"
+#include "TreeSearch.h"
 
 #include <algorithm>
 #include <iostream>
@@ -58,20 +59,30 @@ int Solver::Cli::run(int argc, char * argv[]) {
     env.load(optionMap);
     if (env.instName.empty() || env.slnPath.empty()) { return -1; }
 
-    Solver::Configuration cfg;
-    cfg.load(env.cfgPath);
+    //Solver::Configuration cfg;
+    //cfg.load(env.cfgPath);
+
+    TreeSearch::Configuration tcfg;
 
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
-    Solver solver(input, env, cfg);
+    /*Solver solver(input, env, cfg);
     solver.solve();
     solver.output.save(env.solutionPath());
     #if SZX_DEBUG
     solver.output.save(env.solutionPathWithTime());
     solver.record();
-    #endif // SZX_DEBUG
+    #endif // SZX_DEBUG*/
+    
+    TreeSearch tsolver(input, env, tcfg);
+    tsolver.solve();
+    tsolver.output.save(env.solutionPath());
+    #if SZX_DEBUG
+    tsolver.output.save(env.solutionPathWithTime());
+    tsolver.record();
+    #endif
 
     return 0;
 }
