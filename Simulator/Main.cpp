@@ -10,7 +10,7 @@ int main() {
 
     Simulator sim;
     sim.debug();
-    //sim.benchmark(4);
+    //sim.benchmark(1);
     //sim.parallelBenchmark(5);
 
     return 0;
