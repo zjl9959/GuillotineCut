@@ -22,7 +22,7 @@ void TreeSearch::solve() {
     init();
     List<TreeNode> sol;
     TreeNode start_node(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    depthFirstSearch(INT32_MAX, start_node, aux.stacks, sol);
+    depthFirstSearch(start_node, aux.stacks, sol);
     toOutput(sol);
 }
 
@@ -139,12 +139,24 @@ void TreeSearch::init() {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
 }
 
+/* this method will restart search after maximum steps,
+   the basic search method in every turn is depth first search. */
+void TreeSearch::randomRestartSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
+    // TODO: add code here...
+}
+
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
-void TreeSearch::depthFirstSearch(const int ub, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
+void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     int left_items = 0; // left item number in the batch
-    for (auto stack : batch)
+    Area left_item_area = 0;
+    for (auto stack : batch) {
         left_items += stack.size();
+        for (auto item : stack) {
+            left_item_area += aux.item_area[item];
+        }
+    }
+    const int max_depth = left_items - 1;
     int best_obj = input.param.plateWidth*input.param.plateNum; // record the best objective up to now
     List<TreeNode> live_nodes; // the tree nodes to be branched
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution
@@ -155,15 +167,15 @@ void TreeSearch::depthFirstSearch(const int ub, const TreeNode &resume_point, Li
         TreeNode node = live_nodes.back();
         live_nodes.pop_back();
         explored_nodes++;
-        //TODO: add get low bound...
-        /*if () {
+        if (node.depth < max_depth && getLowBound(node,left_item_area) > best_obj) { // cut branch
             cutted_nodes++;
             continue;
-        }*/
+        }
         if (node.depth - pre_depth == 1) { // search froward
             cur_parsol.push_back(node);
             batch[aux.item2stack[node.item]].pop_back();
             left_items--;
+            left_item_area -= aux.item_area[node.item];
             if (left_items > 0) {
                 branch(node, batch, cur_parsol, live_nodes);
             }
@@ -172,11 +184,13 @@ void TreeSearch::depthFirstSearch(const int ub, const TreeNode &resume_point, Li
                 batch[aux.item2stack[cur_parsol[i].item]].push_back(
                     cur_parsol[i].item);
                 left_items++;
+                left_item_area += aux.item_area[cur_parsol[i].item];
             }
             cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes
             cur_parsol.push_back(node); // push current node into cur_parsol
             batch[aux.item2stack[node.item]].pop_back();
             left_items--;
+            left_item_area -= aux.item_area[node.item];
             if (left_items > 0) {
                 branch(node, batch, cur_parsol, live_nodes);
             }
@@ -722,6 +736,15 @@ const double TreeSearch::getBranchScore(const TreeNode &old, const TreeNode & no
         waste += (old.c1cpr - old.c3cp)*(old.c2cpu - old.c2cpb);
     }
     return waste/aux.item_area[node.item];
+}
+
+/* input: current branch node, the left item area to calculate low bound
+   calculate a little relaxed low bound */
+const Length TreeSearch::getLowBound(const TreeNode & cur_node, Area left_item_area) const {
+    left_item_area = left_item_area - (cur_node.c2cpu - cur_node.c2cpb)*(cur_node.c1cpr - cur_node.c3cp) -
+        (input.param.plateHeight - cur_node.c2cpu)*(cur_node.c1cpr - cur_node.c1cpl) - aux.item_area[cur_node.item];
+    return input.param.plateWidth*cur_node.plate + cur_node.c1cpr + max(
+        0, static_cast<Length>(left_item_area / input.param.plateHeight));
 }
 
 // this function convert TreeNode type solution into output type 

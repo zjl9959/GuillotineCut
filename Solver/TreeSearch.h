@@ -33,7 +33,7 @@ public:
     };
 
     struct Configuration {
-        TID sampling_num = 5; // maximum sample node number from the good branch nodes
+        TID sampling_num = 3; // maximum sample node number from the good branch nodes
         double cut_rate = 0.5; // cut half of the branch node and sample
         String toBriefStr() const {
             std::ostringstream os;
@@ -107,13 +107,15 @@ public:
     void record() const;
 protected:
     void init();
-    void depthFirstSearch(const int upbound, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
+    void randomRestartSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
+    void depthFirstSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &live_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
     const TLength sliptoDefectRight(const RectArea &area, const TID plate) const;
     const TLength sliptoDefectUp(const RectArea &area, const TID plate) const;
     const bool defectConflictArea(const RectArea &area, const TID plate) const;
     const double getBranchScore(const TreeNode &old, const TreeNode &node) const;
+    const Length getLowBound(const TreeNode &cur_node, Area left_item_area) const;
     void toOutput(List<TreeNode> &sol);
     const TCoord getC1cpr(const List<TreeNode> &sol, const int index, const TID cur_plate, const TID cur_cut1) const;
     const TCoord getC2cpu(const List<TreeNode> &sol, const int index, const TID cur_cut1, const TID cur_cut2) const;
