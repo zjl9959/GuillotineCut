@@ -14,6 +14,7 @@
 #include <chrono>
 #include <initializer_list>
 #include <vector>
+#include <queue>
 #include <map>
 #include <random>
 #include <iostream>
@@ -744,6 +745,30 @@ public:
     static T bound(T num, T lb, T ub) {
         return std::min(std::max(num, lb), ub);
     }
+};
+
+template<typename T>
+class Stack {
+public:
+    void push(const T& value) { container.push_back(value); }
+    void pop() { container.pop_back(); }
+    const T& back()const { return container.back(); }
+    T& back() { return container.back(); }
+    size_t size()const { return container.size(); }
+protected:
+    std::vector<T> container;
+};
+
+template<typename T>
+class Queue {
+public:
+    void push(const T& value) { container.push(value); }
+    void pop() { container.pop(); }
+    const T& back()const { return container.back(); }
+    T& back() { return container.front(); }
+    size_t size()const { return container.size(); }
+protected:
+    std::queue<T> container;
 };
 
 }

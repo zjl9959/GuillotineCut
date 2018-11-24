@@ -24,6 +24,9 @@ namespace szx {
 class TreeSearch {
     #pragma region Type
 public:
+    template<typename T>
+    using TContainer = Stack<T>;
+
     enum FlagBit {
         ROTATE = 0, // indicate item direction
         DEFECT_R = 1, // item placed in defect right
@@ -33,13 +36,8 @@ public:
     };
 
     struct Configuration {
-        //TID sampling_num = 5; // maximum sample node number from the good branch nodes
-        //double cut_rate = 0.5; // cut half of the branch node and sample
         String toBriefStr() const {
             std::ostringstream os;
-            //os << "sampling_num=" << sampling_num
-            //    << ";cut_rate=" << cut_rate;
-            //os << "DFS_V2018_11_23";
             return os.str();
         }
     };
@@ -108,9 +106,8 @@ public:
     void record() const;
 protected:
     void init();
-    void randomRestartSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void depthFirstSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &live_nodes);
+    void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, TContainer<TreeNode> &live_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
     const TLength sliptoDefectRight(const RectArea &area, const TID plate) const;
     const TLength sliptoDefectUp(const RectArea &area, const TID plate) const;

@@ -140,115 +140,6 @@ void TreeSearch::init() {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
 }
 
-/* this method will restart search after maximum steps,
-   the basic search method in every turn is depth first search. */
-void TreeSearch::randomRestartSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
-    int left_items = 0;
-    Area left_item_area = 0;
-    for (auto stack : batch) {
-        left_items += stack.size();
-        for (auto item : stack) {
-            left_item_area += aux.item_area[item];
-        }
-    }
-    const int max_depth = left_items - 1;
-    // configure varible start.
-    const int max_restart_steps = 3000000; // max_restart_steps should greater than max_depth.
-    const int max_restart_depth = max_depth * 0.5;
-    // configure varible end.
-    int best_obj = input.param.plateWidth*input.param.plateNum; // record the best objective up to now.
-    List<TreeNode> live_nodes; // the tree nodes to be branched.
-    List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
-    size_t explored_nodes = 0;
-    int cur_stamp_node = 0, last_stamp_node = 0; // stamp_node=explored_nodes when find a better solution.
-    Depth pre_depth = -1; // last node depth.
-    branch(resume_point, batch, cur_parsol, live_nodes);
-    while (live_nodes.size() && !timer.isTimeOut()) {
-        TreeNode node = live_nodes.back();
-        live_nodes.pop_back();
-        explored_nodes++;
-        cur_stamp_node++;
-        if (node.depth < max_depth && // cut branch.
-            getLowBound(node, left_item_area) > best_obj) {
-            continue;
-        }
-        int last_livenode_end = live_nodes.size();
-        if (node.depth - pre_depth == 1) { // search froward.
-            cur_parsol.push_back(node);
-            batch[aux.item2stack[node.item]].pop_back();
-            left_items--;
-            left_item_area -= aux.item_area[node.item];
-            if (left_items > 0) {
-                branch(node, batch, cur_parsol, live_nodes);
-                random_shuffle(live_nodes.begin()+last_livenode_end, live_nodes.end());
-            }
-        } else if (node.depth - pre_depth < 1) { // search back.
-            for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack.
-                batch[aux.item2stack[cur_parsol[i].item]].push_back(
-                    cur_parsol[i].item);
-                left_items++;
-                left_item_area += aux.item_area[cur_parsol[i].item];
-            }
-            cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes.
-            cur_parsol.push_back(node); // push current node into cur_parsol.
-            batch[aux.item2stack[node.item]].pop_back();
-            left_items--;
-            left_item_area -= aux.item_area[node.item];
-            if (left_items > 0) {
-                branch(node, batch, cur_parsol, live_nodes);
-                random_shuffle(live_nodes.begin() + last_livenode_end, live_nodes.end());
-            }
-        } else {
-            Log(Log::Error) << "[ERROR]Depth first search: delt depth is "
-                << node.depth - pre_depth << endl;
-        }
-        pre_depth = node.depth;
-        if (left_items == 0) { // find a complate solution.
-            int cur_obj = 0;
-            for (TreeNode solnode : cur_parsol) {
-                if (cur_obj < solnode.plate*input.param.plateWidth + solnode.c1cpr) {
-                    cur_obj = solnode.plate*input.param.plateWidth + solnode.c1cpr;
-                }
-            }
-            // TODO: evalute original objective or usage rate???
-            if (best_obj > cur_obj) {
-                best_obj = cur_obj;
-                best_parsol = cur_parsol;
-                last_stamp_node = cur_stamp_node;
-                cout << "a better obj: " << cur_obj << endl;
-            }
-        }
-        // choose a node from current bestsol and restart search.
-        if (cur_stamp_node - last_stamp_node > max_restart_steps) {
-            cur_stamp_node = last_stamp_node = 0;
-            // random choose a resume node.
-            const int restart_point = rand.pick(max_restart_depth);
-            // resume batch. TODO[OPT]: copy from a total batch.
-            for (int i = cur_parsol.size() - 1; i >= 0; --i) {
-                batch[aux.item2stack[cur_parsol[i].item]].push_back(cur_parsol[i].item);
-                left_items++;
-                left_item_area += aux.item_area[cur_parsol[i].item];
-            }
-            // resume current solution.
-            cur_parsol.clear();
-            for (int i = 0; i < restart_point; ++i) {
-                batch[aux.item2stack[best_parsol[i].item]].pop_back();
-                left_items--;
-                left_item_area -= aux.item_area[best_parsol[i].item];
-                cur_parsol.push_back(best_parsol[i]);
-            }
-            // resume livenodes and pre_depth.
-            live_nodes.clear();
-            live_nodes.push_back(best_parsol[restart_point]);
-            pre_depth = restart_point - 1;
-        }
-    }
-    for (TreeNode sol : best_parsol) { // record this turn's best partial solution.
-        solution.push_back(sol);
-    }
-    iteration = explored_nodes;
-}
-
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
 void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
@@ -262,14 +153,14 @@ void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> 
     }
     const int max_depth = left_items - 1;
     int best_obj = input.param.plateWidth*input.param.plateNum; // record the best objective up to now.
-    List<TreeNode> live_nodes; // the tree nodes to be branched.
+    TContainer<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
     size_t explored_nodes = 0;
     Depth pre_depth = -1; // last node depth.
     branch(resume_point, batch, cur_parsol, live_nodes);
     while (live_nodes.size() && !timer.isTimeOut()) {
         TreeNode node = live_nodes.back();
-        live_nodes.pop_back();
+        live_nodes.pop();
         explored_nodes++;
         if (node.depth < max_depth && // cut branch.
             getLowBound(node,left_item_area) > best_obj) {
@@ -327,7 +218,7 @@ void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> 
 /* input:last tree node(branch point).
    function:branch tree node by exact method.
 */// output:push branched nodes into live_nodes.
-void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &live_nodes) {
+void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, TContainer<TreeNode> &live_nodes) {
     List<TreeNode> nodes; // store considered nodes, the node in it maybe not satisfy some constraints.
     List<bool> fesible; // if nodes[i] satisfy all the constraints, fesible[i] is true.
     const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked.
@@ -564,7 +455,7 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
     size_t size_record = live_nodes.size();
     for (int i = 0; i < nodes.size(); ++i) {
         if (fesible[i]) { // collect the fesible nodes and push.
-            live_nodes.push_back(nodes[i]);
+            live_nodes.push(nodes[i]);
         }
     }
     if (size_record == live_nodes.size()) {  // no place to put item, creat new.
@@ -580,33 +471,6 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                 i, getBranchScore(old, nodes[i]), aux.items[nodes[i].item].w));
         }
     }
-    /*
-    if (node_pool.size()) {
-        // sort the node by it's score, if score is the same, bigger item first
-        sort(node_pool.begin(), node_pool.end(), [](const NodeInfo &lhs, const NodeInfo &rhs) {
-            return lhs.item_w > rhs.item_w; }); // place bigger item first
-        stable_sort(node_pool.begin(), node_pool.end(), [](const NodeInfo &lhs, const NodeInfo &rhs) {
-            return lhs.score < rhs.score; }); // sort by score
-        // random choose some nodes to branch
-        int left_nodes = node_pool.size()*cfg.cut_rate;
-        if (left_nodes < 1) // make sure at least choose one branch node
-            left_nodes = 1;
-        if (left_nodes < cfg.sampling_num) { // no need to sampling, just copy nodes to live_nodes
-            for (int i = left_nodes - 1; i >=0; --i) {
-                live_nodes.push_back(nodes[node_pool[i].id]);
-            }
-        } else { // sampling cfg.sampling_num branch nodes and push into live_nodes
-            for (int i = left_nodes - 1; i > left_nodes - cfg.sampling_num - 1; --i) {
-                const int rd_num = rand.pick(i + 1); // random number range from 0 to i
-                swap(node_pool.begin() + rd_num, node_pool.begin() + i);
-                live_nodes.push_back(nodes[node_pool[i].id]);
-            }
-        }
-    } else { // no place to put item, creat new.
-        TreeNode mask_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        branch(mask_node, batch, cur_parsol, live_nodes);
-    }
-    */
 }
 
 /* input: old branch node, new branch node.
