@@ -24,9 +24,6 @@ namespace szx {
 class TreeSearch {
     #pragma region Type
 public:
-    template<typename T>
-    using TContainer = Stack<T>;
-
     enum FlagBit {
         ROTATE = 0, // indicate item direction
         DEFECT_R = 1, // item placed in defect right
@@ -107,12 +104,11 @@ public:
 protected:
     void init();
     void depthFirstSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, TContainer<TreeNode> &live_nodes);
+    void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
     const TLength sliptoDefectRight(const RectArea &area, const TID plate) const;
     const TLength sliptoDefectUp(const RectArea &area, const TID plate) const;
     const bool defectConflictArea(const RectArea &area, const TID plate) const;
-    const double getBranchScore(const TreeNode &old, const TreeNode &node) const;
     const Length getLowBound(const TreeNode &cur_node, Area left_item_area) const;
     void toOutput(List<TreeNode> &sol);
     const TCoord getC1cpr(const List<TreeNode> &sol, const int index, const TID cur_plate, const TID cur_cut1) const;

@@ -141,7 +141,8 @@ void TreeSearch::init() {
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
-   use depth first search to optimize partial solution. */
+   use depth first search to optimize partial solution.
+   Set TContainer as Stack<T> when using this search method. */
 void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     int left_items = 0; // left item number in the batch.
     Area left_item_area = 0;
@@ -153,11 +154,14 @@ void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> 
     }
     const int max_depth = left_items - 1;
     int best_obj = input.param.plateWidth*input.param.plateNum; // record the best objective up to now.
-    TContainer<TreeNode> live_nodes; // the tree nodes to be branched.
+    Stack<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
     size_t explored_nodes = 0;
     Depth pre_depth = -1; // last node depth.
-    branch(resume_point, batch, cur_parsol, live_nodes);
+    List<TreeNode> branch_nodes;
+    branch(resume_point, batch, cur_parsol, branch_nodes);
+    for (auto n : branch_nodes)
+        live_nodes.push(n);
     while (live_nodes.size() && !timer.isTimeOut()) {
         TreeNode node = live_nodes.back();
         live_nodes.pop();
@@ -172,7 +176,10 @@ void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> 
             left_items--;
             left_item_area -= aux.item_area[node.item];
             if (left_items > 0) {
-                branch(node, batch, cur_parsol, live_nodes);
+                branch_nodes.clear();
+                branch(node, batch, cur_parsol, branch_nodes);
+                for (auto n : branch_nodes)
+                    live_nodes.push(n);
             }
         } else if (node.depth - pre_depth < 1) { // search back.
             for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack.
@@ -187,7 +194,10 @@ void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> 
             left_items--;
             left_item_area -= aux.item_area[node.item];
             if (left_items > 0) {
-                branch(node, batch, cur_parsol, live_nodes);
+                branch_nodes.clear();
+                branch(node, batch, cur_parsol, branch_nodes);
+                for (auto n : branch_nodes)
+                    live_nodes.push(n);
             }
         } else {
             Log(Log::Error) << "[ERROR]Depth first search: delt depth is " 
@@ -218,12 +228,8 @@ void TreeSearch::depthFirstSearch(const TreeNode &resume_point, List<List<TID>> 
 /* input:last tree node(branch point).
    function:branch tree node by exact method.
 */// output:push branched nodes into live_nodes.
-void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, TContainer<TreeNode> &live_nodes) {
-    List<TreeNode> nodes; // store considered nodes, the node in it maybe not satisfy some constraints.
-    List<bool> fesible; // if nodes[i] satisfy all the constraints, fesible[i] is true.
+void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes) {
     const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked.
-    nodes.reserve(10);
-    fesible.reserve(10);
     // case A, place item in a new L1.
     if (old.c2cpu == 0) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
@@ -244,23 +250,23 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                 // check if item conflict with defect and try to fix it.
                 slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
                 {
-                    nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect right(if no defect conflict, slip_r is 0).
-                    auto node_a1 = nodes.rbegin();
-                    node_a1->c3cp = node_a1->c1cpr = old.c1cpr + slip_r + item.w;
-                    node_a1->c4cp = node_a1->c2cpu = item.h;
-                    node_a1->cut2 = 0;
-                    if (slip_r)node_a1->setFlagBit(FlagBit::DEFECT_R);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_a1));
+                    TreeNode node_a1(old, itemId, rotate); // place in defect right(if no defect conflict, slip_r is 0).
+                    node_a1.c3cp = node_a1.c1cpr = old.c1cpr + slip_r + item.w;
+                    node_a1.c4cp = node_a1.c2cpu = item.h;
+                    node_a1.cut2 = 0;
+                    if (slip_r)node_a1.setFlagBit(FlagBit::DEFECT_R);
+                    if (constraintCheck(old, cur_parsol, node_a1))
+                        branch_nodes.push_back(node_a1);
                 }
                 if (slip_r) { // item conflict with defect(two choice).
                     slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
-                    nodes.push_back(TreeNode(old, itemId, rotate)); // place in defect up.
-                    auto node_a2 = nodes.rbegin();
-                    node_a2->c3cp = node_a2->c1cpr = old.c1cpr + item.w;
-                    node_a2->c4cp = node_a2->c2cpu = slip_u + item.h;
-                    node_a2->cut2 = 0;
-                    node_a2->setFlagBit(FlagBit::DEFECT_U);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_a2));
+                    TreeNode node_a2(old, itemId, rotate); // place in defect up.
+                    node_a2.c3cp = node_a2.c1cpr = old.c1cpr + item.w;
+                    node_a2.c4cp = node_a2.c2cpu = slip_u + item.h;
+                    node_a2.cut2 = 0;
+                    node_a2.setFlagBit(FlagBit::DEFECT_U);
+                    if (constraintCheck(old, cur_parsol, node_a2))
+                        branch_nodes.push_back(node_a2);
                 }
             }
         }
@@ -283,48 +289,48 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                 // place in the right of old.c1cpr.
                 slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
                 {
-                    nodes.push_back(TreeNode(old, itemId, rotate));
-                    auto node_b1 = nodes.rbegin();
-                    node_b1->c3cp = node_b1->c1cpr = old.c1cpr + slip_r + item.w;
-                    node_b1->c4cp = item.h;
-                    if (slip_r)node_b1->setFlagBit(FlagBit::DEFECT_R);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_b1));
+                    TreeNode node_b1(old, itemId, rotate);
+                    node_b1.c3cp = node_b1.c1cpr = old.c1cpr + slip_r + item.w;
+                    node_b1.c4cp = item.h;
+                    if (slip_r)node_b1.setFlagBit(FlagBit::DEFECT_R);
+                    if (constraintCheck(old, cur_parsol, node_b1))
+                        branch_nodes.push_back(node_b1);
                 }
                 if (slip_r) {
                     slip_u = sliptoDefectUp(RectArea(old.c1cpr, max(old.c2cpu - item.h , 0), item.w, item.h), old.plate);
-                    nodes.push_back(TreeNode(old, itemId, rotate));
-                    auto node_b2 = nodes.rbegin();
-                    node_b2->c3cp = node_b2->c1cpr = old.c1cpr + item.w;
-                    node_b2->c4cp = slip_u + old.c2cpu;
-                    node_b2->setFlagBit(FlagBit::DEFECT_U);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_b2));
+                    TreeNode node_b2(old, itemId, rotate);
+                    node_b2.c3cp = node_b2.c1cpr = old.c1cpr + item.w;
+                    node_b2.c4cp = slip_u + old.c2cpu;
+                    node_b2.setFlagBit(FlagBit::DEFECT_U);
+                    if (constraintCheck(old, cur_parsol, node_b2))
+                        branch_nodes.push_back(node_b2);
                 }
                 // place in the upper of old.c2cpu.
                 slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
                 {
-                    nodes.push_back(TreeNode(old, itemId, rotate));
-                    auto node_b3 = nodes.rbegin();
-                    node_b3->c2cpb = old.c2cpu;
-                    node_b3->c4cp = node_b3->c2cpu = old.c2cpu + item.h;
-                    node_b3->c3cp = old.c1cpl + slip_r + item.w;
-                    if (node_b3->c1cpr < node_b3->c3cp)
-                        node_b3->c1cpr = node_b3->c3cp;
-                    ++node_b3->cut2;
-                    if (slip_r)node_b3->setFlagBit(FlagBit::DEFECT_R);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_b3));
+                    TreeNode node_b3(old, itemId, rotate);
+                    node_b3.c2cpb = old.c2cpu;
+                    node_b3.c4cp = node_b3.c2cpu = old.c2cpu + item.h;
+                    node_b3.c3cp = old.c1cpl + slip_r + item.w;
+                    if (node_b3.c1cpr < node_b3.c3cp)
+                        node_b3.c1cpr = node_b3.c3cp;
+                    ++node_b3.cut2;
+                    if (slip_r)node_b3.setFlagBit(FlagBit::DEFECT_R);
+                    if (constraintCheck(old, cur_parsol, node_b3))
+                        branch_nodes.push_back(node_b3);
                 }
                 if (slip_r) {
                     slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
-                    nodes.push_back(TreeNode(old, itemId, rotate));
-                    auto node_b4 = nodes.rbegin();
-                    node_b4->c2cpb = old.c2cpu;
-                    node_b4->c4cp = node_b4->c2cpu = old.c2cpu + slip_u + item.h;
-                    node_b4->c3cp = old.c1cpl + item.w;
-                    if (node_b4->c1cpr < node_b4->c3cp)
-                        node_b4->c1cpr = node_b4->c3cp;
-                    ++node_b4->cut2;
-                    node_b4->setFlagBit(FlagBit::DEFECT_U);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_b4));
+                    TreeNode node_b4(old, itemId, rotate);
+                    node_b4.c2cpb = old.c2cpu;
+                    node_b4.c4cp = node_b4.c2cpu = old.c2cpu + slip_u + item.h;
+                    node_b4.c3cp = old.c1cpl + item.w;
+                    if (node_b4.c1cpr < node_b4.c3cp)
+                        node_b4.c1cpr = node_b4.c3cp;
+                    ++node_b4.cut2;
+                    node_b4.setFlagBit(FlagBit::DEFECT_U);
+                    if (constraintCheck(old, cur_parsol, node_b4))
+                        branch_nodes.push_back(node_b4);
                 }
             }
         }
@@ -349,43 +355,43 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                 if (old.c2cpu > old.c4cp && last_item_w == item.w && !old.getFlagBit(FlagBit::DEFECT_U) &&
                     ((c2cpu_locked && old.c4cp + item.h == old.c2cpb) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpb)) &&
                     !sliptoDefectRight(RectArea(old.c3cp - item.w, old.c4cp, item.w, item.h), old.plate)) {
-                    nodes.push_back(TreeNode(old, itemId, rotate)); // place item in L4 bin.
-                    auto node_c1 = nodes.rbegin();
-                    node_c1->c2cpu = node_c1->c4cp = old.c4cp + item.h;
-                    node_c1->setFlagBit(FlagBit::BIN4);
-                    node_c1->setFlagBit(FlagBit::LOCKC2);
-                    fesible.push_back(constraintCheck(old, cur_parsol, *node_c1));
+                    TreeNode node_c1(old, itemId, rotate); // place item in L4 bin.
+                    node_c1.c2cpu = node_c1.c4cp = old.c4cp + item.h;
+                    node_c1.setFlagBit(FlagBit::BIN4);
+                    node_c1.setFlagBit(FlagBit::LOCKC2);
+                    if (constraintCheck(old, cur_parsol, node_c1))
+                        branch_nodes.push_back(node_c1);
                     continue;
                 }
                 if (old.c1cpr > old.c3cp) { // place item in the right of current c3cp.
                     slip_r = sliptoDefectRight(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
                     // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu constraint must meet.
                     if (!c2cpu_locked || (c2cpu_locked && old.c2cpb + item.h <= old.c2cpu)) {
-                        nodes.push_back(TreeNode(old, itemId, rotate));
-                        auto node_c2 = nodes.rbegin();
-                        node_c2->c3cp = old.c3cp + slip_r + item.w;
-                        if (node_c2->c1cpr < node_c2->c3cp)
-                            node_c2->c1cpr = node_c2->c3cp;
-                        node_c2->c4cp = old.c2cpb + item.h;
+                        TreeNode node_c2(old, itemId, rotate);
+                        node_c2.c3cp = old.c3cp + slip_r + item.w;
+                        if (node_c2.c1cpr < node_c2.c3cp)
+                            node_c2.c1cpr = node_c2.c3cp;
+                        node_c2.c4cp = old.c2cpb + item.h;
                         if (slip_r)
-                            node_c2->setFlagBit(FlagBit::DEFECT_R);
+                            node_c2.setFlagBit(FlagBit::DEFECT_R);
                         if (c2cpu_locked)
-                            node_c2->setFlagBit(FlagBit::LOCKC2);
-                        fesible.push_back(constraintCheck(old, cur_parsol, *node_c2));
+                            node_c2.setFlagBit(FlagBit::LOCKC2);
+                        if (constraintCheck(old, cur_parsol, node_c2))
+                            branch_nodes.push_back(node_c2);
                     }
                     if(slip_r)
                         slip_u = sliptoDefectUp(RectArea(old.c3cp, max(old.c2cpu - item.h, 0), item.w, item.h), old.plate);
                     if (slip_u && (!c2cpu_locked || (c2cpu_locked && old.c2cpb + slip_u + item.h <= old.c2cpu))) {
-                        nodes.push_back(TreeNode(old, itemId, rotate));
-                        auto node_c3 = nodes.rbegin();
-                        node_c3->c3cp = old.c3cp + item.w;
-                        if (node_c3->c1cpr < node_c3->c3cp)
-                            node_c3->c1cpr = node_c3->c3cp;
-                        node_c3->c4cp = old.c2cpu + slip_u;
-                        node_c3->setFlagBit(FlagBit::DEFECT_U);
+                        TreeNode node_c3(old, itemId, rotate);
+                        node_c3.c3cp = old.c3cp + item.w;
+                        if (node_c3.c1cpr < node_c3.c3cp)
+                            node_c3.c1cpr = node_c3.c3cp;
+                        node_c3.c4cp = old.c2cpu + slip_u;
+                        node_c3.setFlagBit(FlagBit::DEFECT_U);
                         if (c2cpu_locked)
-                            node_c3->setFlagBit(FlagBit::LOCKC2);
-                        fesible.push_back(constraintCheck(old, cur_parsol, *node_c3));
+                            node_c3.setFlagBit(FlagBit::LOCKC2);
+                        if (constraintCheck(old, cur_parsol, node_c3))
+                            branch_nodes.push_back(node_c3);
                     }
                 }
                 if (old.c3cp + item.w > old.c1cpr) {
@@ -393,83 +399,69 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                     // creat a new L2 and place item in it.
                     slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
                     {
-                        nodes.push_back(TreeNode(old, itemId, rotate));
-                        auto node_c4 = nodes.rbegin();
-                        node_c4->c3cp = old.c1cpl + slip_r + item.w;
-                        if (node_c4->c1cpr < node_c4->c3cp)
-                            node_c4->c1cpr = node_c4->c3cp;
-                        node_c4->c2cpb = old.c2cpu;
-                        node_c4->c4cp = node_c4->c2cpu = old.c2cpu + item.h;
-                        ++node_c4->cut2; // update new L2 id.
-                        if (slip_r)node_c4->setFlagBit(FlagBit::DEFECT_R);
-                        fesible.push_back(constraintCheck(old, cur_parsol, *node_c4));
-                        flag |= fesible.back();
+                       TreeNode node_c4(old, itemId, rotate);
+                        node_c4.c3cp = old.c1cpl + slip_r + item.w;
+                        if (node_c4.c1cpr < node_c4.c3cp)
+                            node_c4.c1cpr = node_c4.c3cp;
+                        node_c4.c2cpb = old.c2cpu;
+                        node_c4.c4cp = node_c4.c2cpu = old.c2cpu + item.h;
+                        ++node_c4.cut2; // update new L2 id.
+                        if (slip_r)node_c4.setFlagBit(FlagBit::DEFECT_R);
+                        if (constraintCheck(old, cur_parsol, node_c4)) {
+                            branch_nodes.push_back(node_c4);
+                            flag = true;
+                        }
                     }
                     if (slip_r) {
                         slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
-                        nodes.push_back(TreeNode(old, itemId, rotate));
-                        auto node_c5 = nodes.rbegin();
-                        node_c5->c3cp = old.c1cpl + item.w;
-                        if (node_c5->c1cpr < node_c5->c3cp)
-                            node_c5->c1cpr = node_c5->c3cp;
-                        node_c5->c2cpb = old.c2cpu;
-                        node_c5->c4cp = node_c5->c2cpu = old.c2cpu + slip_u + item.h;
-                        ++node_c5->cut2;
-                        node_c5->setFlagBit(FlagBit::DEFECT_U);
-                        fesible.push_back(constraintCheck(old, cur_parsol, *node_c5));
-                        flag |= fesible.back();
+                        TreeNode node_c5(old, itemId, rotate);
+                        node_c5.c3cp = old.c1cpl + item.w;
+                        if (node_c5.c1cpr < node_c5.c3cp)
+                            node_c5.c1cpr = node_c5.c3cp;
+                        node_c5.c2cpb = old.c2cpu;
+                        node_c5.c4cp = node_c5.c2cpu = old.c2cpu + slip_u + item.h;
+                        ++node_c5.cut2;
+                        node_c5.setFlagBit(FlagBit::DEFECT_U);
+                        if (constraintCheck(old, cur_parsol, node_c5)) {
+                            branch_nodes.push_back(node_c5);
+                            flag = true;
+                        }
                     }
                     if (flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
                     {
-                        nodes.push_back(TreeNode(old, itemId, rotate));
-                        auto node_c6 = nodes.rbegin();
-                        node_c6->c1cpl = old.c1cpr;
-                        node_c6->c3cp = node_c6->c1cpr = old.c1cpr + item.w + slip_r;
-                        node_c6->c2cpb = 0;
-                        node_c6->c4cp = node_c6->c2cpu = item.h;
-                        if (slip_r)node_c6->setFlagBit(FlagBit::DEFECT_R);
-                        ++node_c6->cut1;
-                        node_c6->cut2 = 0;
-                        fesible.push_back(constraintCheck(old, cur_parsol, *node_c6));
+                        TreeNode node_c6(old, itemId, rotate);
+                        node_c6.c1cpl = old.c1cpr;
+                        node_c6.c3cp = node_c6.c1cpr = old.c1cpr + item.w + slip_r;
+                        node_c6.c2cpb = 0;
+                        node_c6.c4cp = node_c6.c2cpu = item.h;
+                        if (slip_r)node_c6.setFlagBit(FlagBit::DEFECT_R);
+                        ++node_c6.cut1;
+                        node_c6.cut2 = 0;
+                        if (constraintCheck(old, cur_parsol, node_c6))
+                            branch_nodes.push_back(node_c6);
                     }
                     if (slip_r) {
                         slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
-                        nodes.push_back(TreeNode(old, itemId, rotate));
-                        auto node_c7 = nodes.rbegin();
-                        node_c7->c1cpl = old.c1cpr;
-                        node_c7->c3cp = node_c7->c1cpr = old.c1cpr + item.w;
-                        node_c7->c2cpb = 0;
-                        node_c7->c4cp = node_c7->c2cpu = slip_u + item.h;
-                        node_c7->setFlagBit(FlagBit::DEFECT_U);
-                        ++node_c7->cut1;
-                        node_c7->cut2 = 0;
-                        fesible.push_back(constraintCheck(old, cur_parsol, *node_c7));
+                        TreeNode node_c7(old, itemId, rotate);
+                        node_c7.c1cpl = old.c1cpr;
+                        node_c7.c3cp = node_c7.c1cpr = old.c1cpr + item.w;
+                        node_c7.c2cpb = 0;
+                        node_c7.c4cp = node_c7.c2cpu = slip_u + item.h;
+                        node_c7.setFlagBit(FlagBit::DEFECT_U);
+                        ++node_c7.cut1;
+                        node_c7.cut2 = 0;
+                        if (constraintCheck(old, cur_parsol, node_c7))
+                            branch_nodes.push_back(node_c7);
                     }
                 }
             }
         }
     }
-    // choose the fesible nodes and evaluate it.
-    size_t size_record = live_nodes.size();
-    for (int i = 0; i < nodes.size(); ++i) {
-        if (fesible[i]) { // collect the fesible nodes and push.
-            live_nodes.push(nodes[i]);
-        }
-    }
-    if (size_record == live_nodes.size()) {  // no place to put item, creat new.
+    if (branch_nodes.size() == 0) {  // no place to put item, creat new.
         TreeNode mask_node(old.depth, old.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        branch(mask_node, batch, cur_parsol, live_nodes);
-    }
-    // the mark score method may speed up search but will miss optimal solution.
-    List<NodeInfo> node_pool;
-    node_pool.reserve(10);
-    for (int i = 0; i < nodes.size(); ++i) {
-        if (fesible[i]) { // a fesible node
-            node_pool.push_back(NodeInfo(
-                i, getBranchScore(old, nodes[i]), aux.items[nodes[i].item].w));
-        }
+        branch(mask_node, batch, cur_parsol, branch_nodes);
     }
 }
 
@@ -687,35 +679,6 @@ const bool TreeSearch::defectConflictArea(const RectArea & area, const TID plate
         }
     }
     return false;
-}
-
-/* input: branch node to evaluate.
-   function: calculate the local waste area caused by the branch node.
-   the evaluate is not so precise, just as reference.
-*/// output: waste area.
-const double TreeSearch::getBranchScore(const TreeNode &old, const TreeNode & node) const {
-    Area waste = 0;
-    const TCoord item_left = node.c3cp - aux.items[node.item].w;
-    const TCoord item_bottom = node.c4cp - aux.items[node.item].h;
-    if (item_left > old.c3cp) { // place item in defect right caused waste.
-        waste += (item_left - old.c3cp)*(node.c2cpu - node.c2cpb);
-    }
-    if (item_bottom > node.c2cpb && node.getFlagBit(FlagBit::DEFECT_U)) { // place item in defect upper caused waste.
-        waste += (node.c3cp - old.c3cp)*(item_bottom - node.c2cpb);
-    }
-    if (node.c2cpu > node.c4cp) { // c2cpu and c4cp interval caused waste.
-        waste += (node.c2cpu - node.c4cp)*aux.items[node.item].w;
-    }
-    if (node.c2cpu > old.c2cpu) { // move c2cpu caused waste.
-        waste += (node.c2cpu - old.c2cpu)*(old.c3cp - old.c1cpl);
-    }
-    if (node.c1cpr > old.c1cpr) { // move c1cpr caused waste.
-        waste += (node.c1cpr - old.c1cpr)*node.c2cpb;
-    }
-    if (node.cut2 > old.cut2) { // last L2 and last item waste when creat new L2.
-        waste += (old.c1cpr - old.c3cp)*(old.c2cpu - old.c2cpb);
-    }
-    return waste/aux.item_area[node.item];
 }
 
 /* input: current branch node, the left item area to calculate low bound.
