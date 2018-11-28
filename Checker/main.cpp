@@ -1842,6 +1842,7 @@ int createNode(GlassNode *node, string *token, int n) {
     if (isNegative(node[n].id()) || isNegative(node[n].plateId()) || isNegative(node[n].Getcut()) ||
             isNegative(node[n].x()) || isNegative(node[n].y()) || isNegativeOrNull(node[n].w()) || isNegativeOrNull(node[n].h())) {
         cout << "\tERROR: One attribute of a node is negative or null, please check Solution file" << endl;
+        cout << "\terror node id:" << node[n].id() << endl;
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

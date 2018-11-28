@@ -693,12 +693,12 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
 const TLength TreeSearch::sliptoDefectRight(const RectArea &area, const TID plate) const {
     TLength slip = area.x;
     for (auto d : aux.plates_x[plate]) {
-        if (aux.defects[d].x > slip + area.w) {
+        if (aux.defects[d].x >= slip + area.w) {
             break; // the defects is sorted by x position, so in this case just break.
         }
-        if (!(slip - aux.defects[d].x > aux.defects[d].w // defect in item left.
-            || aux.defects[d].y - area.y > area.h // defect in item up.
-            || area.y - aux.defects[d].y > aux.defects[d].h)) { // defect in item bottom.
+        if (!(slip - aux.defects[d].x >= aux.defects[d].w // defect in item left.
+            || aux.defects[d].y - area.y >= area.h // defect in item up.
+            || area.y - aux.defects[d].y >= aux.defects[d].h)) { // defect in item bottom.
             slip = aux.defects[d].x + aux.defects[d].w; // defect[d] conflict with area, slip to defect right side.
         }
     }
@@ -714,12 +714,12 @@ const TLength TreeSearch::sliptoDefectRight(const RectArea &area, const TID plat
 const TLength TreeSearch::sliptoDefectUp(const RectArea &area, const TID plate) const {
     TLength slip = area.y;
     for (auto d : aux.plates_y[plate]) {
-        if (aux.defects[d].y > slip + area.h) {
+        if (aux.defects[d].y >= slip + area.h) {
             break; // the defects is sorted by y position, so in this case just break.
         }
-        if (!(aux.defects[d].x - area.x > area.w // defect in item right.
-            || area.x - aux.defects[d].x > aux.defects[d].w // defect in item left.
-            || slip - aux.defects[d].y > aux.defects[d].h)) { // defect in item bottom.
+        if (!(aux.defects[d].x - area.x >= area.w // defect in item right.
+            || area.x - aux.defects[d].x >= aux.defects[d].w // defect in item left.
+            || slip - aux.defects[d].y >= aux.defects[d].h)) { // defect in item bottom.
             slip = aux.defects[d].y + aux.defects[d].h; // defect[d] conflict with area, slip to defect up side.
         }
     }
