@@ -34,7 +34,7 @@ public:
 
     struct Configuration {
         int mbst = 30; // bottom search maximum timeout, unit:seconds.
-        TID mcin = 12; // maximum choose item number.
+        TID mcin = 8; // maximum choose item number.
         String toBriefStr() const {
             std::ostringstream os;
             os << "mbst=" << mbst
@@ -73,15 +73,14 @@ public:
         TID cut2; // 2-cut id.
         // (flag&0x01)->(rotate);(flag&0x02)->(item place in defect side);(flag&0x04)->(item place in bin4);(flag&0x08)->(1:c2cpu change not allowed)
         Status flag = 0;
-        Area waste_area; // waste area after place the item.
 
         TreeNode(Depth node_depth, TID plate_id, TID item_id, TCoord C1cpl, TCoord C1cpr,
-            TCoord C2cpb, TCoord C2cpu, TCoord C3cp, TCoord C4cp, TID cut1_id, TID cut2_id, Status flag, Area waste)
+            TCoord C2cpb, TCoord C2cpu, TCoord C3cp, TCoord C4cp, TID cut1_id, TID cut2_id, Status flag)
             :depth(node_depth), plate(plate_id), item(item_id), c1cpl(C1cpl), c1cpr(C1cpr),
-            c2cpb(C2cpb), c2cpu(C2cpu), c3cp(C3cp), c4cp(C4cp), cut1(cut1_id), cut2(cut2_id), flag(flag), waste_area(waste) {}
+            c2cpb(C2cpb), c2cpu(C2cpu), c3cp(C3cp), c4cp(C4cp), cut1(cut1_id), cut2(cut2_id), flag(flag) {}
 
-        TreeNode(const TreeNode &node, const TID item_id, const int dir, Area waste) :depth(node.depth + 1), plate(node.plate), item(item_id), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
-            c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), cut1(node.cut1), cut2(node.cut2), flag(dir), waste_area(waste) {}
+        TreeNode(const TreeNode &node, const TID item_id, const int dir) :depth(node.depth + 1), plate(node.plate), item(item_id), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
+            c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), cut1(node.cut1), cut2(node.cut2), flag(dir) {}
         
         void setFlagBit(const int bit_pos = FlagBit::ROTATE) { flag |= (0x0001 << bit_pos); }
         const bool getFlagBit(const int bit_pos = FlagBit::ROTATE) const { return flag & (0x0001 << bit_pos); }
