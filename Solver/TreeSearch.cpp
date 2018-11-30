@@ -20,18 +20,11 @@ namespace szx {
 #pragma region Interface
 void TreeSearch::solve() {
     init();
-    /*
-    List<TreeNode> sol;
-    TreeNode start_node(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    depthFirstSearch(cfg.bsmt * 1000, start_node, aux.stacks, sol);
-    toOutput(sol);
-    */
     topLevelSearch();
 }
 
 void TreeSearch::record() const {
     #if SZX_DEBUG
-    int generation = 0;
 
     ostringstream log;
 
@@ -80,8 +73,7 @@ void TreeSearch::init() {
 
     aux.items.reserve(input.batch.size());
     aux.stacks.reserve(input.batch.size());
-    aux.item2stack.resize(input.batch.size());
-
+    //aux.item2stack.resize(input.batch.size());
     // assign internal id to items and stacks, then push items into stacks.
     for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
         TID itemId = idMap.item.toConsecutiveId(i->id);
@@ -96,7 +88,7 @@ void TreeSearch::init() {
         // OPTIMIZE[szx][6]: what if the sequence number could be negative or very large?
         if (stack.size() <= i->seq) { stack.resize(i->seq + 1, InvalidItemId); }
         stack[i->seq] = itemId;
-        aux.item2stack[itemId] = stackId;
+        //aux.item2stack[itemId] = stackId;
     }
     // clear invalid items in stacks.
     for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
@@ -143,34 +135,58 @@ void TreeSearch::init() {
 }
 
 void TreeSearch::topLevelSearch() {
-    int turn = 1;
-    TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    List<TreeNode> solution;
-    List<List<TID>> batch = aux.stacks;
-    while (solution.size() < input.batch.size()) {
-        List<List<TID>> partial_batch;
-        Timer::Millisecond time_out = static_cast<Timer::Millisecond>(
-            min(cfg.mbst * turn * 1000, env.msTimeout));
-        const TID left_items = input.batch.size() - solution.size();
-        cout << "left_items:" << left_items << endl;
-        chooseItems(min(left_items, cfg.mcin), batch, partial_batch);
-        depthFirstSearch(time_out, resume_point, partial_batch, solution);
-        resume_point = solution.back();
-        resume_point.depth = -1;
-        turn++;
+    List<TreeNode> best_sol;
+    Length best_obj = input.param.plateWidth*input.param.plateNum;
+    while (!timer.isTimeOut()) {
+        TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        List<TreeNode> solution;
+        List<List<TID>> batch = aux.stacks;
+        TID left_items = input.batch.size();
+        while (solution.size() < input.batch.size() && !timer.isTimeOut()) {
+            List<List<TID>> partial_batch;
+            const TID choose_items = min(left_items, cfg.mcin);
+            chooseItems(choose_items, batch, partial_batch);
+            const Timer timer2(timer.restMilliseconds() < Timer::Millisecond(cfg.mbst) ? 
+                timer.restMilliseconds() : Timer::Millisecond(cfg.mbst));
+            int old_sol_size = solution.size();
+            depthFirstSearch(timer2, resume_point, partial_batch, solution);
+            if (solution.size() - old_sol_size == choose_items) {
+                left_items -= choose_items;
+            } else {
+                cout << "solution size wrong!" << endl;
+            }
+            resume_point = solution.back();
+            resume_point.depth = -1;
+        }
+        Length cur_obj = 0;
+        if (solution.size() == input.batch.size()) {
+            for (TreeNode sol_node : solution) {
+                if (cur_obj < sol_node.plate*input.param.plateWidth + sol_node.c1cpr) {
+                    cur_obj = sol_node.plate*input.param.plateWidth + sol_node.c1cpr;
+                }
+            }
+            if (best_obj > cur_obj) {
+                best_obj = cur_obj;
+                best_sol = solution;
+                Log(Log::Error) << "a better obj: " << cur_obj << endl;
+            }
+        }
+        generation++;
     }
-    toOutput(solution);
+    toOutput(best_sol);
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
-void TreeSearch::depthFirstSearch(const Timer::Millisecond time_out, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
+void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     TID left_items = 0; // left item number in the batch.
     Area left_item_area = 0;
-    for (auto stack : batch) {
-        left_items += stack.size();
-        for (auto item : stack) {
+    List<TID> item2stack(input.batch.size());
+    for (int i = 0; i < batch.size(); ++i) {
+        left_items += batch[i].size();
+        for (auto item : batch[i]) {
             left_item_area += aux.item_area[item];
+            item2stack[item] = i;
         }
     }
     const Depth max_depth = left_items - 1;
@@ -183,7 +199,7 @@ void TreeSearch::depthFirstSearch(const Timer::Millisecond time_out, const TreeN
     branch(resume_point, batch, cur_parsol, branch_nodes);
     for (auto n : branch_nodes)
         live_nodes.push(n);
-    while (live_nodes.size() && timer.elapsedMilliseconds() < time_out) {
+    while (live_nodes.size() && !timer2.isTimeOut()) {
         TreeNode node = live_nodes.back();
         live_nodes.pop();
         explored_nodes++;
@@ -197,7 +213,7 @@ void TreeSearch::depthFirstSearch(const Timer::Millisecond time_out, const TreeN
         }
         if (node.depth - pre_depth == 1) { // search forward.
             cur_parsol.push_back(node);
-            batch[aux.item2stack[node.item]].pop_back();
+            batch[item2stack[node.item]].pop_back();
             left_items--;
             left_item_area -= aux.item_area[node.item];
             if (left_items > 0) {
@@ -208,14 +224,14 @@ void TreeSearch::depthFirstSearch(const Timer::Millisecond time_out, const TreeN
             }
         } else if (node.depth - pre_depth < 1) { // search back.
             for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack.
-                batch[aux.item2stack[cur_parsol[i].item]].push_back(
+                batch[item2stack[cur_parsol[i].item]].push_back(
                     cur_parsol[i].item);
                 left_items++;
                 left_item_area += aux.item_area[cur_parsol[i].item];
             }
             cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes.
             cur_parsol.push_back(node); // push current node into cur_parsol.
-            batch[aux.item2stack[node.item]].pop_back();
+            batch[item2stack[node.item]].pop_back();
             left_items--;
             left_item_area -= aux.item_area[node.item];
             if (left_items > 0) {
@@ -251,10 +267,16 @@ void TreeSearch::depthFirstSearch(const Timer::Millisecond time_out, const TreeN
 }
 
 void TreeSearch::chooseItems(TID choose_item_num, List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
-    target_batch.resize(source_batch.size());
+    List<List<TID>> temp_batch(source_batch.size());
     TID count = 0; // count current choosed items number.
+    List<int> no_empty_stacks;
+    for (int i = 0; i < source_batch.size(); ++i) { // statistic no empty stacks. 
+        if (source_batch[i].size())
+            no_empty_stacks.push_back(i);
+    }
     while (count < choose_item_num) {
-        for (int i = 0; i < source_batch.size(); ++i) {
+        // sequence choose.
+        /*for (int i = 0; i < source_batch.size(); ++i) {
             if (source_batch[i].size()) {
                 target_batch[i].push_back(source_batch[i].back());
                 source_batch[i].pop_back();
@@ -263,10 +285,22 @@ void TreeSearch::chooseItems(TID choose_item_num, List<List<TID>>& source_batch,
                     break;
                 }
             }
+        }*/
+        // random choose.
+        int rd = no_empty_stacks[rand.pick(no_empty_stacks.size())];
+        if (source_batch[rd].size()) {
+            temp_batch[rd].push_back(source_batch[rd].back());
+            source_batch[rd].pop_back();
+            count++;
         }
     }
-    for (int i = 0; i < target_batch.size(); ++i) { // because fetch item from stack back, so reverse it.
-        reverse(target_batch[i].begin(), target_batch[i].end());
+    for (int i = 0; i < temp_batch.size(); ++i) { // because fetch item from stack back, so reverse it.
+        if (temp_batch[i].size()) {
+            target_batch.resize(target_batch.size() + 1);
+            for (int j = temp_batch[i].size() - 1; j >= 0; --j) {
+                target_batch.back().push_back(temp_batch[i][j]);
+            }
+        }
     }
 }
 
