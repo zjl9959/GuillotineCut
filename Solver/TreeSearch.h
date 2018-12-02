@@ -106,8 +106,8 @@ protected:
     void chooseItems(TID choose_item_num, List<List<TID>>& source_batch, List<List<TID>>& target_batch);
     void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
-    const TLength sliptoDefectRight(const RectArea &area, const TID plate) const;
-    const TLength sliptoDefectUp(const RectArea &area, const TID plate) const;
+    const TCoord sliptoDefectRight(const RectArea &area, const TID plate) const;
+    const TCoord sliptoDefectUp(const RectArea &area, const TID plate) const;
     const bool defectConflictArea(const RectArea &area, const TID plate) const;
     const Length getLowBound(const TreeNode &cur_node, Area left_item_area) const;
     void toOutput(List<TreeNode> &sol);
