@@ -143,6 +143,8 @@ void TreeSearch::topLevelSearch() {
             item2stack[item] = i;
         }
     }
+    // item_distribute[plateId][itemId], item distribute in plates during iteration.
+    List<List<int>> item_distribute;
     while (timer.restMilliseconds() > Timer::Millisecond(cfg.mbst)) {
         TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         List<TreeNode> solution;
@@ -181,10 +183,23 @@ void TreeSearch::topLevelSearch() {
                 best_sol = solution;
                 Log(Log::Debug) << "a better obj: " << cur_obj << endl;
             }
+            for (int i = 0; i < solution.size(); ++i) { // statistics item distribute in plates during iteration.
+                if (solution[i].plate >= item_distribute.size()) {
+                    item_distribute.resize(solution[i].plate + 1, List<int>(total_item_num, 0));
+                }
+                item_distribute[solution[i].plate][solution[i].item]++;
+            }
             generation++;
         }
     }
     toOutput(best_sol);
+    info.scrap_rate = getScrapWasteRate(best_sol);
+    #if SZX_DEBUG
+    saveItemDistribute(item_distribute, // record item distribute information.
+        String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv");
+    saveItemDistribute(item_distribute,
+        String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv." + env.localTime + ".csv");
+    #endif
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
@@ -381,7 +396,8 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                     }
                 }
                 if (slip_r > old.c1cpr) {
-                    slip_u = sliptoDefectUp(RectArea(old.c1cpr, max(old.c2cpu - item.h , 0), item.w, item.h), old.plate);
+                    slip_u = sliptoDefectUp(RectArea(old.c1cpr, old.c2cpu - item.h > input.param.minWasteHeight ? 
+                        old.c2cpu - item.h : 0, item.w, item.h), old.plate);
                     TreeNode node_b2(old, itemId, rotate);
                     node_b2.c3cp = node_b2.c1cpr = old.c1cpr + item.w;
                     node_b2.c4cp = slip_u + item.h;
@@ -469,24 +485,25 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                             branch_nodes.push_back(node_c2);
                         }
                     }
-                    if(slip_r > old.c3cp) // item up side tangency old.c2cpu, so max(old.c2cpu-item.h,old.c2cpb) is important.
-                        slip_u = sliptoDefectUp(RectArea(old.c3cp, max(old.c2cpu - item.h, (int)old.c2cpb), item.w, item.h), old.plate);
-                    if (slip_u > old.c2cpb && (!c2cpu_locked || (c2cpu_locked && slip_u + item.h <= old.c2cpu))) {
-                        TreeNode node_c3(old, itemId, rotate);
-                        node_c3.c3cp = old.c3cp + item.w;
-                        if (node_c3.c1cpr < node_c3.c3cp)
-                            node_c3.c1cpr = node_c3.c3cp;
-                        node_c3.c4cp = item.h + slip_u;
-                        node_c3.setFlagBit(FlagBit::DEFECT_U);
-                        if (c2cpu_locked)
-                            node_c3.setFlagBit(FlagBit::LOCKC2);
-                        if (constraintCheck(old, cur_parsol, node_c3)) {
-                            branch_nodes.push_back(node_c3);
+                    if (slip_r > old.c3cp) {
+                        slip_u = sliptoDefectUp(RectArea(old.c3cp, old.c2cpu - item.h > old.c2cpb + input.param.minWasteHeight ? 
+                            old.c2cpu - item.h : old.c2cpb, item.w, item.h), old.plate);
+                        if (!c2cpu_locked || (c2cpu_locked && slip_u + item.h <= old.c2cpu)) {
+                            TreeNode node_c3(old, itemId, rotate);
+                            node_c3.c3cp = old.c3cp + item.w;
+                            if (node_c3.c1cpr < node_c3.c3cp)
+                                node_c3.c1cpr = node_c3.c3cp;
+                            node_c3.c4cp = item.h + slip_u;
+                            node_c3.setFlagBit(FlagBit::DEFECT_U);
+                            if (c2cpu_locked)
+                                node_c3.setFlagBit(FlagBit::LOCKC2);
+                            if (constraintCheck(old, cur_parsol, node_c3)) {
+                                branch_nodes.push_back(node_c3);
+                            }
                         }
                     }
                 }
                 if (old.c3cp + item.w > old.c1cpr) {
-                    bool flag = false;
                     // creat a new L2 and place item in it.
                     slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
                     {
@@ -501,7 +518,6 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                             node_c4.setFlagBit(FlagBit::DEFECT_R);
                         if (constraintCheck(old, cur_parsol, node_c4)) {
                             branch_nodes.push_back(node_c4);
-                            flag = true;
                         }
                     }
                     if (slip_r > old.c1cpl) {
@@ -516,7 +532,6 @@ void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const
                         node_c5.setFlagBit(FlagBit::DEFECT_U);
                         if (constraintCheck(old, cur_parsol, node_c5)) {
                             branch_nodes.push_back(node_c5);
-                            flag = true;
                         }
                     }
                 }
@@ -966,12 +981,43 @@ bool TreeSearch::check(Length & checkerObj) const {
     #endif // SZX_DEBUG
 }
 
+/* return total input item area. */
 const Area TreeSearch::getTotalItemArea() const {
     Area total_area = 0;
     for (int i = 0; i < input.batch.size(); ++i) {
         total_area += (input.batch[i].height*input.batch[i].width);
     }
     return total_area;
+}
+
+/* return the rate of total waste L1 in every plate. */
+const double TreeSearch::getScrapWasteRate(List<TreeNode>& sol) const {
+    Length scrap_length = 0;
+    TID cur_plate = 0;
+    for (int i = 1; i < sol.size(); ++i) {
+        if (sol[i].plate > cur_plate) {
+            scrap_length += (input.param.plateWidth - sol[i - 1].c1cpr);
+            cur_plate++;
+        }
+    }
+    return (double)scrap_length / (double)(sol.back().plate*input.param.plateWidth + sol.back().c1cpr);
+}
+
+/* save item distribute data into csv file. */
+void TreeSearch::saveItemDistribute(const List<List<int>>& item_distribute, const String & filePath) {
+    ofstream ofs(filePath);
+    TID used_plates = 0;
+    for (int i = 0; i < item_distribute.size(); ++i) { // add plate index.
+        ofs << ",p" << i;
+    }
+    ofs << endl;
+    for (int i = 0; i < item_distribute[0].size(); ++i) {
+        ofs << "i" << i;
+        for (int j = 0; j < item_distribute.size(); ++j) {
+            ofs << "," << item_distribute[j][i];
+        }
+        ofs << endl;
+    }
 }
 
 #pragma endregion Achievement

@@ -34,10 +34,10 @@ public:
 
     struct Configuration {
         Duration mbst = 3000; // bottom search maximum timeout, unit:millseconds.
-        TID mcin = 8; // maximum choose item number.
+        TID mcin = 7; // maximum choose item number.
         String toBriefStr() const {
             std::ostringstream os;
-            os << "mbst=" << mbst
+            os << "mbst=" << mbst << "ms"
                 << ";mcin=" << mcin
                 << ";opt-1-cut";
             return os.str();
@@ -115,6 +115,8 @@ protected:
     const TCoord getC2cpu(const List<TreeNode> &sol, const int index, const TID cur_cut1, const TID cur_cut2) const;
     bool check(Length &checkerObj) const;
     const Area getTotalItemArea() const;
+    const double getScrapWasteRate(List<TreeNode>& sol) const;
+    void saveItemDistribute(const List<List<int>>& item_distribute, const String & filePath);
     #pragma endregion Method
 
     #pragma region Field
@@ -143,10 +145,12 @@ public:
     struct {
         size_t explored_nodes = 0;
         size_t cut_nodes = 0;
+        double scrap_rate = 0.0;
         String toStr() const {
             std::ostringstream os;
             os << "explored_nodes=" << explored_nodes
-                << ";cut_nodes=" << cut_nodes;
+                << ";cut_nodes=" << cut_nodes
+                << ";scrap_rate=" << scrap_rate * 100 << "%";
             return os.str();
         }
     } info;
