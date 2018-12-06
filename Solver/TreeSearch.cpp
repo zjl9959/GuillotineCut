@@ -20,7 +20,15 @@ namespace szx {
 #pragma region Interface
 void TreeSearch::solve() {
     init();
-    topLevelSearch();
+    List<TreeNode> best_sol;
+    topLevelSearch(best_sol);
+    toOutput(best_sol);
+    info.scrap_rate = getScrapWasteRate(best_sol);
+    #if SZX_DEBUG
+    // record item distribute information.
+    saveItemDistribute(String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv");
+    saveItemDistribute(String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv." + env.localTime + ".csv");
+    #endif
 }
 
 void TreeSearch::record() const {
@@ -73,7 +81,7 @@ void TreeSearch::init() {
 
     aux.items.reserve(input.batch.size());
     aux.stacks.reserve(input.batch.size());
-    //aux.item2stack.resize(input.batch.size());
+    aux.item2stack.resize(input.batch.size());
     // assign internal id to items and stacks, then push items into stacks.
     for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
         TID itemId = idMap.item.toConsecutiveId(i->id);
@@ -88,7 +96,7 @@ void TreeSearch::init() {
         // OPTIMIZE[szx][6]: what if the sequence number could be negative or very large?
         if (stack.size() <= i->seq) { stack.resize(i->seq + 1, InvalidItemId); }
         stack[i->seq] = itemId;
-        //aux.item2stack[itemId] = stackId;
+        aux.item2stack[itemId] = stackId;
     }
     // clear invalid items in stacks.
     for (auto s = aux.stacks.begin(); s != aux.stacks.end(); ++s) {
@@ -133,35 +141,34 @@ void TreeSearch::init() {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
 }
 
-void TreeSearch::topLevelSearch() {
-    List<TreeNode> best_sol;
-    Length best_obj = input.param.plateWidth*input.param.plateNum;
+/* Iterative optimization every 1-cut. */
+void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
+    Length best_obj = input.param.plateWidth*input.param.plateNum; // best complete solution's objective.
     const TID total_item_num = input.batch.size();
-    List<TID> item2stack(input.batch.size());
-    for (int i = 0; i < aux.stacks.size(); ++i) {
-        for (auto item : aux.stacks[i]) {
-            item2stack[item] = i;
-        }
-    }
-    // item_distribute[plateId][itemId], item distribute in plates during iteration.
-    List<List<int>> item_distribute;
+    const double alpha2 = 1 / (cfg.alpha + 1);
+
     while (timer.restMilliseconds() > Timer::Millisecond(cfg.mbst)) {
         TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        List<TreeNode> solution;
+        List<TreeNode> cmp_sol; // complete solution.
         List<List<TID>> batch = aux.stacks;
         TID left_items = total_item_num;
         TID cur_plate = 0;
         while (left_items) {
             List<List<TID>> partial_batch;
-            chooseItems(min(left_items, cfg.mcin), batch, partial_batch);
+            List<TreeNode> par_sol;
+            randomChooseItems(min(left_items, cfg.mcin), batch, partial_batch);
             if (timer.restMilliseconds() < Timer::Millisecond(cfg.mbst)) {
                 break;
             }
             const Timer timer2(Timer::Millisecond(cfg.mbst));
-            depthFirstSearch(timer2, resume_point, partial_batch, solution);
-            if (left_items > total_item_num - solution.size()) {
-                left_items = total_item_num - solution.size();
-                resume_point = solution.back();
+            depthFirstSearch(timer2, resume_point, partial_batch, par_sol);
+            if (par_sol.size()) {
+                for (int i = 0; i < par_sol.size(); ++i) {
+                    batch[aux.item2stack[par_sol[i].item]].pop_back();
+                    cmp_sol.push_back(par_sol[i]);
+                }
+                left_items -= par_sol.size();
+                resume_point = cmp_sol.back();
                 resume_point.c1cpl = resume_point.c1cpr;
                 resume_point.c2cpb = resume_point.c2cpu = 0;
                 resume_point.cut1++;
@@ -169,49 +176,183 @@ void TreeSearch::topLevelSearch() {
             } else { // no place to put item in this plate.
                 resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             }
-            for (int i = 0; i < partial_batch.size(); ++i) {
-                for (int n : partial_batch[i]) {
-                    batch[item2stack[n]].push_back(n);
-                }
-            }
         }
-        if (solution.size() == input.batch.size()) { // get a complete solution.
+        if (cmp_sol.size() == input.batch.size()) { // get a complete solution.
             const Length cur_obj = 
-                solution.back().plate*input.param.plateWidth + solution.back().c1cpr;
+                cmp_sol.back().plate*input.param.plateWidth + cmp_sol.back().c1cpr;
             if (best_obj > cur_obj) {
                 best_obj = cur_obj;
-                best_sol = solution;
+                solution = cmp_sol;
                 Log(Log::Debug) << "a better obj: " << cur_obj << endl;
             }
-            for (int i = 0; i < solution.size(); ++i) { // statistics item distribute in plates during iteration.
-                if (solution[i].plate >= item_distribute.size()) {
-                    item_distribute.resize(solution[i].plate + 1, List<int>(total_item_num, 0));
+            // make sure every used plate has information.
+            if (cmp_sol.back().plate >= choose_info.size()) {
+                choose_info.resize(cmp_sol.back().plate + 1,
+                    List<ChooseInfo>(total_item_num, ChooseInfo(0, 0, alpha2)));
+            }
+            // calculate every plate's usage rate and update choose_info.
+            TID cur_plate = 0;
+            Area plate_item_area = 0;
+            for (int i = 0; i < cmp_sol.size(); ++i) {
+                if (cmp_sol[i].plate > cur_plate || i == cmp_sol.size() - 1) {
+                    double plate_usage_rate = 0.0;
+                    int back_index = 0;
+                    if (cmp_sol[i].plate > cur_plate) {
+                        plate_usage_rate = (double)plate_item_area / (double)(input.param.plateWidth*input.param.plateHeight);
+                        back_index = i - 1;
+                    } else { // calculate last plate's usage rate.
+                        plate_item_area += aux.item_area[cmp_sol[i].item];
+                        plate_usage_rate = (double)plate_item_area / (double)(cmp_sol[i].c1cpr*input.param.plateHeight);
+                        back_index = i;
+                    }
+                    for (; back_index >= 0; --back_index) { // update choose_info[cur_plate][...].
+                        if (cmp_sol[back_index].plate != cur_plate)
+                            break;
+                        // TODO: need to mutex choose_info when multithreading ???
+                        choose_info[cur_plate][cmp_sol[back_index].item].num++;
+                        if (choose_info[cur_plate][cmp_sol[back_index].item].rate < plate_usage_rate) {
+                            choose_info[cur_plate][cmp_sol[back_index].item].rate = plate_usage_rate;
+                        }
+                    }
+                    cur_plate = cmp_sol[i].plate;
+                    plate_item_area = 0;
                 }
-                item_distribute[solution[i].plate][solution[i].item]++;
+                plate_item_area += aux.item_area[cmp_sol[i].item];
             }
             generation++;
+            // update choose_info[][].score.
+            for (int p = 0; p < choose_info.size(); ++p) {
+                for (int i = 0; i < choose_info[p].size(); ++i) {
+                    if (choose_info[p][i].num) { // no need to update init station.
+                        choose_info[p][i].score = alpha2 *
+                            (cfg.alpha*choose_info[p][i].rate + 1 - choose_info[p][i].num / generation);
+                    }
+                }
+            }
         }
     }
-    toOutput(best_sol);
-    info.scrap_rate = getScrapWasteRate(best_sol);
-    #if SZX_DEBUG
-    saveItemDistribute(item_distribute, // record item distribute information.
-        String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv");
-    saveItemDistribute(item_distribute,
-        String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv." + env.localTime + ".csv");
-    #endif
+}
+
+/* input:current plate left width to place item, plate item information to guid choose,
+   source_batch to choose item from, target batch to place choosed items.
+   adaptive choose item according to it's distribute and plate best usage rate.
+   output:choosed item numbers. */
+int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
+    static constexpr double floor_stretch = 0.90;
+    const TLength left_plate_width = input.param.plateWidth - resume_point.c1cpr;
+    const TID plate_id = resume_point.plate;
+
+    List<List<TID>> temp_batch(source_batch.size());
+    TID batch_width = 0, batch_items = 0; // current temp_batch size, current temp_batch size contain items.
+    int predict_mbsn = 1; // predict maximum bottom search node number.
+    List<TID> candidate_items; // candidate items to choose by it's score.
+    for (int i = 0; i < source_batch.size(); ++i) {
+        if (source_batch[i].size() && // the choosed item must fit the rest space of the plate.
+            aux.items[source_batch[i].back()].h < left_plate_width) {
+            candidate_items.push_back(source_batch[i].back());
+        }
+    }
+    List<double> candidate_variance(candidate_items.size()); // candidate item score's variance.
+    while (1) {
+        if (candidate_items.size() == 0) { // no fit item to choose.
+            break;
+        }
+        double score_floor = 1.0; // the minimum score of candidate items multiply by 0.9.
+        double total_variance = 0.0; // sum of (item.score - score_floor)^2 for all item in candidate_items.
+        // get the minimum score of the candidate items.
+        for (int i = 0; i < candidate_items.size(); ++i) {
+            if (score_floor > choose_info[plate_id][candidate_items[i]].score) {
+                score_floor = choose_info[plate_id][candidate_items[i]].score;
+            }
+        }
+        score_floor *= floor_stretch; // calculate score_floor.
+        // stastistic the total variance of the candidate items.
+        for (int i = 0; i < candidate_items.size(); ++i) {
+            const double score_div =
+                choose_info[plate_id][candidate_items[i]].score - score_floor;
+            // score_div^x, increase x can add the possibility to choose item with better score.
+            candidate_variance[i] = score_div * score_div;
+            total_variance += candidate_variance[i];
+        }
+        const double rd_num = rand.dpick(total_variance);
+        double cursor = 0.0;
+        int choose_index = 0;
+        // check which item was choosed.
+        for (; choose_index < candidate_items.size(); ++choose_index) {
+            cursor += candidate_variance[choose_index];
+            if (rd_num < cursor) { // this is the choosed item.
+                break;
+            }
+        }
+        const TID choosed_item = candidate_items[choose_index];
+        if (temp_batch[aux.item2stack[choosed_item]].size() == 0) {
+            batch_width++;
+        }
+        predict_mbsn = (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
+        if (predict_mbsn > cfg.mbsn) { // predict branch cases exceed up bound.
+            break;
+        }
+        temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
+        const int index_div = source_batch[aux.item2stack[choosed_item]].size() - 
+            temp_batch[aux.item2stack[choosed_item]].size();
+        if (index_div) { // source batch still have item, replace candidate_item[choose_index].
+            candidate_items[choose_index] = source_batch[aux.item2stack[choosed_item]][index_div - 1];
+        } else {
+            candidate_items.erase(candidate_items.begin() + choose_index);
+        }
+        batch_items++;
+    }
+    // because fetch item from stack back, so reverse it when copy.
+    for (int i = 0; i < temp_batch.size(); ++i) {
+        if (temp_batch[i].size()) {
+            target_batch.resize(target_batch.size() + 1);
+            for (int j = temp_batch[i].size() - 1; j >= 0; --j) {
+                target_batch.back().push_back(temp_batch[i][j]);
+            }
+        }
+    }
+    return batch_items;
+}
+
+/* input:item number to choose, source_batch to choose item from, target batch to place choosed items.
+   random choose one item from the source batch back until collected enough items. */
+void TreeSearch::randomChooseItems(TID choose_item_num, const List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
+    List<List<TID>> temp_batch(source_batch.size());
+    TID count = 0; // count current choosed items number.
+    List<int> no_empty_stacks;
+    for (int i = 0; i < source_batch.size(); ++i) { // statistic no empty stacks. 
+        if (source_batch[i].size())
+            no_empty_stacks.push_back(i);
+    }
+    while (count < choose_item_num) {
+        // random choose.
+        int rd = no_empty_stacks[rand.pick(no_empty_stacks.size())];
+        if (source_batch[rd].size() > temp_batch[rd].size()) {
+            temp_batch[rd].push_back(
+                source_batch[rd][source_batch[rd].size() - temp_batch[rd].size() - 1]);
+            count++;
+        }
+    }
+    for (int i = 0; i < temp_batch.size(); ++i) { // because fetch item from stack back, so reverse it.
+        if (temp_batch[i].size()) {
+            target_batch.resize(target_batch.size() + 1);
+            for (int j = temp_batch[i].size() - 1; j >= 0; --j) {
+                target_batch.back().push_back(temp_batch[i][j]);
+            }
+        }
+    }
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
 void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     Area total_item_area = 0;
-    List<TID> item2stack(input.batch.size());
+    List<TID> item2batch(input.batch.size());
     List<List<TID>> copy_batch = batch;
     for (int i = 0; i < copy_batch.size(); ++i) {
         for (auto item : copy_batch[i]) {
             total_item_area += aux.item_area[item];
-            item2stack[item] = i;
+            item2batch[item] = i;
         }
     }
     double best_obj = 0.0;
@@ -227,10 +368,7 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
         TreeNode node = live_nodes.back();
         live_nodes.pop();
         explored_nodes++;
-        /*if (node.depth == 3 && node.item == 199 && node.cut1 == 1 && node.cut2 == 3 && node.flag == 0 && node.c2cpu == 2419) {
-            cout << "debug";
-        }*/
-        const double usage_rate_lb = 
+        const double usage_rate_lb =
             (double)total_item_area / (double)((node.c1cpr - resume_point.c1cpl)*input.param.plateHeight);
         if (usage_rate_lb < best_obj) {
             cut_nodes++;
@@ -238,17 +376,17 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
         }
         if (node.depth - pre_depth == 1) { // search forward.
             cur_parsol.push_back(node);
-            copy_batch[item2stack[node.item]].pop_back();
+            copy_batch[item2batch[node.item]].pop_back();
         } else if (node.depth - pre_depth < 1) { // search back.
             for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack.
-                copy_batch[item2stack[cur_parsol[i].item]].push_back(
+                copy_batch[item2batch[cur_parsol[i].item]].push_back(
                     cur_parsol[i].item);
             }
             cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes.
             cur_parsol.push_back(node); // push current node into cur_parsol.
-            copy_batch[item2stack[node.item]].pop_back();
+            copy_batch[item2batch[node.item]].pop_back();
         } else {
-            Log(Log::Error) << "[ERROR] Depth first search: delt depth is " 
+            Log(Log::Error) << "[ERROR] Depth first search: delt depth is "
                 << node.depth - pre_depth << endl;
         }
         branch_nodes.clear();
@@ -260,7 +398,7 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
             Area cut1_item_area = 0; // current 1-cut total item area.
             if (cur_parsol.size() == 0)
                 Log(Log::Error) << "[ERROR] cur_parsol size is 0." << endl;
-            for (int i=0; i < cur_parsol.size(); ++i)
+            for (int i = 0; i < cur_parsol.size(); ++i)
                 cut1_item_area += aux.item_area[cur_parsol[i].item];
             const double cur_obj =  // current 1-cut usage rate.
                 (double)cut1_item_area / (double)((cur_parsol.back().c1cpr - resume_point.c1cpl)*input.param.plateHeight);
@@ -275,48 +413,10 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
     }
     for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
         solution.push_back(best_parsol[i]);
-        batch[item2stack[best_parsol[i].item]].pop_back();
+        batch[item2batch[best_parsol[i].item]].pop_back();
     }
     info.explored_nodes += explored_nodes;
     info.cut_nodes += cut_nodes;
-}
-
-void TreeSearch::chooseItems(TID choose_item_num, List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
-    List<List<TID>> temp_batch(source_batch.size());
-    TID count = 0; // count current choosed items number.
-    List<int> no_empty_stacks;
-    for (int i = 0; i < source_batch.size(); ++i) { // statistic no empty stacks. 
-        if (source_batch[i].size())
-            no_empty_stacks.push_back(i);
-    }
-    while (count < choose_item_num) {
-        // sequence choose.
-        /*for (int i = 0; i < source_batch.size(); ++i) {
-            if (source_batch[i].size()) {
-                target_batch[i].push_back(source_batch[i].back());
-                source_batch[i].pop_back();
-                count++;
-                if (count >= choose_item_num) {
-                    break;
-                }
-            }
-        }*/
-        // random choose.
-        int rd = no_empty_stacks[rand.pick(no_empty_stacks.size())];
-        if (source_batch[rd].size()) {
-            temp_batch[rd].push_back(source_batch[rd].back());
-            source_batch[rd].pop_back();
-            count++;
-        }
-    }
-    for (int i = 0; i < temp_batch.size(); ++i) { // because fetch item from stack back, so reverse it.
-        if (temp_batch[i].size()) {
-            target_batch.resize(target_batch.size() + 1);
-            for (int j = temp_batch[i].size() - 1; j >= 0; --j) {
-                target_batch.back().push_back(temp_batch[i][j]);
-            }
-        }
-    }
 }
 
 /* input:last tree node(branch point).
@@ -707,7 +807,7 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
 /* input:rectangle area to place item, plate id.
    function: if rectangle area conflict with one or more defects,
    slip the area right to the rightmost defects right side.
-*/// output: slip TLength to avoid conflict with defect.
+*/// output: slip position to avoid conflict with defect.
 const TCoord TreeSearch::sliptoDefectRight(const RectArea &area, const TID plate) const {
     TCoord slip = area.x;
     for (auto d : aux.plates_x[plate]) {
@@ -728,7 +828,7 @@ const TCoord TreeSearch::sliptoDefectRight(const RectArea &area, const TID plate
 /* input:rectangle area to place item, plate id.
    function: if rectangle area conflict with one or more defects.
    slip the area up to the upmost defects up side.
-*/// output: slip TLength to avoid conflict with defect.
+*/// output: slip position to avoid conflict with defect.
 const TCoord TreeSearch::sliptoDefectUp(const RectArea &area, const TID plate) const {
     TCoord slip = area.y;
     for (auto d : aux.plates_y[plate]) {
@@ -1004,17 +1104,18 @@ const double TreeSearch::getScrapWasteRate(List<TreeNode>& sol) const {
 }
 
 /* save item distribute data into csv file. */
-void TreeSearch::saveItemDistribute(const List<List<int>>& item_distribute, const String & filePath) {
+void TreeSearch::saveItemDistribute(const String & filePath) {
     ofstream ofs(filePath);
     TID used_plates = 0;
-    for (int i = 0; i < item_distribute.size(); ++i) { // add plate index.
-        ofs << ",p" << i;
+    for (int i = 0; i < choose_info.size(); ++i) { // add plate index.
+        ofs << ",P" << i;
     }
     ofs << endl;
-    for (int i = 0; i < item_distribute[0].size(); ++i) {
-        ofs << "i" << i;
-        for (int j = 0; j < item_distribute.size(); ++j) {
-            ofs << "," << item_distribute[j][i];
+    for (int i = 0; i < choose_info[0].size(); ++i) {
+        ofs << "I" << i;
+        for (int j = 0; j < choose_info.size(); ++j) {
+            ofs << ",num=" << choose_info[j][i].num
+                << ";rate=" << choose_info[j][i].rate;
         }
         ofs << endl;
     }

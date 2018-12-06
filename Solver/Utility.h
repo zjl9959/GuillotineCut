@@ -305,8 +305,10 @@ public:
     int pick(int max) {
         return (rgen() % max);
     }
-
-
+    // pick double value from [0-max).
+    double dpick(double max) {
+        return ((double) rgen() / (double) std::mt19937::max() * max);
+    }
     Generator rgen;
 };
 
