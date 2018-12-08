@@ -34,13 +34,14 @@ public:
 
     struct Configuration {
         Duration mbst = 3000; // maximum bottom search timeout, unit:millseconds.
-        TID mcin = 7; // maximum choose item number.
+        //TID mcin = 7; // maximum choose item number.
         int mbsn = 3500000; // maximum bottom search node number.
         double abcn = 1.60; // average branch case number.
-        double alpha = 1.0; // for calculate choose_info.score.
+        double alpha = 10.0; // for calculate choose_info.score.
         String toBriefStr() const {
             std::ostringstream os;
             os << "mbst=" << mbst << "ms"
+                << ";alpha=" << alpha
                 << ";opt-1-cut";
             return os.str();
         }

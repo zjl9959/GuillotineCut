@@ -158,10 +158,17 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
         while (left_items) {
             List<List<TID>> partial_batch;
             List<TreeNode> par_sol;
+            /*
             if (randomChooseItems(resume_point, batch, partial_batch) == 0) {
                 // plate left space cant's place any item, 
                 resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                 randomChooseItems(resume_point, batch, partial_batch);
+            }
+            */
+            if (adaptiveChooseItems(resume_point, batch, partial_batch) == 0) {
+                // plate left space cant's place any item, 
+                resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                adaptiveChooseItems(resume_point, batch, partial_batch);
             }
             if (timer.restMilliseconds() < Timer::Millisecond(cfg.mbst)) {
                 break;
@@ -258,6 +265,9 @@ int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<Lis
             candidate_items.push_back(source_batch[i].back());
         }
     }
+    if (plate_id >= choose_info.size()) {
+        choose_info.resize(plate_id + 1, List<ChooseInfo>(input.batch.size(), ChooseInfo(0, 0, 1 / (cfg.alpha + 1))));
+    }
     List<double> candidate_variance(candidate_items.size()); // candidate item score's variance.
     while (1) {
         if (candidate_items.size() == 0) { // no fit item to choose.
@@ -294,8 +304,9 @@ int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<Lis
         if (temp_batch[aux.item2stack[choosed_item]].size() == 0) {
             batch_width++;
         }
-        predict_mbsn = (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
-        if (predict_mbsn > cfg.mbsn) { // predict branch cases exceed up bound.
+        const int next_predict_mbsn = 
+            (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
+        if (next_predict_mbsn > cfg.mbsn) { // predict branch cases exceed up bound.
             break;
         }
         temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
@@ -308,7 +319,9 @@ int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<Lis
             candidate_items.erase(candidate_items.begin() + choose_index);
         }
         batch_items++;
+        predict_mbsn = next_predict_mbsn;
     }
+    info.total_predict_mbsn += predict_mbsn;
     // because fetch item from stack back, so reverse it when copy.
     for (int i = 0; i < temp_batch.size(); ++i) {
         if (temp_batch[i].size()) {
@@ -345,7 +358,9 @@ int TreeSearch::randomChooseItems(const TreeNode& resume_point, const List<List<
         if (temp_batch[aux.item2stack[choosed_item]].size() == 0) {
             batch_width++;
         }
-        if ((int)((double)predict_mbsn * (double)batch_width * cfg.abcn) > cfg.mbsn) { // predict branch cases exceed up bound.
+        const int next_predict_mbsn =
+            (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
+        if (next_predict_mbsn > cfg.mbsn) { // predict branch cases exceed up bound.
             break;
         }
         temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
@@ -358,7 +373,7 @@ int TreeSearch::randomChooseItems(const TreeNode& resume_point, const List<List<
             candidate_items.erase(candidate_items.begin() + choose_index);
         }
         batch_items++;
-        predict_mbsn = (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
+        predict_mbsn = next_predict_mbsn;
     }
     info.total_predict_mbsn += predict_mbsn;
     for (int i = 0; i < temp_batch.size(); ++i) { // because fetch item from stack back, so reverse it.
