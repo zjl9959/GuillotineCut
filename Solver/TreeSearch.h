@@ -36,12 +36,11 @@ public:
         Duration mbst = 3000; // maximum bottom search timeout, unit:millseconds.
         TID mcin = 7; // maximum choose item number.
         int mbsn = 3500000; // maximum bottom search node number.
-        double abcn = 2.0; // average branch case number.
+        double abcn = 1.60; // average branch case number.
         double alpha = 1.0; // for calculate choose_info.score.
         String toBriefStr() const {
             std::ostringstream os;
             os << "mbst=" << mbst << "ms"
-                << ";mcin=" << mcin
                 << ";opt-1-cut";
             return os.str();
         }
@@ -113,7 +112,7 @@ protected:
     void init();
     void topLevelSearch(List<TreeNode>& solution);
     int adaptiveChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
-    void randomChooseItems(TID choose_item_num, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
+    int randomChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
     void depthFirstSearch(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
@@ -155,11 +154,13 @@ public:
 
     struct {
         size_t explored_nodes = 0;
+        size_t total_predict_mbsn = 0;
         size_t cut_nodes = 0;
         double scrap_rate = 0.0;
         String toStr() const {
             std::ostringstream os;
             os << "explored_nodes=" << explored_nodes
+                << ";predict_mbsn=" << total_predict_mbsn
                 << ";cut_nodes=" << cut_nodes
                 << ";scrap_rate=" << scrap_rate * 100 << "%";
             return os.str();

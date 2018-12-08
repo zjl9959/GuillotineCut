@@ -29,6 +29,8 @@ void TreeSearch::solve() {
     saveItemDistribute(String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv");
     saveItemDistribute(String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv." + env.localTime + ".csv");
     #endif
+    Log(Log::Debug) << "total_predict_mbsn:" << info.total_predict_mbsn << endl;
+    Log(Log::Debug) << "info.explored_nodes:" << info.explored_nodes << endl;
 }
 
 void TreeSearch::record() const {
@@ -156,7 +158,11 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
         while (left_items) {
             List<List<TID>> partial_batch;
             List<TreeNode> par_sol;
-            randomChooseItems(min(left_items, cfg.mcin), batch, partial_batch);
+            if (randomChooseItems(resume_point, batch, partial_batch) == 0) {
+                // plate left space cant's place any item, 
+                resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                randomChooseItems(resume_point, batch, partial_batch);
+            }
             if (timer.restMilliseconds() < Timer::Millisecond(cfg.mbst)) {
                 break;
             }
@@ -295,7 +301,8 @@ int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<Lis
         temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
         const int index_div = source_batch[aux.item2stack[choosed_item]].size() - 
             temp_batch[aux.item2stack[choosed_item]].size();
-        if (index_div) { // source batch still have item, replace candidate_item[choose_index].
+        if (index_div && aux.items[source_batch[aux.item2stack[choosed_item]][index_div - 1]].h < left_plate_width) {
+            // source batch still have item, replace candidate_item[choose_index].
             candidate_items[choose_index] = source_batch[aux.item2stack[choosed_item]][index_div - 1];
         } else {
             candidate_items.erase(candidate_items.begin() + choose_index);
@@ -316,23 +323,44 @@ int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<Lis
 
 /* input:item number to choose, source_batch to choose item from, target batch to place choosed items.
    random choose one item from the source batch back until collected enough items. */
-void TreeSearch::randomChooseItems(TID choose_item_num, const List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
+int TreeSearch::randomChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
+    const TLength left_plate_width = input.param.plateWidth - resume_point.c1cpr;
     List<List<TID>> temp_batch(source_batch.size());
     TID count = 0; // count current choosed items number.
-    List<int> no_empty_stacks;
-    for (int i = 0; i < source_batch.size(); ++i) { // statistic no empty stacks. 
-        if (source_batch[i].size())
-            no_empty_stacks.push_back(i);
-    }
-    while (count < choose_item_num) {
-        // random choose.
-        int rd = no_empty_stacks[rand.pick(no_empty_stacks.size())];
-        if (source_batch[rd].size() > temp_batch[rd].size()) {
-            temp_batch[rd].push_back(
-                source_batch[rd][source_batch[rd].size() - temp_batch[rd].size() - 1]);
-            count++;
+    TID batch_width = 0, batch_items = 0; // current temp_batch size, current temp_batch size contain items.
+    int predict_mbsn = 1; // predict maximum bottom search node number.
+    List<TID> candidate_items; // candidate items to choose by it's score.
+    for (int i = 0; i < source_batch.size(); ++i) {
+        if (source_batch[i].size() && // the choosed item must fit the rest space of the plate.
+            aux.items[source_batch[i].back()].h < left_plate_width) {
+            candidate_items.push_back(source_batch[i].back());
         }
     }
+    while (1) {
+        if (candidate_items.size() == 0) { // no fit item to choose.
+            break;
+        }
+        int choose_index = rand.pick(candidate_items.size());
+        const TID choosed_item = candidate_items[choose_index];
+        if (temp_batch[aux.item2stack[choosed_item]].size() == 0) {
+            batch_width++;
+        }
+        if ((int)((double)predict_mbsn * (double)batch_width * cfg.abcn) > cfg.mbsn) { // predict branch cases exceed up bound.
+            break;
+        }
+        temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
+        const int index_div = source_batch[aux.item2stack[choosed_item]].size() -
+            temp_batch[aux.item2stack[choosed_item]].size();
+        if (index_div && aux.items[source_batch[aux.item2stack[choosed_item]][index_div - 1]].h < left_plate_width) {
+            // source batch still have item, replace candidate_item[choose_index].
+            candidate_items[choose_index] = source_batch[aux.item2stack[choosed_item]][index_div - 1];
+        } else {
+            candidate_items.erase(candidate_items.begin() + choose_index);
+        }
+        batch_items++;
+        predict_mbsn = (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
+    }
+    info.total_predict_mbsn += predict_mbsn;
     for (int i = 0; i < temp_batch.size(); ++i) { // because fetch item from stack back, so reverse it.
         if (temp_batch[i].size()) {
             target_batch.resize(target_batch.size() + 1);
@@ -341,6 +369,7 @@ void TreeSearch::randomChooseItems(TID choose_item_num, const List<List<TID>>& s
             }
         }
     }
+    return batch_items;
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
