@@ -24,13 +24,6 @@ void TreeSearch::solve() {
     topLevelSearch(best_sol);
     toOutput(best_sol);
     info.scrap_rate = getScrapWasteRate(best_sol);
-    #if SZX_DEBUG
-    // record item distribute information.
-    saveItemDistribute(String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv");
-    saveItemDistribute(String("Information") + env.instName.substr(env.instName.find('/')) + "_info.csv." + env.localTime + ".csv");
-    #endif
-    Log(Log::Debug) << "total_predict_mbsn:" << info.total_predict_mbsn << endl;
-    Log(Log::Debug) << "info.explored_nodes:" << info.explored_nodes << endl;
 }
 
 void TreeSearch::record() const {
@@ -147,7 +140,6 @@ void TreeSearch::init() {
 void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
     Length best_obj = input.param.plateWidth*input.param.plateNum; // best complete solution's objective.
     const TID total_item_num = input.batch.size();
-    const double alpha2 = 1 / (cfg.alpha + 1);
 
     while (timer.restMilliseconds() > Timer::Millisecond(cfg.mbst)) {
         TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -158,17 +150,10 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
         while (left_items) {
             List<List<TID>> partial_batch;
             List<TreeNode> par_sol;
-            /*
             if (randomChooseItems(resume_point, batch, partial_batch) == 0) {
                 // plate left space cant's place any item, 
                 resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
                 randomChooseItems(resume_point, batch, partial_batch);
-            }
-            */
-            if (adaptiveChooseItems(resume_point, batch, partial_batch) == 0) {
-                // plate left space cant's place any item, 
-                resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                adaptiveChooseItems(resume_point, batch, partial_batch);
             }
             if (timer.restMilliseconds() < Timer::Millisecond(cfg.mbst)) {
                 break;
@@ -198,10 +183,11 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
                 solution = cmp_sol;
                 Log(Log::Debug) << "a better obj: " << cur_obj << endl;
             }
+            /*
             // make sure every used plate has information.
             if (cmp_sol.back().plate >= choose_info.size()) {
                 choose_info.resize(cmp_sol.back().plate + 1,
-                    List<ChooseInfo>(total_item_num, ChooseInfo(0, 0, alpha2)));
+                    List<ChooseInfo>(total_item_num, ChooseInfo(0, 0)));
             }
             // calculate every plate's usage rate and update choose_info.
             TID cur_plate = 0;
@@ -232,106 +218,10 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
                 }
                 plate_item_area += aux.item_area[cmp_sol[i].item];
             }
+            */
             generation++;
-            // update choose_info[][].score.
-            for (int p = 0; p < choose_info.size(); ++p) {
-                for (int i = 0; i < choose_info[p].size(); ++i) {
-                    if (choose_info[p][i].num) { // no need to update init station.
-                        choose_info[p][i].score = alpha2 *
-                            (cfg.alpha*choose_info[p][i].rate + 1 - choose_info[p][i].num / generation);
-                    }
-                }
-            }
         }
     }
-}
-
-/* input:current plate left width to place item, plate item information to guid choose,
-   source_batch to choose item from, target batch to place choosed items.
-   adaptive choose item according to it's distribute and plate best usage rate.
-   output:choosed item numbers. */
-int TreeSearch::adaptiveChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch) {
-    static constexpr double floor_stretch = 0.90;
-    const TLength left_plate_width = input.param.plateWidth - resume_point.c1cpr;
-    const TID plate_id = resume_point.plate;
-
-    List<List<TID>> temp_batch(source_batch.size());
-    TID batch_width = 0, batch_items = 0; // current temp_batch size, current temp_batch size contain items.
-    int predict_mbsn = 1; // predict maximum bottom search node number.
-    List<TID> candidate_items; // candidate items to choose by it's score.
-    for (int i = 0; i < source_batch.size(); ++i) {
-        if (source_batch[i].size() && // the choosed item must fit the rest space of the plate.
-            aux.items[source_batch[i].back()].h < left_plate_width) {
-            candidate_items.push_back(source_batch[i].back());
-        }
-    }
-    if (plate_id >= choose_info.size()) {
-        choose_info.resize(plate_id + 1, List<ChooseInfo>(input.batch.size(), ChooseInfo(0, 0, 1 / (cfg.alpha + 1))));
-    }
-    List<double> candidate_variance(candidate_items.size()); // candidate item score's variance.
-    while (1) {
-        if (candidate_items.size() == 0) { // no fit item to choose.
-            break;
-        }
-        double score_floor = 1.0; // the minimum score of candidate items multiply by 0.9.
-        double total_variance = 0.0; // sum of (item.score - score_floor)^2 for all item in candidate_items.
-        // get the minimum score of the candidate items.
-        for (int i = 0; i < candidate_items.size(); ++i) {
-            if (score_floor > choose_info[plate_id][candidate_items[i]].score) {
-                score_floor = choose_info[plate_id][candidate_items[i]].score;
-            }
-        }
-        score_floor *= floor_stretch; // calculate score_floor.
-        // stastistic the total variance of the candidate items.
-        for (int i = 0; i < candidate_items.size(); ++i) {
-            const double score_div =
-                choose_info[plate_id][candidate_items[i]].score - score_floor;
-            // score_div^x, increase x can add the possibility to choose item with better score.
-            candidate_variance[i] = score_div * score_div;
-            total_variance += candidate_variance[i];
-        }
-        const double rd_num = rand.dpick(total_variance);
-        double cursor = 0.0;
-        int choose_index = 0;
-        // check which item was choosed.
-        for (; choose_index < candidate_items.size(); ++choose_index) {
-            cursor += candidate_variance[choose_index];
-            if (rd_num < cursor) { // this is the choosed item.
-                break;
-            }
-        }
-        const TID choosed_item = candidate_items[choose_index];
-        if (temp_batch[aux.item2stack[choosed_item]].size() == 0) {
-            batch_width++;
-        }
-        const int next_predict_mbsn = 
-            (int)((double)predict_mbsn * (double)batch_width * cfg.abcn);
-        if (next_predict_mbsn > cfg.mbsn) { // predict branch cases exceed up bound.
-            break;
-        }
-        temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
-        const int index_div = source_batch[aux.item2stack[choosed_item]].size() - 
-            temp_batch[aux.item2stack[choosed_item]].size();
-        if (index_div && aux.items[source_batch[aux.item2stack[choosed_item]][index_div - 1]].h < left_plate_width) {
-            // source batch still have item, replace candidate_item[choose_index].
-            candidate_items[choose_index] = source_batch[aux.item2stack[choosed_item]][index_div - 1];
-        } else {
-            candidate_items.erase(candidate_items.begin() + choose_index);
-        }
-        batch_items++;
-        predict_mbsn = next_predict_mbsn;
-    }
-    info.total_predict_mbsn += predict_mbsn;
-    // because fetch item from stack back, so reverse it when copy.
-    for (int i = 0; i < temp_batch.size(); ++i) {
-        if (temp_batch[i].size()) {
-            target_batch.resize(target_batch.size() + 1);
-            for (int j = temp_batch[i].size() - 1; j >= 0; --j) {
-                target_batch.back().push_back(temp_batch[i][j]);
-            }
-        }
-    }
-    return batch_items;
 }
 
 /* input:item number to choose, source_batch to choose item from, target batch to place choosed items.
@@ -1145,24 +1035,6 @@ const double TreeSearch::getScrapWasteRate(List<TreeNode>& sol) const {
         }
     }
     return (double)scrap_length / (double)(sol.back().plate*input.param.plateWidth + sol.back().c1cpr);
-}
-
-/* save item distribute data into csv file. */
-void TreeSearch::saveItemDistribute(const String & filePath) {
-    ofstream ofs(filePath);
-    TID used_plates = 0;
-    for (int i = 0; i < choose_info.size(); ++i) { // add plate index.
-        ofs << ",P" << i;
-    }
-    ofs << endl;
-    for (int i = 0; i < choose_info[0].size(); ++i) {
-        ofs << "I" << i;
-        for (int j = 0; j < choose_info.size(); ++j) {
-            ofs << ",num=" << choose_info[j][i].num
-                << ";rate=" << choose_info[j][i].rate;
-        }
-        ofs << endl;
-    }
 }
 
 #pragma endregion Achievement
