@@ -174,7 +174,7 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
                 break;
             }
             const Timer timer2(Timer::Millisecond(cfg.mbst));
-            depthFirstSearch(timer2, resume_point, partial_batch, par_sol);
+            optimizeOneCut(timer2, resume_point, partial_batch, par_sol);
             if (par_sol.size()) {
                 for (int i = 0; i < par_sol.size(); ++i) {
                     batch[aux.item2stack[par_sol[i].item]].pop_back();
@@ -389,7 +389,7 @@ int TreeSearch::randomChooseItems(const TreeNode& resume_point, const List<List<
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
-void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
+void TreeSearch::optimizeOneCut(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     Area total_item_area = 0;
     List<TID> item2batch(input.batch.size());
     List<List<TID>> copy_batch = batch;
@@ -405,7 +405,7 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
     size_t explored_nodes = 0, cut_nodes = 0;
     Depth pre_depth = -1; // last node depth.
     List<TreeNode> branch_nodes;
-    branch(resume_point, copy_batch, cur_parsol, branch_nodes);
+    partialBranch(resume_point, copy_batch, cur_parsol, branch_nodes);
     for (int i = 0; i < branch_nodes.size(); ++i)
         live_nodes.push(branch_nodes[i]);
     while (live_nodes.size()) {
@@ -434,7 +434,7 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
                 << node.depth - pre_depth << endl;
         }
         branch_nodes.clear();
-        branch(node, copy_batch, cur_parsol, branch_nodes);
+        partialBranch(node, copy_batch, cur_parsol, branch_nodes);
         for (int i = 0; i < branch_nodes.size(); ++i)
             live_nodes.push(branch_nodes[i]);
         pre_depth = node.depth;
@@ -466,7 +466,7 @@ void TreeSearch::depthFirstSearch(const Timer& timer2, const TreeNode &resume_po
 /* input:last tree node(branch point).
    function:branch tree node by exact method.
 */// output:push branched nodes into branch_nodes.
-void TreeSearch::branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes) {
+void TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes) {
     const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked.
     // case A, place item in a new L1.
     if (old.c2cpu == 0) {

@@ -114,8 +114,8 @@ protected:
     void topLevelSearch(List<TreeNode>& solution);
     int adaptiveChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
     int randomChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
-    void depthFirstSearch(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
-    void branch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
+    void optimizeOneCut(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
+    void partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
     const TCoord sliptoDefectRight(const RectArea &area, const TID plate) const;
     const TCoord sliptoDefectUp(const RectArea &area, const TID plate) const;
