@@ -21,7 +21,7 @@ namespace szx {
 void TreeSearch::solve() {
     init();
     List<TreeNode> best_sol;
-    topLevelSearch(best_sol);
+    iteratorImproveWorstPlate(best_sol);
     toOutput(best_sol);
     info.scrap_rate = getScrapWasteRate(best_sol);
 }
@@ -137,16 +137,17 @@ void TreeSearch::init() {
 }
 
 /* Iterative optimization every 1-cut. */
-void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
+void TreeSearch::iteratorImproveWorstPlate(List<TreeNode>& solution) {
     Length best_obj = input.param.plateWidth*input.param.plateNum; // best complete solution's objective.
     const TID total_item_num = input.batch.size();
+    TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    List<TreeNode> cmp_sol; // complete solution.
+    List<List<TID>> batch = aux.stacks;
+    TID left_items = total_item_num;
+    TID cur_plate = 0;
+    List<int> tabu_restart_plate;
 
     while (timer.restMilliseconds() > Timer::Millisecond(cfg.mbst)) {
-        TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        List<TreeNode> cmp_sol; // complete solution.
-        List<List<TID>> batch = aux.stacks;
-        TID left_items = total_item_num;
-        TID cur_plate = 0;
         while (left_items) {
             List<List<TID>> partial_batch;
             List<TreeNode> par_sol;
@@ -175,7 +176,7 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
                 resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             }
         }
-        if (cmp_sol.size() == input.batch.size()) { // get a complete solution.
+        if (cmp_sol.size() == total_item_num) { // get a complete solution.
             const Length cur_obj = 
                 cmp_sol.back().plate*input.param.plateWidth + cmp_sol.back().c1cpr;
             if (best_obj > cur_obj) {
@@ -183,44 +184,69 @@ void TreeSearch::topLevelSearch(List<TreeNode>& solution) {
                 solution = cmp_sol;
                 Log(Log::Debug) << "a better obj: " << cur_obj << endl;
             }
-            /*
-            // make sure every used plate has information.
-            if (cmp_sol.back().plate >= choose_info.size()) {
-                choose_info.resize(cmp_sol.back().plate + 1,
-                    List<ChooseInfo>(total_item_num, ChooseInfo(0, 0)));
+            List<double> plate_usage_rate;
+            getPlatesUsageRate(cmp_sol, plate_usage_rate);
+            if (tabu_restart_plate.size() < plate_usage_rate.size()) {
+                tabu_restart_plate.resize(plate_usage_rate.size(), generation);
             }
-            // calculate every plate's usage rate and update choose_info.
-            TID cur_plate = 0;
-            Area plate_item_area = 0;
-            for (int i = 0; i < cmp_sol.size(); ++i) {
-                if (cmp_sol[i].plate > cur_plate || i == cmp_sol.size() - 1) {
-                    double plate_usage_rate = 0.0;
-                    int back_index = 0;
-                    if (cmp_sol[i].plate > cur_plate) {
-                        plate_usage_rate = (double)plate_item_area / (double)(input.param.plateWidth*input.param.plateHeight);
-                        back_index = i - 1;
-                    } else { // calculate last plate's usage rate.
-                        plate_item_area += aux.item_area[cmp_sol[i].item];
-                        plate_usage_rate = (double)plate_item_area / (double)(cmp_sol[i].c1cpr*input.param.plateHeight);
-                        back_index = i;
-                    }
-                    for (; back_index >= 0; --back_index) { // update choose_info[cur_plate][...].
-                        if (cmp_sol[back_index].plate != cur_plate)
-                            break;
-                        // TODO: need to mutex choose_info when multithreading ???
-                        choose_info[cur_plate][cmp_sol[back_index].item].num++;
-                        if (choose_info[cur_plate][cmp_sol[back_index].item].rate < plate_usage_rate) {
-                            choose_info[cur_plate][cmp_sol[back_index].item].rate = plate_usage_rate;
-                        }
-                    }
-                    cur_plate = cmp_sol[i].plate;
-                    plate_item_area = 0;
+            TID wrost_plate_id = 0;
+            double wrost_usage_rate = 1.0;
+            // find the wrost no tabu plate.
+            for (int i = 0; i < plate_usage_rate.size(); ++i) {
+                if (generation >= tabu_restart_plate[i] &&
+                    plate_usage_rate[i] < wrost_usage_rate) {
+                    wrost_plate_id = i;
+                    wrost_usage_rate = plate_usage_rate[i];
                 }
-                plate_item_area += aux.item_area[cmp_sol[i].item];
             }
-            */
-            generation++;
+            tabu_restart_plate[wrost_plate_id] = generation + rand.pick(tabu_restart_plate.size()*0.5);
+            // restart optimize from wrost plate's previous plate.
+            cur_plate = wrost_plate_id ? wrost_plate_id - 1 : 0;
+            int erase_index = 0;
+            for (; erase_index < cmp_sol.size(); ++erase_index) {
+                if (cmp_sol[erase_index].plate == cur_plate) {
+                    break;
+                }
+            }
+            cmp_sol.erase(cmp_sol.begin() + erase_index, cmp_sol.end());
+            batch = aux.stacks;
+            for (int i = 0; i < cmp_sol.size(); ++i) {
+                batch[aux.item2stack[cmp_sol[i].item]].pop_back();
+            }
+            left_items = total_item_num - cmp_sol.size();
+            resume_point = TreeNode(-1, cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        } else { // restart optimize from the frist plate.
+            cmp_sol.clear();
+            batch = aux.stacks;
+            cur_plate = 0;
+            left_items = total_item_num;
+            resume_point = TreeNode(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
+        //cout << "restart plate:" << cur_plate << endl;
+        generation++;
+    }
+}
+
+/*  input:complete solution, list to store every plate's usage rate.
+    calculate every plate's usage rate. */
+void TreeSearch::getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate) {
+    TID cur_plate = 0;
+    Area plate_item_area = 0;
+    usage_rate.clear();
+    for (int i = 0; i < solution.size(); ++i) {
+        if (solution[i].plate > cur_plate || i == solution.size() - 1) {
+            double plate_usage_rate = 0.0;
+            if (solution[i].plate > cur_plate) { // calculate normal plate's usage rate.
+                plate_usage_rate = (double)plate_item_area / (double)(input.param.plateWidth*input.param.plateHeight);
+            } else { // calculate last plate's usage rate.
+                plate_item_area += aux.item_area[solution[i].item];
+                plate_usage_rate = (double)plate_item_area / (double)(solution[i].c1cpr*input.param.plateHeight);
+            }
+            usage_rate.push_back(plate_usage_rate);
+            cur_plate = solution[i].plate; // update current plate identity.
+            plate_item_area = 0; // clear last plate's item area.
+        }
+        plate_item_area += aux.item_area[solution[i].item];
     }
 }
 

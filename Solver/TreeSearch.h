@@ -40,7 +40,7 @@ public:
         String toBriefStr() const {
             std::ostringstream os;
             os << "mbst=" << mbst << "ms"
-                << ";opt-1-cut";
+                << ";improveWorst";
             return os.str();
         }
     };
@@ -102,7 +102,8 @@ public:
     void record() const;
 protected:
     void init();
-    void topLevelSearch(List<TreeNode>& solution);
+    void iteratorImproveWorstPlate(List<TreeNode>& solution);
+    void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
     int randomChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
     void optimizeOneCut(const Timer& timer2, const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
