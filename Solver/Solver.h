@@ -167,7 +167,7 @@ public:
         static constexpr int DefaultMaxIter = (1 << 30);
         static constexpr int DefaultJobNum = 0;
         // preserved time for IO in the total given time.
-        static constexpr int SaveSolutionTimeInMillisecond = 1000;
+        static constexpr int SaveSolutionTimeInMillisecond = 3000;
 
         static constexpr Duration RapidModeTimeoutThreshold = 600 * static_cast<Duration>(Timer::MillisecondsPerSecond);
 

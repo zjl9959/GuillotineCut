@@ -70,7 +70,7 @@
       <Filter>Solver\Utility</Filter>
     </ClInclude>
     <ClInclude Include="..\Solver\TreeSearch.h">
-      <Filter>Header Files</Filter>
+      <Filter>Solver\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

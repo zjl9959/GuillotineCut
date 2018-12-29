@@ -11,6 +11,7 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <unordered_map>
 #include <string>
 
 
@@ -47,6 +48,9 @@ using Set = std::set<T>;
 
 template<typename Key, typename Val>
 using Map = std::map<Key, Val>;
+
+template<typename Key, typename Val>
+using HashMap = std::unordered_map<Key, Val>;
 
 using String = std::string;
 
