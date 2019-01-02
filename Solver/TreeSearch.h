@@ -34,9 +34,9 @@ public:
 
     struct Configuration {
         //Duration mbst = 3000; // maximum bottom search timeout, unit:millseconds.
-        TID mcin = 8; // maximum choose item number.
-        int mtbn = 40; // maximum top branch number.
-        int mhcn = 8; // maximum hopeful 1-cut number.
+        TID mcin = 9; // maximum choose item number.
+        int mtbn = 80; // maximum top branch number.
+        int mhcn = 16; // maximum hopeful 1-cut number.
         int sfrn = 8; // search forward repeat number.
         //int mbsn = 3500000; // maximum bottom search node number.
         //double abcn = 1.60; // average branch case number.

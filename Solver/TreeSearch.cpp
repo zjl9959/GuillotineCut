@@ -198,10 +198,6 @@ void TreeSearch::lookForwardSearch() {
                 best_index = i;
             }
         }
-        /*
-        Log(Log::Debug) << "best_score = " << best_score 
-                        << ";best index = " << best_index << endl;
-                        */
         // add the best partial solution to the total solution.
         if (best_index >= 0) {
             for (int i = 0; i < hopeful_sols[best_index].size(); ++i) {
@@ -300,24 +296,33 @@ void TreeSearch::iteratorImproveWorstPlate() {
 
     while (!timer.isTimeOut()) {
         while (left_items) {
-            List<List<TID>> partial_batch;
-            List<TreeNode> par_sol;
-            if (randomChooseItems(resume_point, batch, partial_batch) == 0) {
-                // plate left space cant's place any item, 
-                resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                randomChooseItems(resume_point, batch, partial_batch);
+            List<TreeNode> best_par_sol;
+            double best_par_obj = 0.0;
+            for (int i = 0; i < cfg.sfrn; ++i) {
+                List<List<TID>> partial_batch;
+                List<TreeNode> par_sol;
+                if (randomChooseItems(resume_point, batch, partial_batch) == 0) {
+                    // plate left space cant's place any item, 
+                    resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+                    randomChooseItems(resume_point, batch, partial_batch);
+                }
+                if (!timer.isTimeOut()) {
+                    const double rate = optimizeOneCut(resume_point, partial_batch, par_sol);
+                    if (best_par_obj < rate) {
+                        best_par_sol = par_sol;
+                        best_par_obj = rate;
+                    }
+                }
             }
             if (timer.isTimeOut()) {
                 break;
             }
-            //const Timer timer2(Timer::Millisecond(cfg.mbst));
-            optimizeOneCut(resume_point, partial_batch, par_sol);
-            if (par_sol.size()) {
-                for (int i = 0; i < par_sol.size(); ++i) {
-                    batch[aux.item2stack[par_sol[i].item]].pop_back();
-                    cmp_sol.push_back(par_sol[i]);
+            if (best_par_sol.size()) {
+                for (int i = 0; i < best_par_sol.size(); ++i) {
+                    batch[aux.item2stack[best_par_sol[i].item]].pop_back();
+                    cmp_sol.push_back(best_par_sol[i]);
                 }
-                left_items -= par_sol.size();
+                left_items -= best_par_sol.size();
                 resume_point = cmp_sol.back();
                 resume_point.c1cpl = resume_point.c1cpr;
                 resume_point.c2cpb = resume_point.c2cpu = 0;
@@ -880,6 +885,11 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
             } else {
                 break;
             }
+        }
+        // check if (old.c3cp,old.c2cpb,0,node.c2cpu-old.c2cpb) conflict with defect.
+        if (node.cut2 == old.cut2 && node.cut1 == old.cut1 &&
+            defectConflictArea(RectArea(old.c3cp, old.c2cpb, 0, node.c2cpu - old.c2cpb), node.plate)) {
+            return false;
         }
     }
     // check if cut1 exceed stock right side.
