@@ -19,6 +19,8 @@
 #include <random>
 #include <iostream>
 #include <iomanip>
+#include <unordered_set>
+#include <mutex>
 
 #include <cstring>
 #include <cstdlib>
@@ -771,6 +773,59 @@ public:
     size_t size()const { return container.size(); }
 protected:
     std::queue<T> container;
+};
+
+struct CombinationCache {
+    using ID = int;
+    using ItemList = std::vector<ID>; // `itemList` is a list of item IDs in increasing order.
+    using ItemSet = std::vector<bool>; // `itemSet[n]` is true if item `n` is included in the set.
+
+
+    CombinationCache() {}
+    CombinationCache(ID itemNumber) : itemNum(itemNumber) {}
+
+
+    void toItemSet(const ItemList &items, ItemSet &containItem) const {
+        std::fill(containItem.begin(), containItem.end(), false);
+        for (auto n = items.begin(); n != items.end(); ++n) { containItem[*n] = true; }
+    }
+    ItemSet toItemSet(const ItemList &items) const {
+        ItemSet containItem(itemNum, false);
+        for (auto n = items.begin(); n != items.end(); ++n) { containItem[*n] = true; }
+        return containItem;
+    }
+
+    // return a non-empty entry if there is cached solution for such item set, otherwise cache miss happens.
+    // if the returned entry is `entry`, call `entry.empty()` to check the status.
+    const bool get(const ItemSet &containItem) const {
+        return entrySet.find(containItem) != entrySet.end();
+    }
+    const bool get(const ItemList &orderedItems) const {
+        return get(toItemSet(orderedItems));
+    }
+
+    // return false if overwriting happens, return true if a new entry is added.
+    bool set(const ItemSet &containItem) {
+        std::lock_guard<std::mutex> writeLock(writeMutex);
+
+        if (entrySet.find(containItem) != entrySet.end()) { return false; }
+        entrySet.insert(containItem);
+        return true;
+    }
+    bool set(const ItemList &orderedItems) {
+        return set(toItemSet(orderedItems));
+    }
+
+    ID entryNum() const { return static_cast<ID>(entrySet.size()); }
+
+    ID getItemNum() const { return itemNum; }
+
+
+protected:
+    ID itemNum;
+
+    std::unordered_set<ItemSet> entrySet;
+    std::mutex writeMutex;
 };
 
 }
