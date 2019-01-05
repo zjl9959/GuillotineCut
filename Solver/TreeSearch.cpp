@@ -219,6 +219,7 @@ void TreeSearch::lookForwardSearch() {
             Log(Log::Debug) << "choose branch:" << best_index
                 << ";fixed item = " << fixed_parsol.size() << endl;
         }
+        average_usage_rate = getTotalItemArea() / (best_objective * input.param.plateHeight);
     }
     generation = fixed_parsol.size();
 }
@@ -252,6 +253,37 @@ void TreeSearch::autoAdjustCfg() {
     call_count++;
 }
 
+/* input:resume point, current batch to choose item from.
+   use item head items to estimate next 1-cut width and calculate
+   the 1-cut contain defects number.
+   output:1-cut contain defects number. */
+const int TreeSearch::estimateDefectNumber(const TreeNode & resume_point, const List<List<TID>>& source_bacth) {
+    Area item_areas = 0;
+    int item_num = 0;
+    // statistic the batch head items areas and item number.
+    for (int i = 0; i < source_bacth.size(); ++i) {
+        if (source_bacth[i].size() > 1) {
+            item_areas += aux.item_area[source_bacth[i].back()];
+            item_areas += aux.item_area[source_bacth[i][source_bacth[i].size() - 2]];
+            item_num += 2;
+        } else if (source_bacth[i].size() == 1) {
+            item_areas += aux.item_area[source_bacth[i].back()];
+            item_num += 1;
+        }
+    }
+    // calculate next 1-cut width and contain defects number.
+    Length width = ((double)item_areas * (double)cfg.mcin) /
+        ((double)input.param.plateHeight * average_usage_rate * (double)item_num);
+    int res = 0;
+    for (auto d : aux.plates_y[resume_point.plate]) {
+        if (aux.defects[d].x > resume_point.c1cpr &&
+            aux.defects[d].x < resume_point.c1cpr + width) {
+            res++;
+        }
+    }
+    return res;
+}
+
 /* input: the resume point to go on branch, the resume batch, the best solution.
    output: 1 when get a complete solution, 0 when time out.
    create a complete soultion to evaluate the current partial solution's potential. */
@@ -276,14 +308,16 @@ Length TreeSearch::evaluateBranch(const List<List<TID>>& source_batch, const Lis
     while (comp_sol.size() < total_items && !timer.isTimeOut()) {
         List<List<List<TID>>> partial_batchs;
         // create item batchs and make batchs size be a multiple of supported threads
-        if (createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs) == 0) {
-            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs);
+        int repeat_choose_num = cfg.sfrn;
+        if (estimateDefectNumber(resume_point, batch) > 2) {
+            repeat_choose_num = cfg.sfrn * 2;
         }
-        if (partial_batchs.size() % support_thread) {
-            const int left_batchs_num = partial_batchs.size() - partial_batchs.size() % support_thread;
-            if (left_batchs_num)
-                partial_batchs.erase(partial_batchs.begin() + left_batchs_num, partial_batchs.end());
+        if (createItemBatchs(repeat_choose_num, resume_point, batch, partial_batchs) == 0) {
+            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            if (estimateDefectNumber(resume_point, batch) > 2) {
+                repeat_choose_num = cfg.sfrn * 2;
+            }
+            createItemBatchs(repeat_choose_num, resume_point, batch, partial_batchs);
         }
         // optimize some 1-cuts and collected the best.
         List<TreeNode> best_par_sol;

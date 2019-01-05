@@ -112,6 +112,7 @@ protected:
     void init();
     void lookForwardSearch();
     void autoAdjustCfg();
+    const int estimateDefectNumber(const TreeNode& resume_point, const List<List<TID>>& source_bacth);
     Length evaluateBranch(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& hopeful_sol);
     void iteratorImproveWorstPlate();
     void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
@@ -178,6 +179,7 @@ public:
     Timer timer; // the solve() should return before it is timeout.
     int generation = 0; // the constructed complete solution number.
     int support_thread = 1;
+    double average_usage_rate = 0.90;
 
     #pragma endregion Field
 };
