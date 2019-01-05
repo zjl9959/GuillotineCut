@@ -134,6 +134,8 @@ void TreeSearch::init() {
         for (int d = 0; d < aux.plates_y[p].size(); ++d)
             sort(aux.plates_y[p].begin(), aux.plates_y[p].end(), [&](TID &lhs, TID &rhs) {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
+    // get hardware support thread numbers.
+    support_thread = thread::hardware_concurrency();
 }
 
 /* fixed 1-cut after topLevelBranch and pick the best evaluateBranch as the fixed 1-cut. */
@@ -141,25 +143,28 @@ void TreeSearch::lookForwardSearch() {
     // ---test---
     List<int> statistic(cfg.mtbn, 0);
     // ---test---
+    Log(Log::Debug) << "lookForwardSearch,support thread is: " << support_thread << endl;
     List<TreeNode> fixed_parsol; // fixed 1-cuts, size keep growing when search.
     List<List<TID>> batch = aux.stacks;
     TID cur_plate = 0;
     TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     while (fixed_parsol.size() < input.batch.size() && !timer.isTimeOut()) {
-        List<List<TreeNode>> partal_sols(cfg.mtbn);
-        List<List<List<TID>>> target_batchs(cfg.mtbn);
-        // creat different partial batchs.
-        for (int i = 0; i < cfg.mtbn; ++i) {
-            if (randomChooseItems(resume_point, batch, target_batchs[i]) == 0) {
-                // plate left space cant's place any item.
-                resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                randomChooseItems(resume_point, batch, target_batchs[i]);
-            }
+        List<List<List<TID>>> target_batchs;
+        // create item batchs and make batchs size be a multiple of supported threads
+        if (createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs) == 0) {
+            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs);
+        }
+        if (target_batchs.size() % support_thread) {
+            const int left_batchs_num = target_batchs.size() - target_batchs.size() % support_thread;
+            if (left_batchs_num)
+                target_batchs.erase(target_batchs.begin() + left_batchs_num, target_batchs.end());
         }
         // optimize some 1-cuts.
         ThreadPool<> tp1; // using thread pool to fit hardware.
-        List<double> rates(cfg.mtbn);
-        for (int i = 0; i < cfg.mtbn; ++i) {
+        List<List<TreeNode>> partal_sols(target_batchs.size());
+        List<double> rates(target_batchs.size());
+        for (int i = 0; i < target_batchs.size(); ++i) {
             tp1.push([&, i]() {
                 rates[i] = optimizeOneCut(resume_point, target_batchs[i], partal_sols[i]); 
             });
@@ -216,7 +221,8 @@ void TreeSearch::lookForwardSearch() {
             resume_point.c2cpb = resume_point.c2cpu = 0;
             resume_point.cut1++;
             resume_point.depth = -1;
-            //Log(Log::Debug) << "fixed item = " << fixed_parsol.size() << endl;
+            Log(Log::Debug) << "choose branch:" << best_index
+                << ";fixed item = " << fixed_parsol.size() << endl;
         }
     }
     { // ---test---
@@ -241,37 +247,44 @@ void TreeSearch::lookForwardSearch() {
 /* input: the resume point to go on branch, the resume batch, the best solution.
    output: 1 when get a complete solution, 0 when time out.
    create a complete soultion to evaluate the current partial solution's potential. */
-Length TreeSearch::evaluateBranch(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& par_sol) {
-    TreeNode resume_point = par_sol.back();
+Length TreeSearch::evaluateBranch(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& hopeful_sol) {
+    TreeNode resume_point = hopeful_sol.back();
     resume_point.c1cpl = resume_point.c1cpr;
     resume_point.c2cpb = resume_point.c2cpu = 0;
     resume_point.cut1++;
     resume_point.depth = -1;
     List<TreeNode> comp_sol(fixed_sol);
-    for (int i = 0; i < par_sol.size(); ++i) {
-        comp_sol.push_back(par_sol[i]);
+    for (int i = 0; i < hopeful_sol.size(); ++i) {
+        comp_sol.push_back(hopeful_sol[i]);
     }
     List<List<TID>> batch(source_batch);
     // remove items in solution from copy_batch.
-    for (int i = 0; i < par_sol.size(); ++i) {
-        batch[aux.item2stack[par_sol[i].item]].pop_back();
+    for (int i = 0; i < hopeful_sol.size(); ++i) {
+        batch[aux.item2stack[hopeful_sol[i].item]].pop_back();
     }
     TID cur_plate = resume_point.plate;
     const TID total_items = input.batch.size();
     // creat a complete solution.
     while (comp_sol.size() < total_items && !timer.isTimeOut()) {
+        List<List<List<TID>>> partial_batchs;
+        // create item batchs and make batchs size be a multiple of supported threads
+        if (createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs) == 0) {
+            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs);
+        }
+        if (partial_batchs.size() % support_thread) {
+            const int left_batchs_num = partial_batchs.size() - partial_batchs.size() % support_thread;
+            if (left_batchs_num)
+                partial_batchs.erase(partial_batchs.begin() + left_batchs_num, partial_batchs.end());
+        }
+        // optimize some 1-cuts and collected the best.
         List<TreeNode> best_par_sol;
         double best_par_obj = 0.0;
-        for (int i = 0; i < cfg.sfrn; ++i) {
-            List<List<TID>> partial_batch;
-            List<TreeNode> par_sol;
-            if (randomChooseItems(resume_point, batch, partial_batch) == 0) {
-                // plate left space cant's place any item, 
-                resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                randomChooseItems(resume_point, batch, partial_batch);
-            }
+        List<TreeNode> par_sol;
+        for (int i = 0; i < partial_batchs.size(); ++i) {
             if (!timer.isTimeOut()) {
-                const double rate = optimizeOneCut(resume_point, partial_batch, par_sol);
+                par_sol.clear();
+                const double rate = optimizeOneCut(resume_point, partial_batchs[i], par_sol);
                 if (best_par_obj < rate) {
                     best_par_sol = par_sol;
                     best_par_obj = rate;
@@ -484,7 +497,7 @@ int TreeSearch::randomChooseItems(const TreeNode& resume_point, const List<List<
 
 /*input:create batch numbers, resume point, source batch lists, target batch lists.
   choose no repeate items by precise method.*/
-void TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, const List<List<TID>> &source_batch, List<List<List<TID>>> &target_batch) {
+const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, const List<List<TID>> &source_batch, List<List<List<TID>>> &target_batch) {
     const TLength left_plate_width = input.param.plateWidth - resume_point.c1cpr;
     int target_batchs_num = 0;
     int try_num = 0;
@@ -494,11 +507,12 @@ void TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, const 
     for (int i = 0; i < source_batch.size(); ++i) {
         left_items_num += source_batch[i].size();
     }
+    vector<bool> items_set(aux.items.size(), false);
     while (target_batchs_num < nums && try_num < nums) {
         List<List<TID>> temp_batch(source_batch.size());
         TID batch_items = 0; // current temp_batch size contain items.
-        vector<bool> items_set(aux.items.size(), false);
         List<TID> candidate_items; // candidate items to choose by it's score.
+        items_set.assign(aux.items.size(), false);
         for (int i = 0; i < source_batch.size(); ++i) {
             if (source_batch[i].size() && // the choosed item must fit the rest space of the plate.
                 aux.items[source_batch[i].back()].h < left_plate_width) {
@@ -537,9 +551,13 @@ void TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, const 
             comb_cache.set(items_set);
             target_batchs_num++;
             try_num = 0;
+        } else {
+            try_num++;
         }
     }
+    return target_batchs_num;
 }
+
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
