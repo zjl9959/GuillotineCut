@@ -140,17 +140,15 @@ void TreeSearch::init() {
 
 /* fixed 1-cut after topLevelBranch and pick the best evaluateBranch as the fixed 1-cut. */
 void TreeSearch::lookForwardSearch() {
-    // ---test---
-    List<int> statistic(cfg.mtbn, 0);
-    // ---test---
     Log(Log::Debug) << "lookForwardSearch,support thread is: " << support_thread << endl;
     List<TreeNode> fixed_parsol; // fixed 1-cuts, size keep growing when search.
     List<List<TID>> batch = aux.stacks;
     TID cur_plate = 0;
     TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     while (fixed_parsol.size() < input.batch.size() && !timer.isTimeOut()) {
-        List<List<List<TID>>> target_batchs;
+        autoAdjustCfg();
         // create item batchs and make batchs size be a multiple of supported threads
+        List<List<List<TID>>> target_batchs;
         if (createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs) == 0) {
             resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs);
@@ -209,9 +207,6 @@ void TreeSearch::lookForwardSearch() {
         Log(Log::Debug) << "choose branch:" << best_index << endl;
         // add the best partial solution to the total solution.
         if (best_index >= 0) {
-            // ---test---
-            statistic[best_index]++;
-            // ---test---
             for (int i = 0; i < hopeful_sols[best_index].size(); ++i) {
                 fixed_parsol.push_back(hopeful_sols[best_index][i]);
                 batch[aux.item2stack[hopeful_sols[best_index][i].item]].pop_back();
@@ -225,23 +220,36 @@ void TreeSearch::lookForwardSearch() {
                 << ";fixed item = " << fixed_parsol.size() << endl;
         }
     }
-    { // ---test---
-        int total_statistic = 0;
-        for (int i = 0; i < statistic.size(); ++i) {
-            total_statistic += statistic[i];
+    generation = fixed_parsol.size();
+}
+
+/* adjust cfg.mtbn and cfg.mhcn according to rest time. */
+void TreeSearch::autoAdjustCfg() {
+    static constexpr int segments = 3;
+    static constexpr int time_stamp[segments] = { 2400, 1200, 0 }; // unit is second.
+    static constexpr int ratio_mtbn_mhcn = 5;
+    const double rest_time = timer.restSeconds();
+    static int thread_repeat = 3;
+    static int call_count = 0;
+    if (call_count > 1) {
+        int i = 0;
+        for (; i < segments; ++i) {
+            if (rest_time > time_stamp[i]) {
+                break;
+            }
         }
-        Log(Log::Debug) << "------best branch index distribute------" << endl;
-        for (int i = 0; i < statistic.size(); ++i) {
-            Log(Log::Debug) << setprecision(2) << (float)statistic[i] / (float)total_statistic << " ";
+        cfg.mhcn = support_thread * (thread_repeat - i);
+    } else if (call_count == 1) {
+        const double estimate_time = timer.elapsedSeconds()*aux.items.size() / 7;
+        if (estimate_time*3 < rest_time) {
+            thread_repeat = rest_time / estimate_time;
         }
-        int temp = 0;
-        Log(Log::Debug) << "\n------best branch index accumulate distribute------" << endl;
-        for (int i = 0; i < statistic.size(); ++i) {
-            temp += statistic[i];
-            Log(Log::Debug) << setprecision(2) << (float)temp / (float)total_statistic << " ";
-        }
-        Log(Log::Debug) << endl;
-    } // ---test---
+        cfg.mhcn = support_thread * thread_repeat;
+    } else if (call_count == 0) {
+        cfg.mhcn = support_thread;
+    }
+    cfg.mtbn = cfg.mhcn*ratio_mtbn_mhcn;
+    call_count++;
 }
 
 /* input: the resume point to go on branch, the resume batch, the best solution.

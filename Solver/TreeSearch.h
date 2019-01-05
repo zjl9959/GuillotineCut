@@ -35,7 +35,7 @@ public:
     struct Configuration {
         //Duration mbst = 3000; // maximum bottom search timeout, unit:millseconds.
         TID mcin = 8; // maximum choose item number.
-        int mtbn = 40; // maximum top branch number.
+        int mtbn = 16; // maximum top branch number.
         int mhcn = 8; // maximum hopeful 1-cut number.
         int sfrn = 20; // search forward repeat number.
         //int mbsn = 3500000; // maximum bottom search node number.
@@ -111,6 +111,7 @@ public:
 protected:
     void init();
     void lookForwardSearch();
+    void autoAdjustCfg();
     Length evaluateBranch(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& hopeful_sol);
     void iteratorImproveWorstPlate();
     void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
