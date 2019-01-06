@@ -38,6 +38,7 @@ public:
         int mtbn = 16; // maximum top branch number.
         int mhcn = 8; // maximum hopeful 1-cut number.
         int sfrn = 20; // search forward repeat number.
+        int thread_repeat = 3;
         //int mbsn = 3500000; // maximum bottom search node number.
         //double abcn = 1.60; // average branch case number.
         String toBriefStr() const {
@@ -160,12 +161,14 @@ public:
         size_t explored_nodes = 0;
         size_t total_predict_mbsn = 0;
         size_t cut_nodes = 0;
+        int fixed_item_num = 0;
         double scrap_rate = 0.0;
+        int generation_stamp = 0;
         String toStr() const {
             std::ostringstream os;
             os << "en=" << explored_nodes
-                << ";cn=" << cut_nodes
-                << ";sr=" << scrap_rate * 100 << "%";
+                << ";fi=" << fixed_item_num
+                << ";gs=" << generation_stamp;
             return os.str();
         }
     } info;

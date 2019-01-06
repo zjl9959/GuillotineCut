@@ -22,8 +22,10 @@ void TreeSearch::solve() {
     init();
     //iteratorImproveWorstPlate();
     lookForwardSearch();
-    toOutput(best_solution);
-    info.scrap_rate = getScrapWasteRate(best_solution);
+    if (best_solution.size()) {
+        toOutput(best_solution);
+        info.scrap_rate = getScrapWasteRate(best_solution);
+    }
 }
 
 void TreeSearch::record() const {
@@ -136,11 +138,14 @@ void TreeSearch::init() {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
     // get hardware support thread numbers.
     support_thread = thread::hardware_concurrency();
+    if (timer.restSeconds() < 200.0) { // speed up for 180s time limit.
+        cfg.sfrn = 10;
+    }
 }
 
 /* fixed 1-cut after topLevelBranch and pick the best evaluateBranch as the fixed 1-cut. */
 void TreeSearch::lookForwardSearch() {
-    Log(Log::Debug) << "lookForwardSearch,support thread is: " << support_thread << endl;
+    Log(Log::Debug) << "lookForwardSearch support thread=" << support_thread << endl;
     List<TreeNode> fixed_parsol; // fixed 1-cuts, size keep growing when search.
     List<List<TID>> batch = aux.stacks;
     TID cur_plate = 0;
@@ -204,7 +209,6 @@ void TreeSearch::lookForwardSearch() {
                 best_index = i;
             }
         }
-        Log(Log::Debug) << "choose branch:" << best_index << endl;
         // add the best partial solution to the total solution.
         if (best_index >= 0) {
             for (int i = 0; i < hopeful_sols[best_index].size(); ++i) {
@@ -217,11 +221,12 @@ void TreeSearch::lookForwardSearch() {
             resume_point.cut1++;
             resume_point.depth = -1;
             Log(Log::Debug) << "choose branch:" << best_index
-                << ";fixed item = " << fixed_parsol.size() << endl;
+                << " fixed item = " << fixed_parsol.size() << endl;
         }
         average_usage_rate = getTotalItemArea() / (best_objective * input.param.plateHeight);
+        generation++;
     }
-    generation = fixed_parsol.size();
+    info.fixed_item_num = fixed_parsol.size();
 }
 
 /* adjust cfg.mtbn and cfg.mhcn according to rest time. */
@@ -230,27 +235,47 @@ void TreeSearch::autoAdjustCfg() {
     static constexpr int time_stamp[segments] = { 2400, 1200, 0 }; // unit is second.
     static constexpr int ratio_mtbn_mhcn = 5;
     const double rest_time = timer.restSeconds();
-    static int thread_repeat = 3;
-    static int call_count = 0;
-    if (call_count > 1) {
+    if (generation > 1) {
         int i = 0;
         for (; i < segments; ++i) {
             if (rest_time > time_stamp[i]) {
                 break;
             }
         }
-        cfg.mhcn = support_thread * (thread_repeat - i);
-    } else if (call_count == 1) {
-        const double estimate_time = timer.elapsedSeconds()*aux.items.size() / 7;
-        if (estimate_time*3 < rest_time) {
-            thread_repeat = rest_time / estimate_time;
+        cfg.mhcn = support_thread * max(1, (cfg.thread_repeat - i));
+        /*
+        Log(Log::Debug) << "rest_time=" << rest_time
+            << " cfg.mhcn=" << cfg.mhcn << endl;
+        */
+    } else if (generation == 1) {
+        double one_cut_items = 3.5;
+        if (best_solution.size()) {
+            // get best solution's 1-cut numbers.
+            int cut1_nums = 0;
+            int cur_plate = 0;
+            for (int i = 0; i < best_solution.size(); ++i) {
+                if (best_solution[i].plate != cur_plate ||
+                    i == best_solution.size() - 1) {
+                    cut1_nums += (best_solution[i - 1].cut1 + 1);
+                    cur_plate++;
+                }
+            }
+            one_cut_items = (double)aux.items.size() / (double)cut1_nums;
+            Log(Log::Debug) << "one_cut_items=" << one_cut_items << endl;
         }
-        cfg.mhcn = support_thread * thread_repeat;
-    } else if (call_count == 0) {
+        const double estimate_time =
+            timer.elapsedSeconds()*aux.items.size() / (one_cut_items * 2);
+        if (estimate_time*3 < rest_time) {
+            cfg.thread_repeat = rest_time / estimate_time;
+        }
+        Log(Log::Debug) << "used_time=" << timer.elapsedSeconds()
+            << " estimate_time=" << estimate_time
+            << " thread_repeat=" << cfg.thread_repeat << endl;
+        cfg.mhcn = support_thread * cfg.thread_repeat;
+    } else if (generation == 0) {
         cfg.mhcn = support_thread;
     }
     cfg.mtbn = cfg.mhcn*ratio_mtbn_mhcn;
-    call_count++;
 }
 
 /* input:resume point, current batch to choose item from.
@@ -275,7 +300,7 @@ const int TreeSearch::estimateDefectNumber(const TreeNode & resume_point, const 
     Length width = ((double)item_areas * (double)cfg.mcin) /
         ((double)input.param.plateHeight * average_usage_rate * (double)item_num);
     int res = 0;
-    for (auto d : aux.plates_y[resume_point.plate]) {
+    for (auto d : aux.plates_x[resume_point.plate]) {
         if (aux.defects[d].x > resume_point.c1cpr &&
             aux.defects[d].x < resume_point.c1cpr + width) {
             res++;
@@ -355,7 +380,9 @@ Length TreeSearch::evaluateBranch(const List<List<TID>>& source_batch, const Lis
             lock_guard<mutex> guard(best_sol_mutex);
             best_objective = cur_obj;
             best_solution = comp_sol;
-            Log(Log::Debug) << "a better obj:" << cur_obj << endl;
+            info.generation_stamp = generation;
+            Log(Log::Debug) << "a better obj " << cur_obj
+                             << " on generation " << generation << endl;
         }
         return cur_obj;
     } else {
@@ -417,7 +444,8 @@ void TreeSearch::iteratorImproveWorstPlate() {
             if (best_objective > cur_obj) {
                 best_objective = cur_obj;
                 best_solution = cmp_sol;
-                Log(Log::Debug) << "a better obj: " << cur_obj << endl;
+                Log(Log::Debug) << "a better obj: " << cur_obj
+                                 << " on generation " << generation << endl;
             }
             List<double> plate_usage_rate;
             getPlatesUsageRate(cmp_sol, plate_usage_rate);
