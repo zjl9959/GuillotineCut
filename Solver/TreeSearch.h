@@ -148,6 +148,7 @@ public:
         List<List<TID>> stacks; // stacks[s][i] is the itemId of the i_th item in the stack s.
         List<List<TID>> plates_x; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect x position.
         List<List<TID>> plates_y; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect y position.
+        List<List<TID>> similar_table; // sorted by item's similar degree for every item.
     } aux;
 
     struct {

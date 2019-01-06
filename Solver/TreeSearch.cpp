@@ -141,6 +141,26 @@ void TreeSearch::init() {
     if (timer.restSeconds() < 200.0) { // speed up for 180s time limit.
         cfg.sfrn = 10;
     }
+    // init aux.similar_table.
+    aux.similar_table.resize(aux.items.size(), List<TID>(aux.items.size() - 1, -1));
+    for (int i = 0; i < aux.items.size(); ++i) { // for every item.
+        List<pair<TLength, TID>> similar_list;
+        for (int j = 0; j < aux.items.size(); ++j) {
+            if (i != j) { // no need to compare with self.
+                const TLength similar_score =
+                    min(abs(aux.items[i].w - aux.items[j].w),
+                        min(abs(aux.items[i].w - aux.items[j].h),
+                            min(abs(aux.items[i].h - aux.items[j].w),
+                                abs(aux.items[i].h - aux.items[j].h))));
+                similar_list.push_back(make_pair(similar_score, j));
+            }
+        }
+        sort(similar_list.begin(), similar_list.end(), [](pair<TLength, TID>& lhs, pair<TLength, TID>& rhs) {
+            return lhs.first < rhs.first; });
+        for (int k = 0; k < similar_list.size(); ++k) {
+            aux.similar_table[i][k] = similar_list[k].second;
+        }
+    }
 }
 
 /* fixed 1-cut after topLevelBranch and pick the best evaluateBranch as the fixed 1-cut. */
@@ -627,7 +647,6 @@ const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, c
     }
     return target_batchs_num;
 }
-
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
