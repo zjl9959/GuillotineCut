@@ -35,7 +35,7 @@ public:
     struct Configuration {
         //Duration mbst = 3000; // maximum bottom search timeout, unit:millseconds.
         TID mcin = 8; // maximum choose item number.
-        int mtbn = 16; // maximum top branch number.
+        int mtbn = 40; // maximum top branch number.
         int mhcn = 8; // maximum hopeful 1-cut number.
         int sfrn = 20; // search forward repeat number.
         int thread_repeat = 3;
@@ -119,6 +119,7 @@ protected:
     void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
     int randomChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
     const int createItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
+    const int createSimilarItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
     double optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
@@ -148,7 +149,7 @@ public:
         List<List<TID>> stacks; // stacks[s][i] is the itemId of the i_th item in the stack s.
         List<List<TID>> plates_x; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect x position.
         List<List<TID>> plates_y; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect y position.
-        List<List<TID>> similar_table; // sorted by item's similar degree for every item.
+        List<List<TLength>> similar_table; // similarity table of two items.
     } aux;
 
     struct {

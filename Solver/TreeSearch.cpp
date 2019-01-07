@@ -139,26 +139,19 @@ void TreeSearch::init() {
     // get hardware support thread numbers.
     support_thread = thread::hardware_concurrency();
     if (timer.restSeconds() < 200.0) { // speed up for 180s time limit.
-        cfg.sfrn = 10;
+        cfg.sfrn = 1;
+        cfg.thread_repeat = 1;
     }
     // init aux.similar_table.
-    aux.similar_table.resize(aux.items.size(), List<TID>(aux.items.size() - 1, -1));
+    aux.similar_table.resize(aux.items.size(), List<TLength>(aux.items.size(), 0));
     for (int i = 0; i < aux.items.size(); ++i) { // for every item.
-        List<pair<TLength, TID>> similar_list;
-        for (int j = 0; j < aux.items.size(); ++j) {
-            if (i != j) { // no need to compare with self.
-                const TLength similar_score =
-                    min(abs(aux.items[i].w - aux.items[j].w),
-                        min(abs(aux.items[i].w - aux.items[j].h),
-                            min(abs(aux.items[i].h - aux.items[j].w),
-                                abs(aux.items[i].h - aux.items[j].h))));
-                similar_list.push_back(make_pair(similar_score, j));
-            }
-        }
-        sort(similar_list.begin(), similar_list.end(), [](pair<TLength, TID>& lhs, pair<TLength, TID>& rhs) {
-            return lhs.first < rhs.first; });
-        for (int k = 0; k < similar_list.size(); ++k) {
-            aux.similar_table[i][k] = similar_list[k].second;
+        for (int j = i + 1; j < aux.items.size(); ++j) {
+            const TLength similar_score =
+                min(abs(aux.items[i].w - aux.items[j].w),
+                    min(abs(aux.items[i].w - aux.items[j].h),
+                        min(abs(aux.items[i].h - aux.items[j].w),
+                            abs(aux.items[i].h - aux.items[j].h))));
+            aux.similar_table[i][j] = aux.similar_table[j][i] = similar_score;
         }
     }
 }
@@ -648,6 +641,15 @@ const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, c
     return target_batchs_num;
 }
 
+/*input:create batch numbers, resume point, source batch lists, target batch lists.
+  this function need meet these requirement, 1:target_batch all different with others
+  2:main part of the choosed items should be similar with others.
+  3:a few items is random choose and the more defects in next 1-cut, the bigger randomness is.*/
+const int TreeSearch::createSimilarItemBatchs(int nums, const TreeNode & resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch) {
+    // TODO: add code...
+    return 0;
+}
+
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
 double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
@@ -1072,14 +1074,14 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
                         cur_parsol[i].c3cp - item_w, node.c2cpu - item_h, item_w, item_h), cur_parsol[i].plate))
                         return false;
                 }
+                // check if (old.c3cp,old.c2cpb,0,node.c2cpu-old.c2cpb) conflict with defect.
+                if (defectConflictArea(RectArea(
+                    cur_parsol[i].c3cp, cur_parsol[i].c2cpb, 0, node.c2cpu - cur_parsol[i].c2cpb), node.plate)) {
+                    return false;
+                }
             } else {
                 break;
             }
-        }
-        // check if (old.c3cp,old.c2cpb,0,node.c2cpu-old.c2cpb) conflict with defect.
-        if (node.cut2 == old.cut2 && node.cut1 == old.cut1 &&
-            defectConflictArea(RectArea(old.c3cp, old.c2cpb, 0, node.c2cpu - old.c2cpb), node.plate)) {
-            return false;
         }
     }
     // check if cut1 exceed stock right side.
