@@ -167,9 +167,16 @@ void TreeSearch::lookForwardSearch() {
         autoAdjustCfg();
         // create item batchs and make batchs size be a multiple of supported threads
         List<List<List<TID>>> target_batchs;
+        /*// ---createItemBatchs version.
         if (createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs) == 0) {
             resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs);
+        }
+        */
+        // ---createSimilarItemBatchs version.
+        if (createSimilarItemBatchs(cfg.mtbn, resume_point, batch, target_batchs) == 0) {
+            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            createSimilarItemBatchs(cfg.mtbn, resume_point, batch, target_batchs);
         }
         if (target_batchs.size() % support_thread) {
             const int left_batchs_num = target_batchs.size() - target_batchs.size() % support_thread;
@@ -345,17 +352,15 @@ Length TreeSearch::evaluateBranch(const List<List<TID>>& source_batch, const Lis
     // creat a complete solution.
     while (comp_sol.size() < total_items && !timer.isTimeOut()) {
         List<List<List<TID>>> partial_batchs;
-        // create item batchs and make batchs size be a multiple of supported threads
-        int repeat_choose_num = cfg.sfrn;
-        if (estimateDefectNumber(resume_point, batch) > 2) {
-            repeat_choose_num = cfg.sfrn * 2;
-        }
-        if (createItemBatchs(repeat_choose_num, resume_point, batch, partial_batchs) == 0) {
+        /*// create item batchs and make batchs size be a multiple of supported threads
+        if (createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs) == 0) {
             resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            if (estimateDefectNumber(resume_point, batch) > 2) {
-                repeat_choose_num = cfg.sfrn * 2;
-            }
-            createItemBatchs(repeat_choose_num, resume_point, batch, partial_batchs);
+            createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs);
+        }
+        */
+        if (createSimilarItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs) == 0) {
+            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            createSimilarItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs);
         }
         // optimize some 1-cuts and collected the best.
         List<TreeNode> best_par_sol;
@@ -585,10 +590,9 @@ const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, c
     int target_batchs_num = 0;
     int try_num = 0;
     CombinationCache comb_cache;
-    // auto adjust batch number if left items number too small.
-    int left_items_num = 0;
-    for (int i = 0; i < source_batch.size(); ++i) {
-        left_items_num += source_batch[i].size();
+    // auto adjust nums according to defect number.
+    if (estimateDefectNumber(resume_point, source_batch) > 1) {
+        nums *= 2;
     }
     vector<bool> items_set(aux.items.size(), false);
     while (target_batchs_num < nums && try_num < nums) {
@@ -645,9 +649,101 @@ const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, c
   this function need meet these requirement, 1:target_batch all different with others
   2:main part of the choosed items should be similar with others.
   3:a few items is random choose and the more defects in next 1-cut, the bigger randomness is.*/
-const int TreeSearch::createSimilarItemBatchs(int nums, const TreeNode & resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch) {
-    // TODO: add code...
-    return 0;
+const int TreeSearch::createSimilarItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch) {
+    int rand_items = cfg.random_rate * cfg.mcin ? cfg.random_rate * cfg.mcin : 1;
+    const TLength left_plate_width = input.param.plateWidth - resume_point.c1cpr;
+    int target_batchs_num = 0;
+    int try_num = 0;
+    CombinationCache comb_cache;
+    // auto adjust nums according to defect number.
+    int estimate_defect = estimateDefectNumber(resume_point, source_batch);
+    if ( estimate_defect > 1) {
+        nums *= 2;
+    }
+    // if defect is more, choose more random items.
+    rand_items = rand_items + 2 * estimate_defect;
+    if (rand_items > cfg.mcin) {
+        rand_items = cfg.mcin;
+    }
+    vector<bool> items_set(aux.items.size(), false);
+    while (target_batchs_num < nums && try_num < 2 * nums) {
+        List<TID> candidate_items; // candidate items to choose by it's score.
+        items_set.assign(aux.items.size(), false);
+        for (int i = 0; i < source_batch.size(); ++i) {
+            if (source_batch[i].size() && // the choosed item must fit the rest space of the plate.
+                aux.items[source_batch[i].back()].h < left_plate_width) {
+                candidate_items.push_back(source_batch[i].back());
+            }
+        }
+        List<List<TID>> temp_batch(source_batch.size());
+        TID batch_items = 0; // current temp_batch size contain items.
+        TID choosed_item = -1; // every turn's choosed item identity.
+        // first stage: random choose rand_items number items.
+        while (batch_items < rand_items) {
+            if (candidate_items.size() == 0) { // no fit item to choose.
+                break;
+            }
+            const int choose_index = rand.pick(candidate_items.size());
+            choosed_item = candidate_items[choose_index];
+            temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
+            items_set[choosed_item] = true;
+            const int index_div = source_batch[aux.item2stack[choosed_item]].size() -
+                temp_batch[aux.item2stack[choosed_item]].size();
+            if (index_div && aux.items[source_batch[aux.item2stack[choosed_item]][index_div - 1]].h < left_plate_width) {
+                // source batch still have item, replace candidate_item[choose_index].
+                candidate_items[choose_index] = source_batch[aux.item2stack[choosed_item]][index_div - 1];
+            } else {
+                candidate_items.erase(candidate_items.begin() + choose_index);
+            }
+            batch_items++;
+        }
+        // second stage: choose items by similarity.
+        while (batch_items < cfg.mcin) {
+            if (candidate_items.size() == 0) { // no fit item to choose.
+                break;
+            }
+            // sort candidate items by similarity between last choosed item and candidate item.
+            TLength best_similarity = 6000;
+            int choose_index = -1;
+            for (int i = 0; i < candidate_items.size(); ++i) {
+                if (best_similarity > aux.similar_table[choosed_item][candidate_items[i]]) {
+                    best_similarity = aux.similar_table[choosed_item][candidate_items[i]];
+                    choose_index = i;
+                }
+            }
+            choosed_item = candidate_items[choose_index];
+            // collect choosed item and update candidate_items.
+            temp_batch[aux.item2stack[choosed_item]].push_back(choosed_item); // collect choosed item.
+            items_set[choosed_item] = true;
+            const int index_div = source_batch[aux.item2stack[choosed_item]].size() -
+                temp_batch[aux.item2stack[choosed_item]].size();
+            if (index_div && aux.items[source_batch[aux.item2stack[choosed_item]][index_div - 1]].h < left_plate_width) {
+                // source batch still have item, replace candidate_item[choose_index].
+                candidate_items[choose_index] = source_batch[aux.item2stack[choosed_item]][index_div - 1];
+            } else {
+                candidate_items.erase(candidate_items.begin() + choose_index);
+            }
+            batch_items++;
+        }
+        if (!comb_cache.get(items_set)) { // choosed items no repeate.
+            target_batch.resize(target_batch.size() + 1);
+            // because fetch item from stack back, so reverse it.
+            for (int i = 0; i < temp_batch.size(); ++i) {
+                if (temp_batch[i].size()) {
+                    target_batch[target_batchs_num].resize(target_batch[target_batchs_num].size() + 1);
+                    for (int j = temp_batch[i].size() - 1; j >= 0; --j) {
+                        target_batch[target_batchs_num].back().push_back(temp_batch[i][j]);
+                    }
+                }
+            }
+            comb_cache.set(items_set);
+            target_batchs_num++;
+            try_num = 0;
+        } else {
+            try_num++;
+        }
+    }
+    return target_batchs_num;
 }
 
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.

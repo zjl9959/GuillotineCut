@@ -39,6 +39,7 @@ public:
         int mhcn = 8; // maximum hopeful 1-cut number.
         int sfrn = 20; // search forward repeat number.
         int thread_repeat = 3;
+        double random_rate = 0.40;
         //int mbsn = 3500000; // maximum bottom search node number.
         //double abcn = 1.60; // average branch case number.
         String toBriefStr() const {
