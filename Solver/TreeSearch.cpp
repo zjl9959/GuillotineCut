@@ -36,7 +36,7 @@ void TreeSearch::record() const {
 
     System::MemoryUsage mu = System::peakMemoryUsage();
 
-    Length obj = output.totalWidth * input.param.plateHeight - getTotalItemArea();
+    Length obj = output.totalWidth * input.param.plateHeight - total_item_area;
     Length checkerObj = -1;
     bool feasible = check(checkerObj);
 
@@ -51,7 +51,7 @@ void TreeSearch::record() const {
         << env.randSeed << ","
         << cfg.toBriefStr() << ","
         << generation << "," << info.toStr() << ","
-        << getTotalItemArea() / (output.totalWidth * input.param.plateHeight / 100.0) << "%," // util ratio.
+        << total_item_area / (output.totalWidth * input.param.plateHeight / 100.0) << "%," // util ratio.
         << checkerObj; // wasted area.
 
     // record solution vector.
@@ -123,6 +123,7 @@ void TreeSearch::init() {
     //calculate item areas.
     for (int i = 0; i < aux.items.size(); ++i) {
         aux.item_area.push_back(aux.items[i].h*aux.items[i].w);
+        total_item_area += aux.items[i].h*aux.items[i].w;
     }
     // reverse item sequence convicent for pop_back.
     for (int i = 0; i < aux.stacks.size(); i++)
@@ -168,16 +169,10 @@ void TreeSearch::lookForwardSearch() {
         autoAdjustCfg();
         // create item batchs and make batchs size be a multiple of supported threads
         List<List<List<TID>>> target_batchs;
-        /*// ---createItemBatchs version.
+        // ---createItemBatchs version.
         if (createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs) == 0) {
             resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             createItemBatchs(cfg.mtbn, resume_point, batch, target_batchs);
-        }
-        */
-        // ---createSimilarItemBatchs version.
-        if (createSimilarItemBatchs(cfg.mtbn, resume_point, batch, target_batchs) == 0) {
-            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            createSimilarItemBatchs(cfg.mtbn, resume_point, batch, target_batchs);
         }
         if (target_batchs.size() % support_thread) {
             const int left_batchs_num = target_batchs.size() - target_batchs.size() % support_thread;
@@ -244,7 +239,8 @@ void TreeSearch::lookForwardSearch() {
             Log(Log::Debug) << "choose branch:" << best_index
                 << " fixed item = " << fixed_parsol.size() << endl;
         }
-        average_usage_rate = getTotalItemArea() / (best_objective * input.param.plateHeight);
+        best_usage_rate = (double)total_item_area /
+            (double)(best_objective * input.param.plateHeight);
         generation++;
     }
     info.fixed_item_num = fixed_parsol.size();
@@ -319,7 +315,7 @@ const int TreeSearch::estimateDefectNumber(const TreeNode & resume_point, const 
     }
     // calculate next 1-cut width and contain defects number.
     Length width = ((double)item_areas * (double)cfg.mcin) /
-        ((double)input.param.plateHeight * average_usage_rate * (double)item_num);
+        ((double)input.param.plateHeight * best_usage_rate * (double)item_num);
     int res = 0;
     for (auto d : aux.plates_x[resume_point.plate]) {
         if (aux.defects[d].x > resume_point.c1cpr &&
@@ -353,15 +349,10 @@ Length TreeSearch::evaluateBranch(const List<List<TID>>& source_batch, const Lis
     // creat a complete solution.
     while (comp_sol.size() < total_items && !timer.isTimeOut()) {
         List<List<List<TID>>> partial_batchs;
-        /*// create item batchs and make batchs size be a multiple of supported threads
+        // create item batchs and make batchs size be a multiple of supported threads
         if (createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs) == 0) {
             resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             createItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs);
-        }
-        */
-        if (createSimilarItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs) == 0) {
-            resume_point = TreeNode(-1, ++cur_plate, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-            createSimilarItemBatchs(cfg.sfrn, resume_point, batch, partial_batchs);
         }
         // optimize some 1-cuts and collected the best.
         List<TreeNode> best_par_sol;
@@ -750,11 +741,11 @@ const int TreeSearch::createSimilarItemBatchs(int nums, const TreeNode& resume_p
 /* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
    use depth first search to optimize partial solution. */
 double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
-    Area total_item_area = 0;
+    Area batch_item_area = 0;
     List<TID> item2batch(input.batch.size());
     for (int i = 0; i < batch.size(); ++i) {
         for (auto item : batch[i]) {
-            total_item_area += aux.item_area[item];
+            batch_item_area += aux.item_area[item];
             item2batch[item] = i;
         }
     }
@@ -772,7 +763,7 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
         live_nodes.pop();
         explored_nodes++;
         const double usage_rate_lb =
-            (double)total_item_area / (double)((node.c1cpr - resume_point.c1cpl)*input.param.plateHeight);
+            (double)batch_item_area / (double)((node.c1cpr - resume_point.c1cpl)*input.param.plateHeight);
         if (usage_rate_lb < best_obj) {
             cut_nodes++;
             continue;
@@ -788,9 +779,6 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
             cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes.
             cur_parsol.push_back(node); // push current node into cur_parsol.
             batch[item2batch[node.item]].pop_back();
-        } else {
-            Log(Log::Error) << "[ERROR] Depth first search: delt depth is "
-                << node.depth - pre_depth << endl;
         }
         branch_nodes.clear();
         partialBranch(node, batch, cur_parsol, branch_nodes);
@@ -799,8 +787,6 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
         pre_depth = node.depth;
         if (branch_nodes.size() == 0) { // fill a complate 1-cut.
             Area cut1_item_area = 0; // current 1-cut total item area.
-            if (cur_parsol.size() == 0)
-                Log(Log::Error) << "[ERROR] cur_parsol size is 0." << endl;
             for (int i = 0; i < cur_parsol.size(); ++i)
                 cut1_item_area += aux.item_area[cur_parsol[i].item];
             const double cur_obj =  // current 1-cut usage rate.
@@ -820,13 +806,77 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
     return best_obj;
 }
 
+/* input:plate id, start 1-cut position, maximum used width, the batch to be used, solution vector.
+   consider the tail of the plate as a total area, return the best usage rate of the area. */
 double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TID>>& batch, List<TreeNode>& solution) {
-    // TODO: add code...
+    const Area tail_area = (input.param.plateWidth - resume_point.c1cpl)*input.param.plateHeight;
+    Area used_item_area = 0; // current used items area.
+    List<TID> item2batch(input.batch.size());
+    for (int i = 0; i < batch.size(); ++i) {
+        for (auto item : batch[i]) {
+            item2batch[item] = i;
+        }
+    }
+    Area min_waste = tail_area;
+    Stack<TreeNode> live_nodes; // the tree nodes to be branched.
+    List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
+    size_t explored_nodes = 0;
+    Depth pre_depth = -1; // last node depth.
+    List<TreeNode> branch_nodes;
+    totalBranch(resume_point, batch, cur_parsol, branch_nodes);
+    for (int i = 0; i < branch_nodes.size(); ++i)
+        live_nodes.push(branch_nodes[i]);
+    while (live_nodes.size()) {
+        TreeNode node = live_nodes.back();
+        live_nodes.pop();
+        explored_nodes++;
+        const Area cur_waste_area = (node.c1cpl - resume_point.c1cpl)*input.param.plateHeight
+            + node.c2cpb*(node.c1cpr - node.c1cpl) + (node.c3cp - node.c1cpl)*(node.c2cpu - node.c2cpb) - used_item_area;
+        if (cur_waste_area > min_waste) {
+            continue;
+        }
+        if (node.depth - pre_depth == 1) { // search forward.
+            cur_parsol.push_back(node);
+            batch[item2batch[node.item]].pop_back();
+            used_item_area += aux.item_area[node.item];
+        } else if (node.depth - pre_depth < 1) { // search back.
+            for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack.
+                batch[item2batch[cur_parsol[i].item]].push_back(
+                    cur_parsol[i].item);
+                used_item_area -= aux.item_area[cur_parsol[i].item];
+            }
+            cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes.
+            cur_parsol.push_back(node); // push current node into cur_parsol.
+            batch[item2batch[node.item]].pop_back();
+            used_item_area += aux.item_area[node.item];
+        }
+        branch_nodes.clear();
+        totalBranch(node, batch, cur_parsol, branch_nodes);
+        for (int i = 0; i < branch_nodes.size(); ++i)
+            live_nodes.push(branch_nodes[i]);
+        pre_depth = node.depth;
+        if (branch_nodes.size() == 0) { // fill the tail area.
+            Area tail_item_area = 0; // current tail's total items area
+            for (int i = 0; i < cur_parsol.size(); ++i)
+                tail_item_area += aux.item_area[cur_parsol[i].item];
+            if (tail_area - tail_item_area < min_waste) {
+                best_parsol = cur_parsol;
+                min_waste = tail_area - tail_item_area;
+            }
+        }
+        if (explored_nodes % 100000 == 0 && timer.isTimeOut()) {
+            break;
+        }
+    }
+    for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
+        solution.push_back(best_parsol[i]);
+    }
+    return 1 - (double)min_waste / (double)tail_area;
 }
 
 void TreeSearch::optimizeTotalProblem() {
-    TID left_items = aux.items.size(); // left item number in the batch.
-    Area left_item_area = getTotalItemArea();
+    TID left_item_num = aux.items.size(); // left item number in the batch.
+    Area left_item_area = total_item_area;
     List<List<TID>> batch(aux.stacks);
     Stack<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_sol, branch_nodes;
@@ -844,9 +894,9 @@ void TreeSearch::optimizeTotalProblem() {
         if (node.depth - pre_depth == 1) { // search forward.
             cur_sol.push_back(node);
             batch[aux.item2stack[node.item]].pop_back();
-            left_items--;
+            left_item_num--;
             left_item_area -= aux.item_area[node.item];
-            if (left_items > 0) {
+            if (left_item_num > 0) {
                 branch_nodes.clear();
                 totalBranch(node, batch, cur_sol, branch_nodes);
                 if (!branch_nodes.size()) { // no place to put item in this plate create a new plate.
@@ -860,15 +910,15 @@ void TreeSearch::optimizeTotalProblem() {
             for (int i = cur_sol.size() - 1; i >= node.depth; --i) { // resume stack.
                 batch[aux.item2stack[cur_sol[i].item]].push_back(
                     cur_sol[i].item);
-                left_items++;
+                left_item_num++;
                 left_item_area += aux.item_area[cur_sol[i].item];
             }
             cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end()); // erase extend nodes.
             cur_sol.push_back(node); // push current node into cur_parsol.
             batch[aux.item2stack[node.item]].pop_back();
-            left_items--;
+            left_item_num--;
             left_item_area -= aux.item_area[node.item];
-            if (left_items > 0) {
+            if (left_item_num > 0) {
                 branch_nodes.clear();
                 totalBranch(node, batch, cur_sol, branch_nodes);
                 if (!branch_nodes.size()) { // no place to put item in this plate create a new plate.
@@ -880,7 +930,7 @@ void TreeSearch::optimizeTotalProblem() {
             }
         }
         pre_depth = node.depth;
-        if (left_items == 0) { // find a complate solution.
+        if (left_item_num == 0) { // find a complate solution.
             int cur_obj = 0;
             for (TreeNode solnode : cur_sol) {
                 if (cur_obj < solnode.plate*input.param.plateWidth + solnode.c1cpr) {
@@ -890,6 +940,8 @@ void TreeSearch::optimizeTotalProblem() {
             if (best_objective > cur_obj) {
                 best_objective = cur_obj;
                 best_solution = cur_sol;
+                best_usage_rate = (double)total_item_area /
+                    (double)(best_objective*input.param.plateHeight);
             }
             if (timer.isTimeOut()) {
                 break;
@@ -1608,7 +1660,7 @@ const Length TreeSearch::getLowBound(const TreeNode & cur_node, Area left_item_a
     left_item_area = left_item_area - (cur_node.c2cpu - cur_node.c2cpb)*(cur_node.c1cpr - cur_node.c3cp) -
         (input.param.plateHeight - cur_node.c2cpu)*(cur_node.c1cpr - cur_node.c1cpl) - aux.item_area[cur_node.item];
     return input.param.plateWidth*cur_node.plate + cur_node.c1cpr + max(
-        0, static_cast<Length>(left_item_area / input.param.plateHeight));
+        0, static_cast<Length>(left_item_area / (input.param.plateHeight*best_usage_rate)));
 }
 
 // this function convert TreeNode type solution into output type .
@@ -1820,15 +1872,6 @@ bool TreeSearch::check(Length & checkerObj) const {
     checkerObj = 0;
     return true;
     #endif // SZX_DEBUG
-}
-
-/* return total input item area. */
-const Area TreeSearch::getTotalItemArea() const {
-    Area total_area = 0;
-    for (int i = 0; i < input.batch.size(); ++i) {
-        total_area += (input.batch[i].height*input.batch[i].width);
-    }
-    return total_area;
 }
 
 /* return the rate of total waste L1 in every plate. */
