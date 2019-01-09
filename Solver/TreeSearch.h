@@ -122,7 +122,10 @@ protected:
     const int createItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
     const int createSimilarItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
     double optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
+    double optimizePlateTail(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
+    void optimizeTotalProblem();
     void partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
+    void totalBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
     const TCoord sliptoDefectRight(const RectArea &area, const TID plate) const;
     const TCoord sliptoDefectUp(const RectArea &area, const TID plate) const;
@@ -161,16 +164,15 @@ public:
     } idMap;
 
     struct {
-        size_t explored_nodes = 0;
-        size_t total_predict_mbsn = 0;
-        size_t cut_nodes = 0;
+        //size_t explored_nodes = 0;
+        //size_t total_predict_mbsn = 0;
+        //size_t cut_nodes = 0;
         int fixed_item_num = 0;
         double scrap_rate = 0.0;
         int generation_stamp = 0;
         String toStr() const {
             std::ostringstream os;
-            os << "en=" << explored_nodes
-                << ";fi=" << fixed_item_num
+            os << ";fi=" << fixed_item_num
                 << ";gs=" << generation_stamp;
             return os.str();
         }

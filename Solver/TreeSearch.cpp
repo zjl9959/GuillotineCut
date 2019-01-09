@@ -21,7 +21,8 @@ void TreeSearch::solve() {
     Log(Log::Debug) << "hardware concurrency=" << thread::hardware_concurrency() << endl;
     init();
     //iteratorImproveWorstPlate();
-    lookForwardSearch();
+    //lookForwardSearch();
+    optimizeTotalProblem();
     if (best_solution.size()) {
         toOutput(best_solution);
         info.scrap_rate = getScrapWasteRate(best_solution);
@@ -816,15 +817,90 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
     for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
         solution.push_back(best_parsol[i]);
     }
-    static mutex info_mutex;
-    lock_guard<mutex> guard(info_mutex);
-    info.explored_nodes += explored_nodes;
-    info.cut_nodes += cut_nodes;
     return best_obj;
 }
 
+double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TID>>& batch, List<TreeNode>& solution) {
+    // TODO: add code...
+}
+
+void TreeSearch::optimizeTotalProblem() {
+    TID left_items = aux.items.size(); // left item number in the batch.
+    Area left_item_area = getTotalItemArea();
+    List<List<TID>> batch(aux.stacks);
+    Stack<TreeNode> live_nodes; // the tree nodes to be branched.
+    List<TreeNode> cur_sol, branch_nodes;
+    Depth pre_depth = -1; // last node depth.
+    totalBranch(TreeNode(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        batch, cur_sol, branch_nodes); // first branch.
+    for (int i = 0; i < branch_nodes.size(); ++i)
+        live_nodes.push(branch_nodes[i]);
+    while (live_nodes.size()) {
+        TreeNode node = live_nodes.back();
+        live_nodes.pop();
+        if (getLowBound(node, left_item_area) > best_objective) {
+            continue;
+        }
+        if (node.depth - pre_depth == 1) { // search forward.
+            cur_sol.push_back(node);
+            batch[aux.item2stack[node.item]].pop_back();
+            left_items--;
+            left_item_area -= aux.item_area[node.item];
+            if (left_items > 0) {
+                branch_nodes.clear();
+                totalBranch(node, batch, cur_sol, branch_nodes);
+                if (!branch_nodes.size()) { // no place to put item in this plate create a new plate.
+                    totalBranch(TreeNode(node.depth, node.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                        batch, cur_sol, branch_nodes);
+                }
+                for (int i = 0; i < branch_nodes.size(); ++i)
+                    live_nodes.push(branch_nodes[i]);
+            }
+        } else if (node.depth - pre_depth < 1) { // search back.
+            for (int i = cur_sol.size() - 1; i >= node.depth; --i) { // resume stack.
+                batch[aux.item2stack[cur_sol[i].item]].push_back(
+                    cur_sol[i].item);
+                left_items++;
+                left_item_area += aux.item_area[cur_sol[i].item];
+            }
+            cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end()); // erase extend nodes.
+            cur_sol.push_back(node); // push current node into cur_parsol.
+            batch[aux.item2stack[node.item]].pop_back();
+            left_items--;
+            left_item_area -= aux.item_area[node.item];
+            if (left_items > 0) {
+                branch_nodes.clear();
+                totalBranch(node, batch, cur_sol, branch_nodes);
+                if (!branch_nodes.size()) { // no place to put item in this plate create a new plate.
+                    totalBranch(TreeNode(node.depth, node.plate + 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                        batch, cur_sol, branch_nodes);
+                }
+                for (int i = 0; i < branch_nodes.size(); ++i)
+                    live_nodes.push(branch_nodes[i]);
+            }
+        }
+        pre_depth = node.depth;
+        if (left_items == 0) { // find a complate solution.
+            int cur_obj = 0;
+            for (TreeNode solnode : cur_sol) {
+                if (cur_obj < solnode.plate*input.param.plateWidth + solnode.c1cpr) {
+                    cur_obj = solnode.plate*input.param.plateWidth + solnode.c1cpr;
+                }
+            }
+            if (best_objective > cur_obj) {
+                best_objective = cur_obj;
+                best_solution = cur_sol;
+            }
+            if (timer.isTimeOut()) {
+                break;
+            }
+        }
+    }
+}
+
 /* input:last tree node(branch point).
-   function:branch tree node by exact method.
+   function:branch tree node by exact method,
+   all the items need to be placed in one L1.
 */// output:push branched nodes into branch_nodes.
 void TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes) {
     const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked.
@@ -1036,6 +1112,262 @@ void TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                         node_c5.setFlagBit(FlagBit::DEFECT_U);
                         if (constraintCheck(old, cur_parsol, node_c5)) {
                             branch_nodes.push_back(node_c5);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* input:last tree node(branch point).
+   function:branch tree node by exact method,
+   can create new L1 when this L1 has no place to put item.
+*/// output:push branched nodes into branch_nodes.
+void TreeSearch::totalBranch(const TreeNode & old, const List<List<TID>>& batch, const List<TreeNode>& cur_parsol, List<TreeNode>& branch_nodes) {
+    const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked.
+    // case A, place item in a new L1.
+    if (old.c2cpu == 0) {
+        for (int rotate = 0; rotate <= 1; ++rotate) {
+            for (int i = 0; i < batch.size(); ++i) {
+                // pretreatment.
+                if (!batch[i].size())continue; // skip empty stack.
+                TID itemId = batch[i].back();
+                Rect item = aux.items[itemId];
+                if (item.w == item.h && rotate)continue; // square item no need to rotate.
+                if (rotate) { // rotate item.
+                    item.w = aux.items[itemId].h;
+                    item.h = aux.items[itemId].w;
+                }
+                if (old.c1cpr + item.w > input.param.plateWidth)continue;
+                // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
+                TLength slip_r = 0, slip_u = 0;
+                // TODO: precheck if item exceed plate bound to speed up branch.
+                // check if item conflict with defect and try to fix it.
+                slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                {
+                    TreeNode node_a1(old, itemId, rotate); // place in defect right(if no defect conflict, slip_r is 0).
+                    node_a1.c3cp = node_a1.c1cpr = slip_r + item.w;
+                    node_a1.c4cp = node_a1.c2cpu = item.h;
+                    node_a1.cut2 = 0;
+                    if (slip_r > old.c1cpr)
+                        node_a1.setFlagBit(FlagBit::DEFECT_R);
+                    if (constraintCheck(old, cur_parsol, node_a1)) {
+                        branch_nodes.push_back(node_a1);
+                    }
+                }
+                if (slip_r > old.c1cpr) { // item conflict with defect(two choice).
+                    slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                    TreeNode node_a2(old, itemId, rotate); // place in defect up.
+                    node_a2.c3cp = node_a2.c1cpr = old.c1cpr + item.w;
+                    node_a2.c4cp = node_a2.c2cpu = slip_u + item.h;
+                    node_a2.cut2 = 0;
+                    node_a2.setFlagBit(FlagBit::DEFECT_U);
+                    if (constraintCheck(old, cur_parsol, node_a2)) {
+                        branch_nodes.push_back(node_a2);
+                    }
+                }
+            }
+        }
+    }
+    // case B, extend c1cpr or place item in a new L2.
+    else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) {
+        for (int rotate = 0; rotate <= 1; ++rotate) {
+            for (int i = 0; i < batch.size(); ++i) {
+                // pretreatment.
+                if (!batch[i].size())continue; // skip empty stack.
+                TID itemId = batch[i].back();
+                Rect item = aux.items[itemId];
+                if (item.w == item.h && rotate)continue; // square item no need to rotate.
+                if (rotate) { // rotate item.
+                    item.w = aux.items[itemId].h;
+                    item.h = aux.items[itemId].w;
+                }
+                // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
+                TLength slip_r = 0, slip_u = 0;
+                // place in the right of old.c1cpr.
+                slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                {
+                    TreeNode node_b1(old, itemId, rotate);
+                    node_b1.c3cp = node_b1.c1cpr = slip_r + item.w;
+                    node_b1.c4cp = item.h;
+                    if (slip_r > old.c1cpr)
+                        node_b1.setFlagBit(FlagBit::DEFECT_R);
+                    if (constraintCheck(old, cur_parsol, node_b1)) {
+                        branch_nodes.push_back(node_b1);
+                    }
+                }
+                if (slip_r > old.c1cpr) {
+                    slip_u = sliptoDefectUp(RectArea(old.c1cpr, old.c2cpu - item.h > input.param.minWasteHeight ?
+                        old.c2cpu - item.h : 0, item.w, item.h), old.plate);
+                    TreeNode node_b2(old, itemId, rotate);
+                    node_b2.c3cp = node_b2.c1cpr = old.c1cpr + item.w;
+                    node_b2.c4cp = slip_u + item.h;
+                    node_b2.setFlagBit(FlagBit::DEFECT_U);
+                    if (constraintCheck(old, cur_parsol, node_b2)) {
+                        branch_nodes.push_back(node_b2);
+                    }
+                }
+                // place in the upper of old.c2cpu.
+                slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                {
+                    TreeNode node_b3(old, itemId, rotate);
+                    node_b3.c2cpb = old.c2cpu;
+                    node_b3.c4cp = node_b3.c2cpu = old.c2cpu + item.h;
+                    node_b3.c3cp = slip_r + item.w;
+                    if (node_b3.c1cpr < node_b3.c3cp)
+                        node_b3.c1cpr = node_b3.c3cp;
+                    ++node_b3.cut2;
+                    if (slip_r > old.c1cpl)
+                        node_b3.setFlagBit(FlagBit::DEFECT_R);
+                    if (constraintCheck(old, cur_parsol, node_b3)) {
+                        branch_nodes.push_back(node_b3);
+                    }
+                }
+                if (slip_r > old.c1cpl) {
+                    slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                    TreeNode node_b4(old, itemId, rotate);
+                    node_b4.c2cpb = old.c2cpu;
+                    node_b4.c4cp = node_b4.c2cpu = slip_u + item.h;
+                    node_b4.c3cp = old.c1cpl + item.w;
+                    if (node_b4.c1cpr < node_b4.c3cp)
+                        node_b4.c1cpr = node_b4.c3cp;
+                    ++node_b4.cut2;
+                    node_b4.setFlagBit(FlagBit::DEFECT_U);
+                    if (constraintCheck(old, cur_parsol, node_b4)) {
+                        branch_nodes.push_back(node_b4);
+                    }
+                }
+            }
+        }
+    }
+    // case C, place item in the old L2 or a new L2 when item extend c1cpr too much.
+    else {
+        for (int rotate = 0; rotate <= 1; ++rotate) {
+            for (int i = 0; i < batch.size(); ++i) {
+                // pretreatment.
+                if (!batch[i].size())continue; // skip empty stack.
+                TID itemId = batch[i].back();
+                Rect item = aux.items[itemId];
+                if (item.w == item.h && rotate)continue; // square item no need to rotate.
+                if (rotate) { // rotate item.
+                    item.w = aux.items[itemId].h;
+                    item.h = aux.items[itemId].w;
+                }
+                // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
+                TLength slip_r = 0, slip_u = 0;
+                // place item in the up of current c4cp.
+                Length last_item_w = old.getFlagBit(FlagBit::ROTATE) ? aux.items[old.item].h : aux.items[old.item].w;
+                if (old.c2cpu > old.c4cp && last_item_w == item.w && !old.getFlagBit(FlagBit::DEFECT_U) &&
+                    ((c2cpu_locked && old.c4cp + item.h == old.c2cpb) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpb)) &&
+                    !sliptoDefectRight(RectArea(old.c3cp - item.w, old.c4cp, item.w, item.h), old.plate)) {
+                    TreeNode node_c1(old, itemId, rotate); // place item in L4 bin.
+                    node_c1.c2cpu = node_c1.c4cp = old.c4cp + item.h;
+                    node_c1.setFlagBit(FlagBit::BIN4);
+                    node_c1.setFlagBit(FlagBit::LOCKC2);
+                    if (constraintCheck(old, cur_parsol, node_c1)) {
+                        branch_nodes.push_back(node_c1);
+                    }
+                    continue;
+                }
+                if (old.c1cpr > old.c3cp) { // place item in the right of current c3cp.
+                    slip_r = sliptoDefectRight(RectArea(old.c3cp, old.c2cpb, item.w, item.h), old.plate);
+                    // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu constraint must meet.
+                    if (!c2cpu_locked || (c2cpu_locked && old.c2cpb + item.h <= old.c2cpu)) {
+                        TreeNode node_c2(old, itemId, rotate);
+                        node_c2.c3cp = slip_r + item.w;
+                        if (node_c2.c1cpr < node_c2.c3cp)
+                            node_c2.c1cpr = node_c2.c3cp;
+                        node_c2.c4cp = old.c2cpb + item.h;
+                        if (slip_r > old.c3cp)
+                            node_c2.setFlagBit(FlagBit::DEFECT_R);
+                        if (c2cpu_locked)
+                            node_c2.setFlagBit(FlagBit::LOCKC2);
+                        if (constraintCheck(old, cur_parsol, node_c2)) {
+                            branch_nodes.push_back(node_c2);
+                        }
+                    }
+                    if (slip_r > old.c3cp) {
+                        slip_u = sliptoDefectUp(RectArea(old.c3cp, old.c2cpu - item.h > old.c2cpb + input.param.minWasteHeight ?
+                            old.c2cpu - item.h : old.c2cpb, item.w, item.h), old.plate);
+                        if (!c2cpu_locked || (c2cpu_locked && slip_u + item.h <= old.c2cpu)) {
+                            TreeNode node_c3(old, itemId, rotate);
+                            node_c3.c3cp = old.c3cp + item.w;
+                            if (node_c3.c1cpr < node_c3.c3cp)
+                                node_c3.c1cpr = node_c3.c3cp;
+                            node_c3.c4cp = item.h + slip_u;
+                            node_c3.setFlagBit(FlagBit::DEFECT_U);
+                            if (c2cpu_locked)
+                                node_c3.setFlagBit(FlagBit::LOCKC2);
+                            if (constraintCheck(old, cur_parsol, node_c3)) {
+                                branch_nodes.push_back(node_c3);
+                            }
+                        }
+                    }
+                }
+                if (old.c3cp + item.w > old.c1cpr) {
+                    bool flag = false;
+                    // creat a new L2 and place item in it.
+                    slip_r = sliptoDefectRight(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                    {
+                        TreeNode node_c4(old, itemId, rotate);
+                        node_c4.c3cp = slip_r + item.w;
+                        if (node_c4.c1cpr < node_c4.c3cp)
+                            node_c4.c1cpr = node_c4.c3cp;
+                        node_c4.c2cpb = old.c2cpu;
+                        node_c4.c4cp = node_c4.c2cpu = old.c2cpu + item.h;
+                        ++node_c4.cut2; // update new L2 id.
+                        if (slip_r > old.c1cpl)
+                            node_c4.setFlagBit(FlagBit::DEFECT_R);
+                        if (constraintCheck(old, cur_parsol, node_c4)) {
+                            branch_nodes.push_back(node_c4);
+                            flag = true;
+                        }
+                    }
+                    if (slip_r > old.c1cpl) {
+                        slip_u = sliptoDefectUp(RectArea(old.c1cpl, old.c2cpu, item.w, item.h), old.plate);
+                        TreeNode node_c5(old, itemId, rotate);
+                        node_c5.c3cp = old.c1cpl + item.w;
+                        if (node_c5.c1cpr < node_c5.c3cp)
+                            node_c5.c1cpr = node_c5.c3cp;
+                        node_c5.c2cpb = old.c2cpu;
+                        node_c5.c4cp = node_c5.c2cpu = slip_u + item.h;
+                        ++node_c5.cut2;
+                        node_c5.setFlagBit(FlagBit::DEFECT_U);
+                        if (constraintCheck(old, cur_parsol, node_c5)) {
+                            branch_nodes.push_back(node_c5);
+                            flag = true;
+                        }
+                    }
+                    if (flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
+                    // creat a new L1 and place item in it.
+                    slip_r = sliptoDefectRight(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                    {
+                        TreeNode node_c6(old, itemId, rotate);
+                        node_c6.c1cpl = old.c1cpr;
+                        node_c6.c3cp = node_c6.c1cpr = item.w + slip_r;
+                        node_c6.c2cpb = 0;
+                        node_c6.c4cp = node_c6.c2cpu = item.h;
+                        if (slip_r > old.c1cpr)
+                            node_c6.setFlagBit(FlagBit::DEFECT_R);
+                        ++node_c6.cut1;
+                        node_c6.cut2 = 0;
+                        if (constraintCheck(old, cur_parsol, node_c6)) {
+                            branch_nodes.push_back(node_c6);
+                        }
+                    }
+                    if (slip_r > old.c1cpr) {
+                        slip_u = sliptoDefectUp(RectArea(old.c1cpr, 0, item.w, item.h), old.plate);
+                        TreeNode node_c7(old, itemId, rotate);
+                        node_c7.c1cpl = old.c1cpr;
+                        node_c7.c3cp = node_c7.c1cpr = old.c1cpr + item.w;
+                        node_c7.c2cpb = 0;
+                        node_c7.c4cp = node_c7.c2cpu = slip_u + item.h;
+                        node_c7.setFlagBit(FlagBit::DEFECT_U);
+                        ++node_c7.cut1;
+                        node_c7.cut2 = 0;
+                        if (constraintCheck(old, cur_parsol, node_c7)) {
+                            branch_nodes.push_back(node_c7);
                         }
                     }
                 }
