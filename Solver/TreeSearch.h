@@ -33,22 +33,17 @@ public:
     };
 
     struct Configuration {
-        //Duration mbst = 3000; // maximum bottom search timeout, unit:millseconds.
         TID mcin = 8; // maximum choose item number.
-        int mtbn = 40; // maximum top branch number.
-        int mhcn = 8; // maximum hopeful 1-cut number.
-        int sfrn = 20; // search forward repeat number.
-        int thread_repeat = 3;
-        double random_rate = 0.40;
-        //int mbsn = 3500000; // maximum bottom search node number.
-        //double abcn = 1.60; // average branch case number.
+        int mbpn = 8; // maximum branch plate number.
+        int mhcn = 3; // maximum hopeful 1-cut number.
+        int rcin = 5; // repeat choose item number.
         String toBriefStr() const {
             std::ostringstream os;
             os << "searchForward"
                 << ";mcin=" << mcin
-                << ";mtbn=" << mtbn
+                << ";mbpn=" << mbpn
                 << ";mhcn=" << mhcn
-                << ";sfrn=" << sfrn;
+                << ";rcin=" << rcin;
             return os.str();
         }
     };
@@ -97,6 +92,11 @@ public:
         const bool getFlagBit(const int bit_pos = FlagBit::ROTATE) const { return flag & (0x0001 << bit_pos); }
     };
 
+    struct PlateSol {
+        Area item_area = 0; // total item area in this plate.
+        List<TreeNode> nodes; // solution nodes in this plate.
+    };
+
     #pragma endregion Type
     
     #pragma region Constructor
@@ -112,15 +112,13 @@ public:
     void record() const;
 protected:
     void init();
-    void lookForwardSearch();
-    void autoAdjustCfg();
     const int estimateDefectNumber(const TreeNode& resume_point, const List<List<TID>>& source_bacth);
-    Length evaluateBranch(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& hopeful_sol);
+    void getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<PlateSol>& psols);
+    void getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, PlateSol& psol);
+    Area evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNode>& hopeful_sol);
     void iteratorImproveWorstPlate();
     void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
-    int randomChooseItems(const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<TID>>& target_batch);
     const int createItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
-    const int createSimilarItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
     double optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     double optimizePlateTail(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void optimizeTotalProblem();
@@ -152,7 +150,6 @@ public:
         List<List<TID>> stacks; // stacks[s][i] is the itemId of the i_th item in the stack s.
         List<List<TID>> plates_x; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect x position.
         List<List<TID>> plates_y; // plates[p][i] is the defectId of the i_th defect on plate p, sorted by defect y position.
-        List<List<TLength>> similar_table; // similarity table of two items.
     } aux;
 
     struct {
@@ -163,15 +160,11 @@ public:
     } idMap;
 
     struct {
-        //size_t explored_nodes = 0;
-        //size_t total_predict_mbsn = 0;
-        //size_t cut_nodes = 0;
-        int fixed_item_num = 0;
         double scrap_rate = 0.0;
         int generation_stamp = 0;
         String toStr() const {
             std::ostringstream os;
-            os << ";fi=" << fixed_item_num
+            os << "sr=" << scrap_rate
                 << ";gs=" << generation_stamp;
             return os.str();
         }
