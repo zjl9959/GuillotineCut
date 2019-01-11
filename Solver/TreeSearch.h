@@ -34,7 +34,7 @@ public:
 
     struct Configuration {
         TID mcin = 8; // maximum choose item number.
-        int mbpn = 8; // maximum branch plate number.
+        int mbpn = 4; // maximum branch plate number.
         int mhcn = 3; // maximum hopeful 1-cut number.
         int rcin = 5; // repeat choose item number.
         String toBriefStr() const {
@@ -92,11 +92,6 @@ public:
         const bool getFlagBit(const int bit_pos = FlagBit::ROTATE) const { return flag & (0x0001 << bit_pos); }
     };
 
-    struct PlateSol {
-        Area item_area = 0; // total item area in this plate.
-        List<TreeNode> nodes; // solution nodes in this plate.
-    };
-
     #pragma endregion Type
     
     #pragma region Constructor
@@ -116,7 +111,7 @@ protected:
     Length evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol);
     void getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<List<TreeNode>>& psols);
     void getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, List<TreeNode>& psol);
-    Area evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNode>& hopeful_sol);
+    Area evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol);
     void iteratorImproveWorstPlate();
     void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
     const int estimateDefectNumber(const TreeNode& resume_point, const List<List<TID>>& source_bacth);

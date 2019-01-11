@@ -20,8 +20,9 @@ namespace szx {
 void TreeSearch::solve() {
     Log(Log::Debug) << "hardware concurrency=" << thread::hardware_concurrency() << endl;
     init();
+    //optimizeTotalProblem();
     //iteratorImproveWorstPlate();
-    optimizeTotalProblem();
+    greedyBranchOptimize();
     toOutput(best_solution);
     info.scrap_rate = getScrapWasteRate(best_solution);
 }
@@ -137,6 +138,7 @@ void TreeSearch::init() {
             return aux.defects[lhs].y < aux.defects[rhs].y; });
     // get hardware support thread numbers.
     support_thread = thread::hardware_concurrency();
+    cfg.mbpn = support_thread;
 }
 
 /* fix one plate every turn. */
@@ -178,6 +180,7 @@ void TreeSearch::greedyBranchOptimize() {
                 fixed_plate.push_back(par_sols[best_index][i]);
                 batch[aux.item2stack[par_sols[best_index][i].item]].pop_back();
             }
+            Log(Log::Debug) << "fix plate:" << cur_plate << endl;
             cur_plate++;
         }
     }
@@ -200,15 +203,17 @@ Length TreeSearch::evaluateOnePlate(const List<List<TID>>& source_batch, const L
         getOptimalPlateSolution(cur_plate, batch, par_sol);
         for (int i = 0; i < par_sol.size(); ++i) {
             comp_sol.push_back(par_sol[i]);
+            batch[aux.item2stack[par_sol[i].item]].pop_back();
         }
         cur_plate++;
     }
     if (comp_sol.size() == aux.items.size()) { // get one complete solution.
-        const Length temp = (comp_sol.back().plate - 1)*input.param.plateWidth + comp_sol.back().c1cpr;
+        const Length temp = comp_sol.back().plate*input.param.plateWidth + comp_sol.back().c1cpr;
         if (temp < best_objective) { // update best solution.
             best_objective = temp;
             best_solution = comp_sol;
             best_usage_rate = (double)total_item_area / (double)(input.param.plateHeight*best_objective);
+            Log(Log::Debug) << "a better obj:" << best_objective << endl;
         }
         return temp;
     } else {
@@ -222,24 +227,30 @@ void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>&
     TreeNode resume_point(-1, plateId, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     // optimize some 1-cuts to creat different solution for this plate.
     List<List<List<TID>>> target_batchs; // batchs for branch.
-    createItemBatchs(psols.size() * 2, resume_point, source_batch, target_batchs);
+    createItemBatchs(psols.size()*2, resume_point, source_batch, target_batchs);
     List<List<TreeNode>> cut1_sols(target_batchs.size()); // branch 1-cut solutions.
+    List<List<List<TID>>> eval_batchs;
     ThreadPool<> tp1;
     for (int i = 0; i < target_batchs.size(); ++i) {
         tp1.push([&, i]() {
             optimizeOneCut(resume_point, target_batchs[i], cut1_sols[i]); });
     }
     tp1.pend();
-    if (timer.isTimeOut()) {
+    if (!target_batchs.size() || timer.isTimeOut()) {
         psols.clear();
         return;
     }
     // evaluate 1-cuts and record the score.
     List<pair<int,Area>> scores(cut1_sols.size());
+    eval_batchs.clear();
+    eval_batchs.resize(cut1_sols.size(), source_batch);
     ThreadPool<> tp2;
     for (int i = 0; i < cut1_sols.size(); ++i) {
+        for (int j = 0; j < cut1_sols[i].size(); ++j) {
+            eval_batchs[i][aux.item2stack[cut1_sols[i][j].item]].pop_back();
+        }
         tp2.push([&, i]() {
-            scores[i] = make_pair(i, evaluateOneCut(source_batch, cut1_sols[i]));
+            scores[i] = make_pair(i, evaluateOneCut(eval_batchs[i], cut1_sols[i]));
         });
     }
     tp2.pend();
@@ -259,11 +270,13 @@ void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>
     List<TreeNode> fixed_1cut; // fixed 1-cuts, size keep growing when search.
     List<List<TID>> batch(source_batch);
     TreeNode resume_point(-1, plateId, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    Area fixed_item_area = 0, best_obj = 0;
+    Area max_item_area = 0;
     List<List<List<TID>>> target_batchs; // batchs for branch.
     List<List<TreeNode>> cut1_sols; // branch 1-cut solutions.
+    List<List<List<TID>>> eval_batchs; // reference for evaluateOneCut.
+    List<List<TreeNode>> eval_sols;
     TID cur_cut1 = 0;
-    while (!timer.isTimeOut()) {
+    while (1) {
         target_batchs.clear();
         // create item batchs and make batchs size be a multiple of supported threads
         if (!createItemBatchs(cfg.mhcn, resume_point, batch, target_batchs)) { // no item to place.
@@ -272,23 +285,37 @@ void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>
         // optimize some 1-cuts.
         cut1_sols.clear();
         cut1_sols.resize(target_batchs.size());
+        bool no_branch_node = true;
         for (int i = 0; i < target_batchs.size(); ++i) {
             optimizeOneCut(resume_point, target_batchs[i], cut1_sols[i]);
+            if (cut1_sols[i].size()) {
+                no_branch_node = false;
+            }
             if (timer.isTimeOut()) {
                 break;
             }
         }
-        if (timer.isTimeOut()) {
+        if (no_branch_node || timer.isTimeOut()) {
             break;
         }
         // evaluate the partial solution's quality.
         int best_index = -1; // best index in hopeful sols.
         Area best_score = 0; // the used items area except fixed items area in this plate.
+        eval_batchs.clear();
+        eval_batchs.resize(cut1_sols.size(), batch);
+        eval_sols.clear();
+        eval_sols.resize(cut1_sols.size(), fixed_1cut);
         for (int i = 0; i < cut1_sols.size(); ++i) {
-            const Area temp = evaluateOneCut(batch, cut1_sols[i]);
-            if (best_score < temp) {
-                best_score = temp;
-                best_index = i;
+            if (cut1_sols[i].size()) {
+                for (int j = 0; j < cut1_sols[i].size(); ++j) {
+                    eval_batchs[i][aux.item2stack[cut1_sols[i][j].item]].pop_back();
+                    eval_sols[i].push_back(cut1_sols[i][j]);
+                }
+                const Area temp = evaluateOneCut(eval_batchs[i], eval_sols[i]);
+                if (best_score < temp) {
+                    best_score = temp;
+                    best_index = i;
+                }
             }
             if (timer.isTimeOut()) {
                 break;
@@ -297,28 +324,19 @@ void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>
         if (best_index >= 0) {
             // pop_back fixed item from batch.
             for (int i = 0; i < cut1_sols[best_index].size(); ++i) {
-                if (cut1_sols[best_index][i].cut1 == cur_cut1) {
-                    fixed_1cut.push_back(cut1_sols[best_index][i]);
-                    batch[aux.item2stack[cut1_sols[best_index][i].item]].pop_back();
-                    fixed_item_area += aux.item_area[cut1_sols[best_index][i].item];
-                } else {
-                    cur_cut1++;
-                    break;
-                }
+                fixed_1cut.push_back(cut1_sols[best_index][i]);
+                batch[aux.item2stack[cut1_sols[best_index][i].item]].pop_back();
             }
+            cur_cut1++;
             // update resume point.
             resume_point = fixed_1cut.back();
             resume_point.c1cpl = resume_point.c1cpr;
             resume_point.c2cpb = resume_point.c2cpu = 0;
             resume_point.cut1++;
             resume_point.depth = -1;
-            // recored the best plate solution.
-            if (fixed_item_area + best_score > best_obj) {
-                best_obj = fixed_item_area + best_score;
-                psol = fixed_1cut;
-                for (int i = 0; i < cut1_sols[best_index].size(); ++i) {
-                    psol.push_back(cut1_sols[best_index][i]);
-                }
+            if (max_item_area < best_score) {
+                max_item_area = best_score;
+                psol = eval_sols[best_index];
             }
         }
     }
@@ -327,21 +345,16 @@ void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>
 /* input:item batch to choose item from, hopeful branch solution.
    continue optimize 1-cut until reach the tail of the plate, and look back to optimze tail.
    output:placed item area in hopeful_sol. */
-Area TreeSearch::evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNode>& hopeful_sol) {
-    TreeNode resume_point = hopeful_sol.back();
+Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
+    TreeNode resume_point = psol.back();
     resume_point.c1cpl = resume_point.c1cpr;
     resume_point.c2cpb = resume_point.c2cpu = 0;
     resume_point.cut1++;
     resume_point.depth = -1;
-    List<List<TID>> batch(source_batch);
-    // remove items in solution from copy_batch.
-    for (int i = 0; i < hopeful_sol.size(); ++i) {
-        batch[aux.item2stack[hopeful_sol[i].item]].pop_back();
-    }
     List<List<List<TID>>> partial_batchs;
     List<TreeNode> best_par_sol;
     List<TreeNode> par_sol;
-    while (timer.isTimeOut()) {
+    while (!timer.isTimeOut()) {
         partial_batchs.clear();
         // create item batchs and make batchs size be a multiple of supported threads
         if (createItemBatchs(cfg.rcin, resume_point, batch, partial_batchs) == 0) {
@@ -365,9 +378,9 @@ Area TreeSearch::evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNo
         if (best_par_sol.size()) {
             for (int i = 0; i < best_par_sol.size(); ++i) {
                 batch[aux.item2stack[best_par_sol[i].item]].pop_back();
-                hopeful_sol.push_back(best_par_sol[i]);
+                psol.push_back(best_par_sol[i]);
             }
-            resume_point = hopeful_sol.back();
+            resume_point = psol.back();
             resume_point.c1cpl = resume_point.c1cpr;
             resume_point.c2cpb = resume_point.c2cpu = 0;
             resume_point.cut1++;
@@ -377,22 +390,22 @@ Area TreeSearch::evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNo
         }
     }
     // look back the last 1-cut.
-    TID last_cut1_id = hopeful_sol.back().cut1;
+    TID last_cut1_id = psol.back().cut1;
     Area tail_item_area = 0;
     double tail_usage_rate = 0.0;
     int last_cut1_index = 0;
-    for (int i = hopeful_sol.size() - 1; i >= 0; --i) {
-        if (hopeful_sol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
-            batch[aux.item2stack[hopeful_sol[i].item]].push_back(hopeful_sol[i].item);
-            tail_item_area += aux.item_area[hopeful_sol[i].item];
+    for (int i = psol.size() - 1; i >= 0; --i) {
+        if (psol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
+            batch[aux.item2stack[psol[i].item]].push_back(psol[i].item);
+            tail_item_area += aux.item_area[psol[i].item];
         } else {
-            resume_point = hopeful_sol[i];
+            resume_point = psol[i];
             resume_point.c1cpl = resume_point.c1cpr;
             resume_point.c2cpb = resume_point.c2cpu = 0;
             resume_point.cut1++;
             resume_point.depth = -1;
-            tail_usage_rate = (double)((input.param.plateWidth -
-                hopeful_sol[i].c1cpr)*input.param.plateHeight) / (double)tail_item_area;
+            tail_usage_rate = (double)tail_item_area /
+                (double)((input.param.plateWidth - psol[i].c1cpr)*input.param.plateHeight);
             last_cut1_index = i;
             break;
         }
@@ -414,14 +427,14 @@ Area TreeSearch::evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNo
         }
     }
     if (best_par_obj > tail_usage_rate) {
-        hopeful_sol.erase(hopeful_sol.begin() + last_cut1_index, hopeful_sol.end());
+        psol.erase(psol.begin() + last_cut1_index, psol.end());
         for (int i = 0; i < best_par_sol.size(); ++i) {
-            hopeful_sol.push_back(best_par_sol[i]);
+            psol.push_back(best_par_sol[i]);
         }
     }
     Area used_item_area = 0; // total item areas in hopeful_sol.
-    for (int i = 0; i < hopeful_sol.size(); ++i) {
-        used_item_area += aux.item_area[hopeful_sol[i].item];
+    for (int i = 0; i < psol.size(); ++i) {
+        used_item_area += aux.item_area[psol[i].item];
     }
     return used_item_area;
 }
