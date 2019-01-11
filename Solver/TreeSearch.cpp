@@ -169,7 +169,7 @@ void TreeSearch::greedyBranchOptimize() {
         Length best_score = input.param.plateWidth*input.param.plateNum;
         int best_index = -1;
         for (int i = 0; i < scores.size(); ++i) {
-            if (best_score < scores[i]) {
+            if (best_score > scores[i]) {
                 best_score = scores[i];
                 best_index = i;
             }
@@ -214,6 +214,7 @@ Length TreeSearch::evaluateOnePlate(const List<List<TID>>& source_batch, const L
             best_solution = comp_sol;
             best_usage_rate = (double)total_item_area / (double)(input.param.plateHeight*best_objective);
             Log(Log::Debug) << "a better obj:" << best_objective << endl;
+            info.generation_stamp = psol.back().plate;
         }
         return temp;
     } else {
@@ -430,6 +431,51 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
         psol.erase(psol.begin() + last_cut1_index, psol.end());
         for (int i = 0; i < best_par_sol.size(); ++i) {
             psol.push_back(best_par_sol[i]);
+        }
+    }
+    // look back last two 1-cut.
+    if (last_cut1_id > 0) {
+        int last_cut2_index = 0;
+        tail_item_area = 0;
+        for (int i = psol.size() - 1; i >= 0; --i) {
+            if (psol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
+                tail_item_area += aux.item_area[psol[i].item];
+            } else if (psol[i].cut1 == last_cut1_id - 1) {
+                batch[aux.item2stack[psol[i].item]].push_back(psol[i].item);
+                tail_item_area += aux.item_area[psol[i].item];
+            } else {
+                resume_point = psol[i];
+                resume_point.c1cpl = resume_point.c1cpr;
+                resume_point.c2cpb = resume_point.c2cpu = 0;
+                resume_point.cut1++;
+                resume_point.depth = -1;
+                tail_usage_rate = (double)tail_item_area /
+                    (double)((input.param.plateWidth - psol[i].c1cpr)*input.param.plateHeight);
+                last_cut2_index = i;
+                break;
+            }
+        }
+        partial_batchs.clear();
+        createItemBatchs(cfg.rcin, resume_point, batch, partial_batchs);
+        best_par_sol.clear();
+        best_par_obj = 0.0;
+        for (int i = 0; i < partial_batchs.size(); ++i) {
+            if (!timer.isTimeOut()) {
+                par_sol.clear();
+                const double rate = optimizePlateTail(resume_point, partial_batchs[i], par_sol);
+                if (best_par_obj < rate) {
+                    best_par_sol = par_sol;
+                    best_par_obj = rate;
+                }
+            } else {
+                break;
+            }
+        }
+        if (best_par_obj > tail_usage_rate) {
+            psol.erase(psol.begin() + last_cut2_index, psol.end());
+            for (int i = 0; i < best_par_sol.size(); ++i) {
+                psol.push_back(best_par_sol[i]);
+            }
         }
     }
     Area used_item_area = 0; // total item areas in hopeful_sol.

@@ -35,11 +35,11 @@ public:
     struct Configuration {
         TID mcin = 8; // maximum choose item number.
         int mbpn = 4; // maximum branch plate number.
-        int mhcn = 3; // maximum hopeful 1-cut number.
+        int mhcn = 10; // maximum hopeful 1-cut number.
         int rcin = 5; // repeat choose item number.
         String toBriefStr() const {
             std::ostringstream os;
-            os << "searchForward"
+            os << "GB2"
                 << ";mcin=" << mcin
                 << ";mbpn=" << mbpn
                 << ";mhcn=" << mhcn
@@ -161,7 +161,7 @@ public:
         int generation_stamp = 0;
         String toStr() const {
             std::ostringstream os;
-            os << "sr=" << scrap_rate
+            os << "sr=" << scrap_rate*100 << "%"
                 << ";gs=" << generation_stamp;
             return os.str();
         }
