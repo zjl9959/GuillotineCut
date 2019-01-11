@@ -112,12 +112,14 @@ public:
     void record() const;
 protected:
     void init();
-    const int estimateDefectNumber(const TreeNode& resume_point, const List<List<TID>>& source_bacth);
-    void getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<PlateSol>& psols);
-    void getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, PlateSol& psol);
+    void greedyBranchOptimize();
+    Length evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol);
+    void getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<List<TreeNode>>& psols);
+    void getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, List<TreeNode>& psol);
     Area evaluateOneCut(const List<List<TID>>& source_batch, List<TreeNode>& hopeful_sol);
     void iteratorImproveWorstPlate();
     void getPlatesUsageRate(const List<TreeNode>& solution, List<double>& usage_rate);
+    const int estimateDefectNumber(const TreeNode& resume_point, const List<List<TID>>& source_bacth);
     const int createItemBatchs(int nums, const TreeNode& resume_point, const List<List<TID>>& source_batch, List<List<List<TID>>>& target_batch);
     double optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     double optimizePlateTail(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);

@@ -21,12 +21,9 @@ void TreeSearch::solve() {
     Log(Log::Debug) << "hardware concurrency=" << thread::hardware_concurrency() << endl;
     init();
     //iteratorImproveWorstPlate();
-    //lookForwardSearch();
     optimizeTotalProblem();
-    if (best_solution.size()) {
-        toOutput(best_solution);
-        info.scrap_rate = getScrapWasteRate(best_solution);
-    }
+    toOutput(best_solution);
+    info.scrap_rate = getScrapWasteRate(best_solution);
 }
 
 void TreeSearch::record() const {
@@ -142,39 +139,86 @@ void TreeSearch::init() {
     support_thread = thread::hardware_concurrency();
 }
 
-/* input:resume point, current batch to choose item from.
-   use item head items to estimate next 1-cut width and calculate
-   the 1-cut contain defects number.
-   output:1-cut contain defects number. */
-const int TreeSearch::estimateDefectNumber(const TreeNode & resume_point, const List<List<TID>>& source_bacth) {
-    Area item_areas = 0;
-    int item_num = 0;
-    // statistic the batch head items areas and item number.
-    for (int i = 0; i < source_bacth.size(); ++i) {
-        if (source_bacth[i].size() > 1) {
-            item_areas += aux.item_area[source_bacth[i].back()];
-            item_areas += aux.item_area[source_bacth[i][source_bacth[i].size() - 2]];
-            item_num += 2;
-        } else if (source_bacth[i].size() == 1) {
-            item_areas += aux.item_area[source_bacth[i].back()];
-            item_num += 1;
+/* fix one plate every turn. */
+void TreeSearch::greedyBranchOptimize() {
+    TID cur_plate = 0; // current optimizing plate identity.
+    List<List<TID>> batch(aux.stacks);
+    List<TreeNode> fixed_plate; // fixed plate soultion nodes.
+    List<List<TreeNode>> par_sols;
+    List<Length> scores;
+    while (fixed_plate.size() < aux.items.size()) {
+        par_sols.clear();
+        par_sols.resize(cfg.mbpn);
+        getSomePlateSolutions(cur_plate, batch, par_sols);
+        if (timer.isTimeOut()) {
+            break;
+        }
+        scores.clear();
+        scores.resize(par_sols.size());
+        // evaluate every plate, use thread pool.
+        ThreadPool<> tp;
+        for (int i = 0; i < par_sols.size(); ++i) {
+            tp.push([&, i]() {
+                scores[i] = evaluateOnePlate(batch, fixed_plate, par_sols[i]);
+            });
+        }
+        tp.pend();
+        // get best index in par_sols.
+        Length best_score = input.param.plateWidth*input.param.plateNum;
+        int best_index = -1;
+        for (int i = 0; i < scores.size(); ++i) {
+            if (best_score < scores[i]) {
+                best_score = scores[i];
+                best_index = i;
+            }
+        }
+        // add item into fixed_plate and pop item from batch.
+        if (best_index >= 0) {
+            for (int i = 0; i < par_sols[best_index].size(); ++i) {
+                fixed_plate.push_back(par_sols[best_index][i]);
+                batch[aux.item2stack[par_sols[best_index][i].item]].pop_back();
+            }
+            cur_plate++;
         }
     }
-    // calculate next 1-cut width and contain defects number.
-    Length width = ((double)item_areas * (double)cfg.mcin) /
-        ((double)input.param.plateHeight * best_usage_rate * (double)item_num);
-    int res = 0;
-    for (auto d : aux.plates_x[resume_point.plate]) {
-        if (aux.defects[d].x > resume_point.c1cpr &&
-            aux.defects[d].x < resume_point.c1cpr + width) {
-            res++;
-        }
-    }
-    return res;
 }
+
+/* input: source batch to choose item, fixed plates solution, evaluating plate's solution.
+   call getOptimalPlateSolution function to get a complete solution and return it's objective. */
+Length TreeSearch::evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol) {
+    TID cur_plate = psol.back().plate + 1;
+    List<TreeNode> comp_sol(fixed_sol);
+    List<List<TID>> batch(source_batch);
+    for (int i = 0; i < psol.size(); ++i) {
+        comp_sol.push_back(psol[i]);
+        batch[aux.item2stack[psol[i].item]].pop_back();
+    }
+    List<TreeNode> par_sol;
+    // go on construct complete solution.
+    while (comp_sol.size() < aux.items.size() && !timer.isTimeOut()) {
+        par_sol.clear();
+        getOptimalPlateSolution(cur_plate, batch, par_sol);
+        for (int i = 0; i < par_sol.size(); ++i) {
+            comp_sol.push_back(par_sol[i]);
+        }
+        cur_plate++;
+    }
+    if (comp_sol.size() == aux.items.size()) { // get one complete solution.
+        const Length temp = (comp_sol.back().plate - 1)*input.param.plateWidth + comp_sol.back().c1cpr;
+        if (temp < best_objective) { // update best solution.
+            best_objective = temp;
+            best_solution = comp_sol;
+            best_usage_rate = (double)total_item_area / (double)(input.param.plateHeight*best_objective);
+        }
+        return temp;
+    } else {
+        return input.param.plateWidth*input.param.plateNum;
+    }
+}
+
 /* input:plate identity, source batch, conatiner list to put solutions(psol.size()>0).
    create different good solutions in one plate, use thread pool in this function. */
-void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<PlateSol>& psols) {
+void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<List<TreeNode>>& psols) {
     TreeNode resume_point(-1, plateId, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     // optimize some 1-cuts to creat different solution for this plate.
     List<List<List<TID>>> target_batchs; // batchs for branch.
@@ -206,17 +250,16 @@ void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>&
         psols.resize(cut1_sols.size());
     }
     for (int i = 0; i < psols.size(); ++i) {
-        psols[i].item_area = scores[i].second;
-        psols[i].nodes = cut1_sols[scores[i].first];
+        psols[i] = cut1_sols[scores[i].first];
     }
 }
 
 /* input:plate identity to optimize, source batch to choose item from, container to put solution. */
-void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, PlateSol& psol) {
+void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, List<TreeNode>& psol) {
     List<TreeNode> fixed_1cut; // fixed 1-cuts, size keep growing when search.
     List<List<TID>> batch(source_batch);
     TreeNode resume_point(-1, plateId, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    Area fixed_item_area = 0;
+    Area fixed_item_area = 0, best_obj = 0;
     List<List<List<TID>>> target_batchs; // batchs for branch.
     List<List<TreeNode>> cut1_sols; // branch 1-cut solutions.
     TID cur_cut1 = 0;
@@ -270,10 +313,11 @@ void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>
             resume_point.cut1++;
             resume_point.depth = -1;
             // recored the best plate solution.
-            if (fixed_item_area + best_score > psol.item_area) {
-                psol.nodes = fixed_1cut;
+            if (fixed_item_area + best_score > best_obj) {
+                best_obj = fixed_item_area + best_score;
+                psol = fixed_1cut;
                 for (int i = 0; i < cut1_sols[best_index].size(); ++i) {
-                    psol.nodes.push_back(cut1_sols[best_index][i]);
+                    psol.push_back(cut1_sols[best_index][i]);
                 }
             }
         }
@@ -503,6 +547,37 @@ void TreeSearch::getPlatesUsageRate(const List<TreeNode>& solution, List<double>
         }
         plate_item_area += aux.item_area[solution[i].item];
     }
+}
+
+/* input:resume point, current batch to choose item from.
+   use item head items to estimate next 1-cut width and calculate
+   the 1-cut contain defects number.
+   output:1-cut contain defects number. */
+const int TreeSearch::estimateDefectNumber(const TreeNode & resume_point, const List<List<TID>>& source_bacth) {
+    Area item_areas = 0;
+    int item_num = 0;
+    // statistic the batch head items areas and item number.
+    for (int i = 0; i < source_bacth.size(); ++i) {
+        if (source_bacth[i].size() > 1) {
+            item_areas += aux.item_area[source_bacth[i].back()];
+            item_areas += aux.item_area[source_bacth[i][source_bacth[i].size() - 2]];
+            item_num += 2;
+        } else if (source_bacth[i].size() == 1) {
+            item_areas += aux.item_area[source_bacth[i].back()];
+            item_num += 1;
+        }
+    }
+    // calculate next 1-cut width and contain defects number.
+    Length width = ((double)item_areas * (double)cfg.mcin) /
+        ((double)input.param.plateHeight * best_usage_rate * (double)item_num);
+    int res = 0;
+    for (auto d : aux.plates_x[resume_point.plate]) {
+        if (aux.defects[d].x > resume_point.c1cpr &&
+            aux.defects[d].x < resume_point.c1cpr + width) {
+            res++;
+        }
+    }
+    return res;
 }
 
 /*input:create batch numbers, resume point, source batch lists, target batch lists.
@@ -1705,6 +1780,8 @@ bool TreeSearch::check(Length & checkerObj) const {
 
 /* return the rate of total waste L1 in every plate. */
 const double TreeSearch::getScrapWasteRate(List<TreeNode>& sol) const {
+    if (sol.size() == 0)
+        return 0.0;
     Length scrap_length = 0;
     TID cur_plate = 0;
     for (int i = 1; i < sol.size(); ++i) {
