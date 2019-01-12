@@ -158,7 +158,7 @@ void TreeSearch::greedyBranchOptimize() {
         scores.clear();
         scores.resize(par_sols.size());
         // evaluate every plate, use thread pool.
-        ThreadPool<> tp;
+        ThreadPool<> tp(support_thread);
         for (int i = 0; i < par_sols.size(); ++i) {
             tp.push([&, i]() {
                 scores[i] = evaluateOnePlate(batch, fixed_plate, par_sols[i]);
@@ -231,7 +231,7 @@ void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>&
     createItemBatchs(psols.size()*2, resume_point, source_batch, target_batchs);
     List<List<TreeNode>> cut1_sols(target_batchs.size()); // branch 1-cut solutions.
     List<List<List<TID>>> eval_batchs;
-    ThreadPool<> tp1;
+    ThreadPool<> tp1(support_thread);
     for (int i = 0; i < target_batchs.size(); ++i) {
         tp1.push([&, i]() {
             optimizeOneCut(resume_point, target_batchs[i], cut1_sols[i]); });
@@ -245,7 +245,7 @@ void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>&
     List<pair<int,Area>> scores(cut1_sols.size());
     eval_batchs.clear();
     eval_batchs.resize(cut1_sols.size(), source_batch);
-    ThreadPool<> tp2;
+    ThreadPool<> tp2(support_thread);
     for (int i = 0; i < cut1_sols.size(); ++i) {
         for (int j = 0; j < cut1_sols[i].size(); ++j) {
             eval_batchs[i][aux.item2stack[cut1_sols[i][j].item]].pop_back();
@@ -394,47 +394,49 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
     TID last_cut1_id = psol.back().cut1;
     Area tail_item_area = 0;
     double tail_usage_rate = 0.0;
-    int last_cut1_index = 0;
-    for (int i = psol.size() - 1; i >= 0; --i) {
-        if (psol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
-            batch[aux.item2stack[psol[i].item]].push_back(psol[i].item);
-            tail_item_area += aux.item_area[psol[i].item];
-        } else {
-            resume_point = psol[i];
-            resume_point.c1cpl = resume_point.c1cpr;
-            resume_point.c2cpb = resume_point.c2cpu = 0;
-            resume_point.cut1++;
-            resume_point.depth = -1;
-            tail_usage_rate = (double)tail_item_area /
-                (double)((input.param.plateWidth - psol[i].c1cpr)*input.param.plateHeight);
-            last_cut1_index = i;
-            break;
-        }
-    }
-    partial_batchs.clear();
-    createItemBatchs(cfg.rcin, resume_point, batch, partial_batchs);
-    best_par_sol.clear();
-    double best_par_obj = 0.0;
-    for (int i = 0; i < partial_batchs.size(); ++i) {
-        if (!timer.isTimeOut()) {
-            par_sol.clear();
-            const double rate = optimizePlateTail(resume_point, partial_batchs[i], par_sol);
-            if (best_par_obj < rate) {
-                best_par_sol = par_sol;
-                best_par_obj = rate;
+    if (last_cut1_id > 0) {
+        int last_cut1_index = 0;
+        for (int i = psol.size() - 1; i >= 0; --i) {
+            if (psol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
+                batch[aux.item2stack[psol[i].item]].push_back(psol[i].item);
+                tail_item_area += aux.item_area[psol[i].item];
+            } else {
+                resume_point = psol[i];
+                resume_point.c1cpl = resume_point.c1cpr;
+                resume_point.c2cpb = resume_point.c2cpu = 0;
+                resume_point.cut1++;
+                resume_point.depth = -1;
+                tail_usage_rate = (double)tail_item_area /
+                    (double)((input.param.plateWidth - psol[i].c1cpr)*input.param.plateHeight);
+                last_cut1_index = i;
+                break;
             }
-        } else {
-            break;
         }
-    }
-    if (best_par_obj > tail_usage_rate) {
-        psol.erase(psol.begin() + last_cut1_index, psol.end());
-        for (int i = 0; i < best_par_sol.size(); ++i) {
-            psol.push_back(best_par_sol[i]);
+        partial_batchs.clear();
+        createItemBatchs(cfg.rcin, resume_point, batch, partial_batchs);
+        best_par_sol.clear();
+        double best_par_obj = 0.0;
+        for (int i = 0; i < partial_batchs.size(); ++i) {
+            if (!timer.isTimeOut()) {
+                par_sol.clear();
+                const double rate = optimizePlateTail(resume_point, partial_batchs[i], par_sol);
+                if (best_par_obj < rate) {
+                    best_par_sol = par_sol;
+                    best_par_obj = rate;
+                }
+            } else {
+                break;
+            }
+        }
+        if (best_par_obj > tail_usage_rate) {
+            psol.erase(psol.begin() + last_cut1_index + 1, psol.end());
+            for (int i = 0; i < best_par_sol.size(); ++i) {
+                psol.push_back(best_par_sol[i]);
+            }
         }
     }
     // look back last two 1-cut.
-    if (last_cut1_id > 0) {
+    if (last_cut1_id > 1) {
         int last_cut2_index = 0;
         tail_item_area = 0;
         for (int i = psol.size() - 1; i >= 0; --i) {
@@ -458,7 +460,7 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
         partial_batchs.clear();
         createItemBatchs(cfg.rcin, resume_point, batch, partial_batchs);
         best_par_sol.clear();
-        best_par_obj = 0.0;
+        double best_par_obj = 0.0;
         for (int i = 0; i < partial_batchs.size(); ++i) {
             if (!timer.isTimeOut()) {
                 par_sol.clear();
@@ -472,7 +474,7 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
             }
         }
         if (best_par_obj > tail_usage_rate) {
-            psol.erase(psol.begin() + last_cut2_index, psol.end());
+            psol.erase(psol.begin() + last_cut2_index + 1, psol.end());
             for (int i = 0; i < best_par_sol.size(); ++i) {
                 psol.push_back(best_par_sol[i]);
             }
