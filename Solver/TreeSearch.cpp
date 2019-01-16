@@ -18,15 +18,12 @@ namespace szx {
 
 #pragma region Interface
 void TreeSearch::solve() {
-    Log(Log::Debug) << "hardware concurrency=" << thread::hardware_concurrency() << endl;
     init();
     adjustConfigure();
     greedyBranchOptimize();
     if (timer.elapsedSeconds() < 10.0) {
-        Log(Log::Debug) << "optTotalProblem" << endl;
         optimizeTotalProblem();
     } else {
-        Log(Log::Debug) << "iteratorImprove" << endl;
         iteratorImproveWorstPlate();
     }
     toOutput(best_solution);
@@ -192,9 +189,6 @@ void TreeSearch::greedyBranchOptimize() {
             //Log(Log::Debug) << "fix plate:" << cur_plate << endl;
             cur_plate++;
         }
-        if (generation == 0) {
-            Log(Log::Debug) << timer.elapsedSeconds() << endl;
-        }
         ++generation;
     }
 }
@@ -220,7 +214,7 @@ void TreeSearch::adjustConfigure() {
         }
     }
     plate_1cut_num[cur_plate] = best_solution.back().cut1 + 1; // last plate.
-    Log(Log::Debug) << "minimum configure used time: " << used_time << endl;
+    //Log(Log::Debug) << "minimum configure used time: " << used_time << endl;
     double time_unit = used_time / estimateOptOneCutNum(cfg.mhcn, cfg.rcin, plate_1cut_num);
     const double time_limit_ub = timer.restSeconds()*0.5;
     Configuration best_cfg(8, support_thread, 1, 1);
@@ -245,8 +239,10 @@ void TreeSearch::adjustConfigure() {
         }
     }
     cfg = best_cfg;
+    /*
     Log(Log::Debug) << cfg.toBriefStr() << " "
         << (int)(estimateOptOneCutNum(cfg.mhcn,cfg.rcin,plate_1cut_num)*time_unit) << endl;
+    */
 }
 
 /* call this function after get a complete solution. */
@@ -923,6 +919,7 @@ void TreeSearch::optimizeTotalProblem() {
     TID left_item_num = aux.items.size(); // left item number in the batch.
     Area left_item_area = total_item_area;
     List<List<TID>> batch(aux.stacks);
+    size_t explored_nodes = 0;
     Stack<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_sol, branch_nodes;
     Depth pre_depth = -1; // last node depth.
@@ -932,6 +929,7 @@ void TreeSearch::optimizeTotalProblem() {
         live_nodes.push(branch_nodes[i]);
     while (live_nodes.size()) {
         TreeNode node = live_nodes.back();
+        explored_nodes++;
         live_nodes.pop();
         if (getLowBound(node, left_item_area) > best_objective) {
             continue;
@@ -975,7 +973,7 @@ void TreeSearch::optimizeTotalProblem() {
             }
         }
         pre_depth = node.depth;
-        if (left_item_num == 0) { // find a complate solution.
+        if (!left_item_num) { // find a complate solution.
             int cur_obj = 0;
             for (TreeNode solnode : cur_sol) {
                 if (cur_obj < solnode.plate*input.param.plateWidth + solnode.c1cpr) {
@@ -992,6 +990,9 @@ void TreeSearch::optimizeTotalProblem() {
             if (timer.isTimeOut()) {
                 break;
             }
+        }
+        if (explored_nodes % 100000 == 0 && timer.isTimeOut()) {
+            break;
         }
     }
 }
