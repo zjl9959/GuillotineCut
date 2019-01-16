@@ -33,10 +33,10 @@ public:
     };
 
     struct Configuration {
-        TID mcin = 8; // maximum choose item number.
-        int mbpn = 4; // maximum branch plate number.
-        int mhcn = 10; // maximum hopeful 1-cut number.
-        int rcin = 5; // repeat choose item number.
+        TID mcin; // maximum choose item number.
+        int mbpn; // maximum branch plate number.
+        int mhcn; // maximum hopeful 1-cut number.
+        int rcin; // repeat choose item number.
         String toBriefStr() const {
             std::ostringstream os;
             os << "GB2"
@@ -46,6 +46,7 @@ public:
                 << ";rcin=" << rcin;
             return os.str();
         }
+        Configuration(TID MCIN = 8, int MBPN = 4, int MHCN = 1, int RCIN = 1) :mcin(MCIN), mbpn(MBPN), mhcn(MHCN), rcin(RCIN) {}
     };
 
     struct Rect {
@@ -108,7 +109,9 @@ public:
 protected:
     void init();
     void greedyBranchOptimize();
-    Length evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol);
+    void adjustConfigure();
+    int estimateOptOneCutNum(int mhcn, int rcin, List<int>& plate_1cut_num);
+    Length evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol, TID cur_plate);
     void getSomePlateSolutions(const TID plateId, const List<List<TID>>& source_batch, List<List<TreeNode>>& psols);
     void getOptimalPlateSolution(const TID plateId, const List<List<TID>>& source_batch, List<TreeNode>& psol);
     Area evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol);

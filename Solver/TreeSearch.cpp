@@ -20,9 +20,15 @@ namespace szx {
 void TreeSearch::solve() {
     Log(Log::Debug) << "hardware concurrency=" << thread::hardware_concurrency() << endl;
     init();
-    //optimizeTotalProblem();
-    //iteratorImproveWorstPlate();
+    adjustConfigure();
     greedyBranchOptimize();
+    if (timer.elapsedSeconds() < 10.0) {
+        Log(Log::Debug) << "optTotalProblem" << endl;
+        optimizeTotalProblem();
+    } else {
+        Log(Log::Debug) << "iteratorImprove" << endl;
+        iteratorImproveWorstPlate();
+    }
     toOutput(best_solution);
     info.scrap_rate = getScrapWasteRate(best_solution);
 }
@@ -36,7 +42,10 @@ void TreeSearch::record() const {
 
     Length obj = output.totalWidth * input.param.plateHeight - total_item_area;
     Length checkerObj = -1;
-    bool feasible = check(checkerObj);
+    bool feasible = 0;
+    if (output.nodes.size()) {
+        feasible = check(checkerObj);
+    }
 
     // record basic information.
     log << env.friendlyLocalTime() << ","
@@ -161,7 +170,7 @@ void TreeSearch::greedyBranchOptimize() {
         ThreadPool<> tp(support_thread);
         for (int i = 0; i < par_sols.size(); ++i) {
             tp.push([&, i]() {
-                scores[i] = evaluateOnePlate(batch, fixed_plate, par_sols[i]);
+                scores[i] = evaluateOnePlate(batch, fixed_plate, par_sols[i], cur_plate + 1);
             });
         }
         tp.pend();
@@ -180,16 +189,80 @@ void TreeSearch::greedyBranchOptimize() {
                 fixed_plate.push_back(par_sols[best_index][i]);
                 batch[aux.item2stack[par_sols[best_index][i].item]].pop_back();
             }
-            Log(Log::Debug) << "fix plate:" << cur_plate << endl;
+            //Log(Log::Debug) << "fix plate:" << cur_plate << endl;
+            cur_plate++;
+        }
+        if (generation == 0) {
+            Log(Log::Debug) << timer.elapsedSeconds() << endl;
+        }
+        ++generation;
+    }
+}
+
+/* first create a solution to evalute minimum time used and adjust configure according to time. */
+void TreeSearch::adjustConfigure() {
+    // set minimum configure.
+    cfg.mhcn = 1;
+    cfg.rcin = 1;
+    // create first complete solution.
+    evaluateOnePlate(aux.stacks, List<TreeNode>(), List<TreeNode>(), 0);
+    double used_time = timer.elapsedSeconds();
+    if (best_solution.size() == 0) // make sure program can exit.
+        return;
+    // statistic every plate's 1-cut number.
+    List<int> plate_1cut_num(best_solution.back().plate + 1);
+    List<int> cut1_defect_num;
+    TID cur_plate = 0;
+    for (int i = 0; i < best_solution.size(); ++i) {
+        if (cur_plate != best_solution[i].plate) {
+            plate_1cut_num[cur_plate] = best_solution[i - 1].cut1 + 1;
             cur_plate++;
         }
     }
+    plate_1cut_num[cur_plate] = best_solution.back().cut1 + 1; // last plate.
+    Log(Log::Debug) << "minimum configure used time: " << used_time << endl;
+    double time_unit = used_time / estimateOptOneCutNum(cfg.mhcn, cfg.rcin, plate_1cut_num);
+    const double time_limit_ub = timer.restSeconds()*0.5;
+    Configuration best_cfg(8, support_thread, 1, 1);
+    double best_cfg_obj = 0.0; // best_cfg_obj = ln(mhcn) + ln(rcin).
+    for (int i = 1; i <= 30; ++i) {
+        for (int j = 1; j <= 30; ++j) {
+            const double estimate_cfgtime =
+                time_unit * estimateOptOneCutNum(i, j, plate_1cut_num);
+            if (estimate_cfgtime < time_limit_ub) { // create next complete solution used time not exceed time_limit_ub.
+                const double cur_obj = log(i) + log(j);
+                if ((cur_obj - best_cfg_obj) > 0.0001) {
+                    best_cfg_obj = cur_obj;
+                    best_cfg.mhcn = i;
+                    best_cfg.rcin = j;
+                } else if (abs(cur_obj - best_cfg_obj) < 0.0001 &&
+                    j > i && j - i < best_cfg.rcin - best_cfg.mhcn) {
+                    best_cfg_obj = cur_obj;
+                    best_cfg.mhcn = i;
+                    best_cfg.rcin = j;
+                }
+            }
+        }
+    }
+    cfg = best_cfg;
+    Log(Log::Debug) << cfg.toBriefStr() << " "
+        << (int)(estimateOptOneCutNum(cfg.mhcn,cfg.rcin,plate_1cut_num)*time_unit) << endl;
+}
+
+/* call this function after get a complete solution. */
+int TreeSearch::estimateOptOneCutNum(int mhcn, int rcin, List<int>& plate_1cut_num) {
+    int res = 0;
+    for (int i = 0; i < plate_1cut_num.size(); ++i) {
+        for (int j = 1; j <= plate_1cut_num[i]; ++j) {
+            res += (mhcn + (plate_1cut_num[i] - j + min(2, plate_1cut_num[i] - j)) * rcin * mhcn);
+        }
+    }
+    return res;
 }
 
 /* input: source batch to choose item, fixed plates solution, evaluating plate's solution.
    call getOptimalPlateSolution function to get a complete solution and return it's objective. */
-Length TreeSearch::evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol) {
-    TID cur_plate = psol.back().plate + 1;
+Length TreeSearch::evaluateOnePlate(const List<List<TID>>& source_batch, const List<TreeNode>& fixed_sol, const List<TreeNode>& psol, TID cur_plate) {
     List<TreeNode> comp_sol(fixed_sol);
     List<List<TID>> batch(source_batch);
     for (int i = 0; i < psol.size(); ++i) {
@@ -210,11 +283,13 @@ Length TreeSearch::evaluateOnePlate(const List<List<TID>>& source_batch, const L
     if (comp_sol.size() == aux.items.size()) { // get one complete solution.
         const Length temp = comp_sol.back().plate*input.param.plateWidth + comp_sol.back().c1cpr;
         if (temp < best_objective) { // update best solution.
+            static mutex best_sol_mutex;
+            lock_guard<mutex> guard(best_sol_mutex);
             best_objective = temp;
             best_solution = comp_sol;
             best_usage_rate = (double)total_item_area / (double)(input.param.plateHeight*best_objective);
             Log(Log::Debug) << "a better obj:" << best_objective << endl;
-            info.generation_stamp = psol.back().plate;
+            info.generation_stamp = generation;
         }
         return temp;
     } else {
@@ -347,6 +422,8 @@ void TreeSearch::getOptimalPlateSolution(const TID plateId, const List<List<TID>
    continue optimize 1-cut until reach the tail of the plate, and look back to optimze tail.
    output:placed item area in hopeful_sol. */
 Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
+    if (psol.size() == 0)
+        return 0;
     TreeNode resume_point = psol.back();
     resume_point.c1cpl = resume_point.c1cpr;
     resume_point.c2cpb = resume_point.c2cpu = 0;
@@ -355,6 +432,7 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
     List<List<List<TID>>> partial_batchs;
     List<TreeNode> best_par_sol;
     List<TreeNode> par_sol;
+    int creat1cut_num = 0;
     while (!timer.isTimeOut()) {
         partial_batchs.clear();
         // create item batchs and make batchs size be a multiple of supported threads
@@ -386,6 +464,7 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
             resume_point.c2cpb = resume_point.c2cpu = 0;
             resume_point.cut1++;
             resume_point.depth = -1;
+            creat1cut_num++;
         } else { // no place to put item in this plate.
             break;
         }
@@ -394,7 +473,7 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
     TID last_cut1_id = psol.back().cut1;
     Area tail_item_area = 0;
     double tail_usage_rate = 0.0;
-    if (last_cut1_id > 0) {
+    if (creat1cut_num >= 1) {
         int last_cut1_index = 0;
         for (int i = psol.size() - 1; i >= 0; --i) {
             if (psol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
@@ -436,11 +515,11 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
         }
     }
     // look back last two 1-cut.
-    if (last_cut1_id > 1) {
+    if (creat1cut_num >= 2) {
         int last_cut2_index = 0;
         tail_item_area = 0;
         for (int i = psol.size() - 1; i >= 0; --i) {
-            if (psol[i].cut1 == last_cut1_id) { // push last 1-cut's item into batch.
+            if (psol[i].cut1 >= last_cut1_id) { // push last 1-cut's item into batch.
                 tail_item_area += aux.item_area[psol[i].item];
             } else if (psol[i].cut1 == last_cut1_id - 1) {
                 batch[aux.item2stack[psol[i].item]].push_back(psol[i].item);
@@ -491,9 +570,9 @@ Area TreeSearch::evaluateOneCut(List<List<TID>>& batch, List<TreeNode>& psol) {
 void TreeSearch::iteratorImproveWorstPlate() {
     const TID total_item_num = input.batch.size();
     TreeNode resume_point(-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-    List<TreeNode> cmp_sol; // complete solution.
+    List<TreeNode> cmp_sol = best_solution; // complete solution.
     List<List<TID>> batch = aux.stacks;
-    TID left_items = total_item_num;
+    TID left_items = total_item_num - cmp_sol.size();
     TID cur_plate = 0;
     List<int> tabu_restart_plate;
     while (!timer.isTimeOut()) {
@@ -541,8 +620,7 @@ void TreeSearch::iteratorImproveWorstPlate() {
             if (best_objective > cur_obj) {
                 best_objective = cur_obj;
                 best_solution = cmp_sol;
-                Log(Log::Debug) << "a better obj: " << cur_obj
-                                 << " on generation " << generation << endl;
+                Log(Log::Debug) << "a better obj: " << cur_obj << endl;
             }
             List<double> plate_usage_rate;
             getPlatesUsageRate(cmp_sol, plate_usage_rate);
@@ -648,10 +726,12 @@ const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, c
     int target_batchs_num = 0;
     int try_num = 0;
     CombinationCache comb_cache;
+    /*
     // auto adjust nums according to defect number.
     if (estimateDefectNumber(resume_point, source_batch) > 1) {
         nums *= 2;
     }
+    */
     vector<bool> items_set(aux.items.size(), false);
     while (target_batchs_num < nums && try_num < nums) {
         List<List<TID>> temp_batch(source_batch.size());
@@ -907,6 +987,7 @@ void TreeSearch::optimizeTotalProblem() {
                 best_solution = cur_sol;
                 best_usage_rate = (double)total_item_area /
                     (double)(best_objective*input.param.plateHeight);
+                Log(Log::Debug) << "a better obj: " << cur_obj << endl;
             }
             if (timer.isTimeOut()) {
                 break;
@@ -1630,6 +1711,9 @@ const Length TreeSearch::getLowBound(const TreeNode & cur_node, Area left_item_a
 
 // this function convert TreeNode type solution into output type .
 void TreeSearch::toOutput(List<TreeNode> &sol) {
+    if (sol.size() == 0) {
+        return;
+    }
     using SpecialType = Problem::Output::Node::SpecialType;
     const TLength PW = input.param.plateWidth, PH = input.param.plateHeight;
     // define current plate/cut1/cut2 identity in solution node.
