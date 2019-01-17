@@ -10,7 +10,7 @@
 #include <cassert>
 
 #include "LogSwitch.h"
-#include "../Simulator/ThreadPool.h"
+#include "ThreadPool.h"
 
 using namespace std;
 
@@ -76,6 +76,124 @@ void TreeSearch::record() const {
     #endif // SZX_DEBUG
 }
 #pragma endregion Interface
+
+#pragma region Solver::Cli
+int TreeSearch::Cli::run(int argc, char * argv[]) {
+    Log(LogSwitch::Szx::Cli) << "parse command line arguments." << endl;
+    Set<String> switchSet;
+    Map<String, char*> optionMap({ // use string as key to compare string contents instead of pointers.
+        { InstancePathOption(), nullptr },
+        { SolutionPathOption(), nullptr },
+        { RandSeedOption(), nullptr },
+        { TimeoutOption(), nullptr },
+        { MaxIterOption(), nullptr },
+        { JobNumOption(), nullptr },
+        { RunIdOption(), nullptr },
+        { EnvironmentPathOption(), nullptr },
+        { ConfigPathOption(), nullptr },
+        { LogPathOption(), nullptr }
+        });
+
+    for (int i = 1; i < argc; ++i) {    // skip executable name.
+        auto mapIter = optionMap.find(argv[i]);
+        if (mapIter != optionMap.end()) { // option argument.
+            mapIter->second = argv[++i];
+        } else { // switch argument.
+            switchSet.insert(argv[i]);
+        }
+    }
+
+    Log(LogSwitch::Szx::Cli) << "execute commands." << endl;
+
+    if (switchSet.find(AuthorNameSwitch()) != switchSet.end()) {
+        cout << AuthorName() << endl;
+    }
+
+    TreeSearch::Environment env;
+    env.load(optionMap);
+    if (env.instName.empty() || env.slnPath.empty()) { return -1; }
+
+    //Solver::Configuration cfg;
+    //cfg.load(env.cfgPath);
+
+    TreeSearch::Configuration tcfg;
+
+    Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
+    Problem::Input input;
+    if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
+
+    TreeSearch tsolver(input, env, tcfg);
+    tsolver.solve();
+    tsolver.output.save(env.solutionPath());
+    #if SZX_DEBUG
+    tsolver.output.save(env.solutionPathWithTime());
+    tsolver.record();
+    #endif
+
+    return 0;
+}
+#pragma endregion Solver::Cli
+
+#pragma region Solver::Environment
+void TreeSearch::Environment::load(const Map<String, char*> &optionMap) {
+    char *str;
+
+    str = optionMap.at(Cli::EnvironmentPathOption());
+    if (str != nullptr) { loadWithoutCalibrate(str); }
+
+    str = optionMap.at(Cli::InstancePathOption());
+    if (str != nullptr) { instName = str; }
+
+    str = optionMap.at(Cli::SolutionPathOption());
+    if (str != nullptr) { slnPath = str; }
+
+    str = optionMap.at(Cli::RandSeedOption());
+    if (str != nullptr) { randSeed = atoi(str); }
+
+    str = optionMap.at(Cli::TimeoutOption());
+    if (str != nullptr) { msTimeout = static_cast<Duration>(atof(str) * Timer::MillisecondsPerSecond); }
+
+    str = optionMap.at(Cli::MaxIterOption());
+    if (str != nullptr) { maxIter = atoi(str); }
+
+    str = optionMap.at(Cli::JobNumOption());
+    if (str != nullptr) { jobNum = atoi(str); }
+
+    str = optionMap.at(Cli::RunIdOption());
+    if (str != nullptr) { rid = str; }
+
+    str = optionMap.at(Cli::ConfigPathOption());
+    if (str != nullptr) { cfgPath = str; }
+
+    str = optionMap.at(Cli::LogPathOption());
+    if (str != nullptr) { logPath = str; }
+
+    calibrate();
+}
+
+void TreeSearch::Environment::load(const String &filePath) {
+    loadWithoutCalibrate(filePath);
+    calibrate();
+}
+
+void TreeSearch::Environment::loadWithoutCalibrate(const String &filePath) {
+    // EXTEND[szx][8]: load environment from file.
+    // EXTEND[szx][8]: check file existence first.
+}
+
+void TreeSearch::Environment::save(const String &filePath) const {
+    // EXTEND[szx][8]: save environment to file.
+}
+
+void TreeSearch::Environment::calibrate() {
+    // adjust thread number.
+    int threadNum = thread::hardware_concurrency();
+    if ((jobNum <= 0) || (jobNum > threadNum)) { jobNum = threadNum; }
+
+    // adjust timeout.
+    msTimeout -= Environment::SaveSolutionTimeInMillisecond;
+}
+#pragma endregion Solver::Environment
 
 #pragma region Achievement
 void TreeSearch::init() {

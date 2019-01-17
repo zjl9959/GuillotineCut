@@ -1,13 +1,7 @@
-///////////////////////////
-///usage: the tree search algorithm for the problem.
-///
-//////////////////////////
-
-#ifndef SMART_SZX_GUILLOTINE_CUT_TREESEARCH_H
-#define SMART_SZX_GUILLOTINE_CUT_TREESEARCH_H
+#ifndef SMART_ZJL_GUILLOTINE_CUT_TREESEARCH_H
+#define SMART_ZJL_GUILLOTINE_CUT_TREESEARCH_H
 
 #include "Config.h"
-#include "Solver.h"
 
 #include <algorithm>
 #include <chrono>
@@ -30,6 +24,102 @@ public:
         DEFECT_U = 2, // item placed in defect upper
         BIN4 = 3, // two items placed in the same L3
         LOCKC2 = 4, // c2cpu can't move
+    };
+
+    // commmand line interface.
+    struct Cli {
+        static constexpr int MaxArgLen = 256;
+        static constexpr int MaxArgNum = 32;
+
+        static String InstancePathOption() { return "-p"; }
+        static String SolutionPathOption() { return "-o"; }
+        static String RandSeedOption() { return "-s"; }
+        static String TimeoutOption() { return "-t"; }
+        static String MaxIterOption() { return "-i"; }
+        static String JobNumOption() { return "-j"; }
+        static String RunIdOption() { return "-rid"; }
+        static String EnvironmentPathOption() { return "-env"; }
+        static String ConfigPathOption() { return "-cfg"; }
+        static String LogPathOption() { return "-log"; }
+
+        static String AuthorNameSwitch() { return "-name"; }
+        static String HelpSwitch() { return "-h"; }
+
+        static String AuthorName() { return "J29"; }
+
+        // a dummy main function.
+        static int run(int argc, char *argv[]);
+    };
+
+    // describe the requirements to the input and output data interface.
+    struct Environment {
+        static constexpr int DefaultTimeout = (1 << 30);
+        static constexpr int DefaultMaxIter = (1 << 30);
+        static constexpr int DefaultJobNum = 0;
+        // preserved time for IO in the total given time.
+        static constexpr int SaveSolutionTimeInMillisecond = 1000;
+
+        static constexpr Duration RapidModeTimeoutThreshold = 600 * static_cast<Duration>(Timer::MillisecondsPerSecond);
+
+        static String BatchSuffix() { return "_batch.csv"; }
+        static String DefectsSuffix() { return "_defects.csv"; }
+        static String SolutionSuffix() { return "_solution.csv"; }
+
+        static String DefaultInstanceDir() { return "Instance/"; }
+        static String DefaultSolutionDir() { return "Solution/"; }
+        static String DefaultVisualizationDir() { return "Visualization/"; }
+        static String DefaultEnvPath() { return "env.csv"; }
+        static String DefaultCfgPath() { return "cfg.csv"; }
+        static String DefaultLogPath() { return "log.csv"; }
+
+        Environment(const String &instanceName, const String &solutionPath,
+            int randomSeed = Random::generateSeed(), double timeoutInSecond = DefaultTimeout,
+            Iteration maxIteration = DefaultMaxIter, int jobNumber = DefaultJobNum, String runId = "",
+            const String &cfgFilePath = DefaultCfgPath(), const String &logFilePath = DefaultLogPath())
+            : instName(instanceName), slnPath(solutionPath), randSeed(randomSeed),
+            msTimeout(static_cast<Duration>(timeoutInSecond * Timer::MillisecondsPerSecond)), maxIter(maxIteration),
+            jobNum(jobNumber), rid(runId), cfgPath(cfgFilePath), logPath(logFilePath), localTime(Timer::getTightLocalTime()) {}
+        Environment() : Environment("", "") {}
+
+        void load(const Map<String, char*> &optionMap);
+        void load(const String &filePath);
+        void loadWithoutCalibrate(const String &filePath);
+        void save(const String &filePath) const;
+
+        void calibrate(); // adjust job number and timeout to fit the platform.
+
+        String batchPath() const { return instName + BatchSuffix(); }
+        String defectsPath() const { return instName + DefectsSuffix(); }
+        String solutionPath() const { return slnPath; }
+        String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
+
+        String visualizPath() const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + ".html"; }
+        template<typename T>
+        String visualizPath(const T &msg) const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + "." + std::to_string(msg) + ".html"; }
+        String friendlyInstName() const { // friendly to file system (without special char).
+            auto pos = instName.find_last_of('/');
+            return (pos == String::npos) ? instName : instName.substr(pos + 1);
+        }
+        String friendlyLocalTime() const { // friendly to human.
+            return localTime.substr(0, 4) + "-" + localTime.substr(4, 2) + "-" + localTime.substr(6, 2)
+                + "_" + localTime.substr(8, 2) + ":" + localTime.substr(10, 2) + ":" + localTime.substr(12, 2);
+        }
+
+        // essential information.
+        String instName;
+        String slnPath;
+        int randSeed;
+        Duration msTimeout;
+
+        // optional information. highly recommended to set in benchmark.
+        Iteration maxIter;
+        int jobNum; // number of solvers working at the same time.
+        String rid; // the id of each run.
+        String cfgPath;
+        String logPath;
+
+        // auto-generated data.
+        String localTime;
     };
 
     struct Configuration {
@@ -97,7 +187,7 @@ public:
     
     #pragma region Constructor
 public:
-    TreeSearch(const Problem::Input &inputData, const Solver::Environment &environment, const Configuration &config)
+    TreeSearch(const Problem::Input &inputData, const Environment &environment, const Configuration &config)
         : input(inputData), env(environment), cfg(config), rand(environment.randSeed),
         timer(std::chrono::milliseconds(environment.msTimeout)) {}
     #pragma endregion Constructor
@@ -171,7 +261,7 @@ public:
     } info;
 
     Configuration cfg;
-    Solver::Environment env;
+    Environment env;
     List<TreeNode> best_solution;
     Length best_objective = input.param.plateNum*input.param.plateWidth;
     double best_usage_rate = 1.0;
@@ -187,4 +277,4 @@ public:
 
 }
 
-#endif // SMART_SZX_GUILLOTINE_CUT_TREESEARCH_H
+#endif // SMART_ZJL_GUILLOTINE_CUT_TREESEARCH_H

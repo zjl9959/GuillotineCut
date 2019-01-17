@@ -166,11 +166,8 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="CsvReader.h" />
     <ClInclude Include="LogSwitch.h" />
-    <ClInclude Include="MpSolver.h" />
-    <ClInclude Include="MpSolverBase.h" />
-    <ClInclude Include="MpSolverGurobi.h" />
     <ClInclude Include="Problem.h" />
-    <ClInclude Include="Solver.h" />
+    <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="TreeSearch.h" />
     <ClInclude Include="Utility.h" />
     <ClInclude Include="Visualizer.h" />
@@ -178,9 +175,7 @@
   <ItemGroup>
     <ClCompile Include="CsvReader.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="MpSolverGurobi.cpp" />
     <ClCompile Include="Problem.cpp" />
-    <ClCompile Include="Solver.cpp" />
     <ClCompile Include="TreeSearch.cpp" />
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>

@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="MpSolver">
-      <UniqueIdentifier>{03cafa1a-df1d-41ea-96a2-d91015646e8f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utility">
       <UniqueIdentifier>{055c2123-2986-4f4b-8231-a75a9a9a2ba5}</UniqueIdentifier>
     </Filter>
@@ -30,15 +27,6 @@
     <ClInclude Include="LogSwitch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MpSolverGurobi.h">
-      <Filter>MpSolver</Filter>
-    </ClInclude>
-    <ClInclude Include="MpSolverBase.h">
-      <Filter>MpSolver</Filter>
-    </ClInclude>
-    <ClInclude Include="MpSolver.h">
-      <Filter>MpSolver</Filter>
-    </ClInclude>
     <ClInclude Include="Utility.h">
       <Filter>Utility</Filter>
     </ClInclude>
@@ -48,13 +36,13 @@
     <ClInclude Include="Problem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Solver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Visualizer.h">
       <Filter>Utility</Filter>
     </ClInclude>
     <ClInclude Include="TreeSearch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,17 +50,11 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MpSolverGurobi.cpp">
-      <Filter>MpSolver</Filter>
-    </ClCompile>
     <ClCompile Include="Utility.cpp">
       <Filter>Utility</Filter>
     </ClCompile>
     <ClCompile Include="CsvReader.cpp">
       <Filter>Utility</Filter>
-    </ClCompile>
-    <ClCompile Include="Solver.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Problem.cpp">
       <Filter>Source Files</Filter>

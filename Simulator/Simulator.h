@@ -12,13 +12,13 @@
 #include <string>
 #include <vector>
 
-#include "../Solver/Solver.h"
+#include "../Solver/TreeSearch.h"
 
 
 namespace szx {
 
-using Cmd = Solver::Cli;
-using Env = Solver::Environment;
+using Cmd = TreeSearch::Cli;
+using Env = TreeSearch::Environment;
 
 class Simulator {
     #pragma region Type
