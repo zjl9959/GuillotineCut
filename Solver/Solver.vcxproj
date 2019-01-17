@@ -170,7 +170,6 @@
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="TreeSearch.h" />
     <ClInclude Include="Utility.h" />
-    <ClInclude Include="Visualizer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CsvReader.cpp" />

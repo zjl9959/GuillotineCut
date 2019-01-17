@@ -36,9 +36,6 @@
     <ClInclude Include="Problem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Visualizer.h">
-      <Filter>Utility</Filter>
-    </ClInclude>
     <ClInclude Include="TreeSearch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
