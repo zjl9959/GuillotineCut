@@ -113,9 +113,6 @@ int TreeSearch::Cli::run(int argc, char * argv[]) {
     env.load(optionMap);
     if (env.instName.empty() || env.slnPath.empty()) { return -1; }
 
-    //Solver::Configuration cfg;
-    //cfg.load(env.cfgPath);
-
     TreeSearch::Configuration tcfg;
 
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
@@ -334,7 +331,7 @@ void TreeSearch::adjustConfigure() {
     plate_1cut_num[cur_plate] = best_solution.back().cut1 + 1; // last plate.
     //Log(Log::Debug) << "minimum configure used time: " << used_time << endl;
     double time_unit = used_time / estimateOptOneCutNum(cfg.mhcn, cfg.rcin, plate_1cut_num);
-    const double time_limit_ub = timer.restSeconds()*0.5;
+    const double time_limit_ub = timer.restSeconds()*0.6;
     Configuration best_cfg(8, support_thread, 1, 1);
     double best_cfg_obj = 0.0; // best_cfg_obj = ln(mhcn) + ln(rcin).
     for (int i = 1; i <= 30; ++i) {
@@ -356,11 +353,7 @@ void TreeSearch::adjustConfigure() {
             }
         }
     }
-    cfg = best_cfg;
-    /*
-    Log(Log::Debug) << cfg.toBriefStr() << " "
-        << (int)(estimateOptOneCutNum(cfg.mhcn,cfg.rcin,plate_1cut_num)*time_unit) << endl;
-    */
+    cfg = best_cfg; // set cfg.
 }
 
 /* call this function after get a complete solution. */
@@ -911,7 +904,7 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
     double best_obj = -0.1;
     Stack<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
-    size_t explored_nodes = 0, cut_nodes = 0;
+    //size_t explored_nodes = 0, cut_nodes = 0;
     Depth pre_depth = -1; // last node depth.
     List<TreeNode> branch_nodes;
     partialBranch(resume_point, batch, cur_parsol, branch_nodes);
@@ -920,11 +913,11 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
     while (live_nodes.size()) {
         TreeNode node = live_nodes.back();
         live_nodes.pop();
-        explored_nodes++;
+        //explored_nodes++;
         const double usage_rate_lb =
             (double)batch_item_area / (double)((node.c1cpr - resume_point.c1cpl)*input.param.plateHeight);
         if (usage_rate_lb < best_obj) {
-            cut_nodes++;
+            //cut_nodes++;
             continue;
         }
         if (node.depth - pre_depth == 1) { // search forward.
@@ -955,9 +948,11 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
                 best_parsol = cur_parsol;
             }
         }
+        /*
         if (explored_nodes % 100000 == 0 && timer.isTimeOut()) {
             break;
         }
+        */
     }
     for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
         solution.push_back(best_parsol[i]);
@@ -979,7 +974,7 @@ double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TI
     Area min_waste = tail_area;
     Stack<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
-    size_t explored_nodes = 0;
+    //size_t explored_nodes = 0;
     Depth pre_depth = -1; // last node depth.
     List<TreeNode> branch_nodes;
     totalBranch(resume_point, batch, cur_parsol, branch_nodes);
@@ -988,7 +983,7 @@ double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TI
     while (live_nodes.size()) {
         TreeNode node = live_nodes.back();
         live_nodes.pop();
-        explored_nodes++;
+        //explored_nodes++;
         const Area cur_waste_area = (node.c1cpl - resume_point.c1cpl)*input.param.plateHeight
             + node.c2cpb*(node.c1cpr - node.c1cpl) + (node.c3cp - node.c1cpl)*(node.c2cpu - node.c2cpb) - used_item_area;
         if (cur_waste_area > min_waste) {
@@ -1023,9 +1018,11 @@ double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TI
                 min_waste = tail_area - tail_item_area;
             }
         }
+        /*
         if (explored_nodes % 100000 == 0 && timer.isTimeOut()) {
             break;
         }
+        */
     }
     for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
         solution.push_back(best_parsol[i]);
