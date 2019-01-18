@@ -212,7 +212,7 @@ protected:
     double optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     double optimizePlateTail(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution);
     void optimizeTotalProblem();
-    void partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
+    bool partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     void totalBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes);
     const bool constraintCheck(const TreeNode &old, const List<TreeNode> &cur_parsol, TreeNode &node);
     const TCoord sliptoDefectRight(const RectArea &area, const TID plate) const;
