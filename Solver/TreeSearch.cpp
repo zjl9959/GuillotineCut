@@ -21,9 +21,8 @@ void TreeSearch::solve() {
     init();
     adjustConfigure();
     greedyBranchOptimize();
-    //iteratorImproveWorstPlate();
+    iteratorImproveWorstPlate();
     toOutput(best_solution);
-    info.scrap_rate = getScrapWasteRate(best_solution);
 }
 
 void TreeSearch::record() const {
@@ -327,7 +326,7 @@ void TreeSearch::adjustConfigure() {
     plate_1cut_num[cur_plate] = best_solution.back().cut1 + 1; // last plate.
     //Log(Log::Debug) << "minimum configure used time: " << used_time << endl;
     double time_unit = used_time / estimateOptOneCutNum(cfg.mhcn, cfg.rcin, plate_1cut_num);
-    const double time_limit_ub = timer.restSeconds()*0.5;
+    const double time_limit_ub = timer.restSeconds()*0.6;
     Configuration best_cfg(8, support_thread, 1, 1);
     double best_cfg_obj = 0.0; // best_cfg_obj = ln(mhcn) + ln(rcin).
     for (int i = 1; i <= 30; ++i) {
@@ -740,7 +739,7 @@ void TreeSearch::iteratorImproveWorstPlate() {
                     wrost_usage_rate = plate_usage_rate[i];
                 }
             }
-            tabu_restart_plate[wrost_plate_id] = generation + rand.pick(tabu_restart_plate.size()*0.5);
+            tabu_restart_plate[wrost_plate_id] = generation + rand.pick(tabu_restart_plate.size());
             // restart optimize from wrost plate's previous plate.
             cur_plate = wrost_plate_id ? wrost_plate_id - 1 : 0;
             int erase_index = 0;
@@ -885,7 +884,7 @@ const int TreeSearch::createItemBatchs(int nums, const TreeNode &resume_point, c
 double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> &batch, List<TreeNode> &solution) {
     Area batch_item_area = 0;
     Area used_item_area = 0; // current used items area.
-    size_t explore_nodes = 0;
+    int see_timeout = 100000;
     List<TID> item2batch(input.batch.size());
     for (int i = 0; i < batch.size(); ++i) {
         for (auto item : batch[i]) {
@@ -932,10 +931,13 @@ double TreeSearch::optimizeOneCut(const TreeNode &resume_point, List<List<TID>> 
                 best_parsol = cur_parsol;
             }
         }
-        if (explore_nodes % 1000000 == 0 && timer.isTimeOut()) {
-            break;
+        if (see_timeout > 0) {
+            if (timer.isTimeOut())
+                break;
+            else
+                see_timeout = 100000;
         }
-        ++explore_nodes;
+        --see_timeout;
     }
     for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
         solution.push_back(best_parsol[i]);
@@ -954,7 +956,7 @@ double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TI
             item2batch[item] = i;
         }
     }
-    size_t explore_nodes = 0;
+    int see_timeout = 100000;
     Area min_waste = tail_area;
     List<TreeNode> live_nodes; // the tree nodes to be branched.
     List<TreeNode> cur_parsol, best_parsol; // current partial solution, best partial solution.
@@ -992,10 +994,13 @@ double TreeSearch::optimizePlateTail(const TreeNode & resume_point, List<List<TI
                 min_waste = tail_area - used_item_area;
             }
         }
-        if (explore_nodes % 1000000 == 0 && timer.isTimeOut()) {
-            break;
+        if (see_timeout > 0) {
+            if (timer.isTimeOut())
+                break;
+            else
+                see_timeout = 100000;
         }
-        ++explore_nodes;
+        --see_timeout;
     }
     for (int i = 0; i < best_parsol.size(); ++i) { // record this turn's best partial solution.
         solution.push_back(best_parsol[i]);
@@ -1644,6 +1649,26 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
                 }
             } else { // the leftover defects is in the right of c1cpr.
                 break;
+            }
+        }
+        if (moved_cut1) {
+            if (defectConflictArea(RectArea(
+                node.c1cpl, node.c2cpb, node.c1cpr - node.c1cpl, 0), node.plate)) {
+                return false;
+            }
+            TID temp_cut2 = node.cut2;
+            for (int i = cur_parsol.size() - 1; i >= 0; --i) {
+                if (cur_parsol[i].cut1 == node.cut1 && cur_parsol[i].plate == node.plate) {
+                    if (cur_parsol[i].cut2 != temp_cut2) {
+                        if (defectConflictArea(RectArea(
+                            node.c1cpl, cur_parsol[i].c2cpb, node.c1cpr - node.c1cpl, 0), node.plate)) {
+                            return false;
+                        }
+                        temp_cut2--;
+                    }
+                } else {
+                    break;
+                }
             }
         }
     }
