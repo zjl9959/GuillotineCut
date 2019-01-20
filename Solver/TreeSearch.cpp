@@ -1628,23 +1628,22 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
             moved_cut2 = true;
         }
     }
-    // check c3cp not cut through defect if item placed in defect up.
-    if (node.getFlagBit(FlagBit::DEFECT_U)) {
-        for (int i = 0; i < aux.plates_x[node.plate].size(); ++i) {
-            RectArea defect = aux.defects[aux.plates_x[node.plate][i]];
-            if (defect.x > node.c3cp) {
-                break;
-            }
-            if (node.c3cp < defect.x + defect.w
-                && node.c2cpb < defect.y + defect.h && node.c2cpu > defect.y) {
-                return false;
-            }
+    RectArea defect;
+    // check c3cp not cut through defect.
+    for (int i = 0; i < aux.plates_x[node.plate].size(); ++i) {
+        defect = aux.defects[aux.plates_x[node.plate][i]];
+        if (defect.x > node.c3cp) {
+            break;
+        }
+        if (node.c3cp < defect.x + defect.w
+            && node.c2cpb < defect.y + defect.h && node.c2cpu > defect.y) {
+            return false;
         }
     }
     // check not cut through defect constraint and try to fix it.
     if (moved_cut1 || old.c1cpr != node.c1cpr) {
         for (int i = 0; i < aux.plates_x[node.plate].size(); ++i) {
-            RectArea defect = aux.defects[aux.plates_x[node.plate][i]];
+            defect = aux.defects[aux.plates_x[node.plate][i]];
             if (defect.x <= node.c1cpr) {
                 if (defect.x + defect.w > node.c1cpr) { // c1cpr cut through defect.
                     if (defect.x + defect.w - node.c1cpr < input.param.minWasteWidth) {
@@ -1652,6 +1651,7 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
                             node.c1cpr += input.param.minWasteWidth;
                         else
                             node.c1cpr = defect.x + defect.w; // move c1cpr -> defect right side to satisfy the constraint.
+                        moved_cut1 = true;
                     } else {
                         return false;
                     }
@@ -1683,7 +1683,7 @@ const bool TreeSearch::constraintCheck(const TreeNode &old, const List<TreeNode>
     }
     if (moved_cut2 || old.c2cpu != node.c2cpu || old.c1cpr != node.c1cpr) {
         for (int i = 0; i < aux.plates_y[node.plate].size(); ++i) {
-            RectArea defect = aux.defects[aux.plates_y[node.plate][i]];
+            defect = aux.defects[aux.plates_y[node.plate][i]];
             if (defect.y < node.c2cpu) {
                 if (defect.y + defect.h > node.c2cpu
                     && node.c1cpl < defect.x + defect.w && node.c1cpr > defect.x) { // c2cpu cut through defect.
