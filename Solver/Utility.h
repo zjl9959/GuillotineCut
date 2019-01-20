@@ -533,10 +533,10 @@ public:
         On,
         Off, // the default state if not specified.
 
-        Fatal = On,
-        Error = On,
-        Warning = On,
-        Debug = On,
+        Fatal = Off,
+        Error = Off,
+        Warning = Off,
+        Debug = Off,
         Info, // = Off.
     };
 

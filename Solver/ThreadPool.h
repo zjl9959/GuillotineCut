@@ -233,15 +233,14 @@ public:
 
 // [NoReturnValueRetrieval][NotExceptionSafe]
 // [AutoStart][AutoPend][ManualStop]
-template<typename ThreadPoolImpl = impl::ThreadPool::QueueImpl>
-class ThreadPool : public ThreadPoolImpl {
+class ThreadPool : public impl::ThreadPool::QueueImpl {
 public:
-    ThreadPool(int threadNum) : ThreadPoolImpl(threadNum) { start(); }
+    ThreadPool(int threadNum) : impl::ThreadPool::QueueImpl(threadNum) { start(); }
     ThreadPool() : ThreadPool(getDefaultWorkerNum()) {}
     virtual ~ThreadPool() { pend(); }
 
 
-    using ThreadPoolImpl::push;
+    using impl::ThreadPool::QueueImpl::push;
     // avoid copying function objects. the const reference can be handled automatically.
     template<typename Functor>
     void push(Functor &newJob) { push(std::ref(newJob)); } // or use `push([&newJob]() { newJob(); });`.

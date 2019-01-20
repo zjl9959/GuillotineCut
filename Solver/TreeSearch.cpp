@@ -274,7 +274,7 @@ void TreeSearch::greedyBranchOptimize() {
         scores.clear();
         scores.resize(par_sols.size());
         // evaluate every plate, use thread pool.
-        ThreadPool<> tp(support_thread);
+        ThreadPool tp(support_thread);
         for (int i = 0; i < par_sols.size(); ++i) {
             tp.push([&, i]() {
                 scores[i] = evaluateOnePlate(batch, fixed_plate, par_sols[i], cur_plate + 1);
@@ -326,7 +326,7 @@ void TreeSearch::adjustConfigure() {
     plate_1cut_num[cur_plate] = best_solution.back().cut1 + 1; // last plate.
     //Log(Log::Debug) << "minimum configure used time: " << used_time << endl;
     double time_unit = used_time / estimateOptOneCutNum(cfg.mhcn, cfg.rcin, plate_1cut_num);
-    const double time_limit_ub = timer.restSeconds()*0.6;
+    const double time_limit_ub = timer.restSeconds()*0.5;
     Configuration best_cfg(8, support_thread, 1, 1);
     double best_cfg_obj = 0.0; // best_cfg_obj = ln(mhcn) + ln(rcin).
     for (int i = 1; i <= 30; ++i) {
@@ -408,7 +408,7 @@ void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>&
     createItemBatchs(psols.size()*2, resume_point, source_batch, target_batchs);
     List<List<TreeNode>> cut1_sols(target_batchs.size()); // branch 1-cut solutions.
     List<List<List<TID>>> eval_batchs;
-    ThreadPool<> tp1(support_thread);
+    ThreadPool tp1(support_thread);
     for (int i = 0; i < target_batchs.size(); ++i) {
         tp1.push([&, i]() {
             optimizeOneCut(resume_point, target_batchs[i], cut1_sols[i]); });
@@ -422,7 +422,7 @@ void TreeSearch::getSomePlateSolutions(const TID plateId, const List<List<TID>>&
     List<pair<int,Area>> scores(cut1_sols.size());
     eval_batchs.clear();
     eval_batchs.resize(cut1_sols.size(), source_batch);
-    ThreadPool<> tp2(support_thread);
+    ThreadPool tp2(support_thread);
     for (int i = 0; i < cut1_sols.size(); ++i) {
         for (int j = 0; j < cut1_sols[i].size(); ++j) {
             eval_batchs[i][aux.item2stack[cut1_sols[i][j].item]].pop_back();
@@ -1096,7 +1096,7 @@ void TreeSearch::optimizeTotalProblem() {
 */// output:push branched nodes into branch_nodes.
 bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch, const List<TreeNode> &cur_parsol, List<TreeNode> &branch_nodes) {
     const bool c2cpu_locked = old.getFlagBit(FlagBit::LOCKC2); // status: current c2cpu was locked.
-    bool res = false;
+    bool res = true;
     // case A, place item in a new L1.
     if (old.c2cpu == 0) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
@@ -1140,6 +1140,7 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                 }
             }
         }
+        res = false;
     }
     // case B, extend c1cpr or place item in a new L2.
     else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) {
@@ -1211,6 +1212,7 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                 }
             }
         }
+        res = false;
     }
     // case C, place item in the old L2 or a new L2 when item extend c1cpr too much.
     else {
@@ -1238,6 +1240,7 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                     node_c1.setFlagBit(FlagBit::LOCKC2);
                     if (constraintCheck(old, cur_parsol, node_c1)) {
                         branch_nodes.push_back(node_c1);
+                        res = false;
                     }
                     continue;
                 }
@@ -1256,8 +1259,8 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                             node_c2.setFlagBit(FlagBit::LOCKC2);
                         if (constraintCheck(old, cur_parsol, node_c2)) {
                             branch_nodes.push_back(node_c2);
-                            if (node_c2.c1cpr > old.c1cpr) {
-                                res = true;
+                            if (node_c2.c1cpr == old.c1cpr) {
+                                res = false;
                             }
                         }
                     }
@@ -1275,8 +1278,8 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                                 node_c3.setFlagBit(FlagBit::LOCKC2);
                             if (constraintCheck(old, cur_parsol, node_c3)) {
                                 branch_nodes.push_back(node_c3);
-                                if (node_c3.c1cpr > old.c1cpr) {
-                                    res = true;
+                                if (node_c3.c1cpr == old.c1cpr) {
+                                    res = false;
                                 }
                             }
                         }
@@ -1297,6 +1300,9 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                             node_c4.setFlagBit(FlagBit::DEFECT_R);
                         if (constraintCheck(old, cur_parsol, node_c4)) {
                             branch_nodes.push_back(node_c4);
+                            if (node_c4.c1cpr == old.c1cpr) {
+                                res = false;
+                            }
                         }
                     }
                     if (slip_r > old.c1cpl) {
@@ -1311,6 +1317,9 @@ bool TreeSearch::partialBranch(const TreeNode &old, const List<List<TID>> &batch
                         node_c5.setFlagBit(FlagBit::DEFECT_U);
                         if (constraintCheck(old, cur_parsol, node_c5)) {
                             branch_nodes.push_back(node_c5);
+                            if (node_c5.c1cpr == old.c1cpr) {
+                                res = false;
+                            }
                         }
                     }
                 }
