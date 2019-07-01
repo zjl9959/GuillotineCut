@@ -251,3 +251,4 @@ ModelManifest.xml
 /Deploy/Visualization/*.html
 /Deploy/Log
 /Deploy/log*.csv
+/Lib/gurobi/lib/*.lib
