@@ -9,12 +9,14 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="algorithm">
+      <UniqueIdentifier>{49780e5d-020a-4f1a-8d7f-553aed1a57c6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utility">
-      <UniqueIdentifier>{055c2123-2986-4f4b-8231-a75a9a9a2ba5}</UniqueIdentifier>
+    <Filter Include="algorithm\head">
+      <UniqueIdentifier>{ea7d104c-ce10-4749-864d-c47d2c2c9b85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="algorithm\source">
+      <UniqueIdentifier>{19ea94ba-5cdb-4564-bcbf-807167018158}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -27,36 +29,57 @@
     <ClInclude Include="LogSwitch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Utility.h">
-      <Filter>Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="CsvReader.h">
-      <Filter>Utility</Filter>
-    </ClInclude>
     <ClInclude Include="Problem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TreeSearch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ThreadPool.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CutSearch.h">
+      <Filter>algorithm\head</Filter>
+    </ClInclude>
+    <ClInclude Include="PlateSearch.h">
+      <Filter>algorithm\head</Filter>
+    </ClInclude>
+    <ClInclude Include="Solver.h">
+      <Filter>algorithm\head</Filter>
+    </ClInclude>
+    <ClInclude Include="TopSearch.h">
+      <Filter>algorithm\head</Filter>
+    </ClInclude>
+    <ClInclude Include="Algorithm.h">
+      <Filter>algorithm\head</Filter>
+    </ClInclude>
+    <ClInclude Include="CsvReader.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utility.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utility.cpp">
-      <Filter>Utility</Filter>
-    </ClCompile>
-    <ClCompile Include="CsvReader.cpp">
-      <Filter>Utility</Filter>
-    </ClCompile>
     <ClCompile Include="Problem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TreeSearch.cpp">
+    <ClCompile Include="CutSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="PlateSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="TopSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Solver.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="Utility.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CsvReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

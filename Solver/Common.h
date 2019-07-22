@@ -32,13 +32,15 @@ using TCoord = TLength;
 // the unit of area size
 using Area = int;
 // the unit of status or flag
-using Status = short;
+using Status = unsigned short;
 // the unit of elapsed computational time.
 using Duration = int;
 // number of neighborhood moves in local search.
 using Iteration = int;
 // the depth of tree node (no lager than item numbers[800])
 using Depth = short;
+// the score of the tree node
+using Score = double;
 
 template<typename T>
 using List = std::vector<T>;

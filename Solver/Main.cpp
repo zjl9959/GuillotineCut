@@ -1,5 +1,5 @@
-#include "TreeSearch.h"
+#include "Solver.h"
 
 int main(int argc, char *argv[]) {
-    return szx::TreeSearch::Cli::run(argc, argv);
+    return szx::Cli::run(argc, argv);
 }
