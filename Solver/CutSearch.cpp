@@ -4,7 +4,7 @@ using namespace std;
 
 namespace szx {
 
-bool CutSearch::dfs(List<List<TID>>& batch, CutNode& sol, bool opt_tail, Score gap) {
+Score CutSearch::dfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_tail, Score gap) {
     Area batch_item_area = 0;
     Area used_item_area = 0; // current used items area.
     const Area tail_area = (GV::param.plateWidth - start_pos_)*GV::param.plateHeight;
@@ -18,8 +18,8 @@ bool CutSearch::dfs(List<List<TID>>& batch, CutNode& sol, bool opt_tail, Score g
         }
     }
 
-    double best_obj = 0.0;
-    double best_ub = 0.0;
+    Score best_obj = 0.0;
+    Score best_ub = 0.0;
     List<ItemNode> live_nodes; // the tree nodes to be branched.
     List<ItemNode> cur_parsol; // current partial solution, best partial solution.
     List<ItemNode> best_parsol;
@@ -32,7 +32,7 @@ bool CutSearch::dfs(List<List<TID>>& batch, CutNode& sol, bool opt_tail, Score g
     while (live_nodes.size()) {
         ItemNode node = live_nodes.back();
         live_nodes.pop_back();
-        double ub = (double)batch_item_area / (double)((node.c1cpr - resume_point.c1cpl)*GV::param.plateHeight);
+        Score ub = (double)batch_item_area / (double)((node.c1cpr - resume_point.c1cpl)*GV::param.plateHeight);
         if (best_ub < ub) best_ub = ub;
         if (ub < best_obj) continue;
         
@@ -56,7 +56,7 @@ bool CutSearch::dfs(List<List<TID>>& batch, CutNode& sol, bool opt_tail, Score g
         pre_depth = node.depth;
         if (old_live_nodes_size == live_nodes.size()) { // fill a complate 1-cut.
             TLength cur_width = cur_parsol.back().c1cpr - start_pos_;
-            double cur_obj = 0.0;
+            Score cur_obj = 0.0;
             if (opt_tail)
                 cur_obj = (double)used_item_area / (double)tail_area;
             else
@@ -77,17 +77,18 @@ bool CutSearch::dfs(List<List<TID>>& batch, CutNode& sol, bool opt_tail, Score g
         --see_timeout;
     }
     if (!best_parsol.empty()) {
-        sol.width = best_parsol.back().c1cpr - start_pos_;
-        sol.usage_rate = best_obj;
-        sol.add_solution_nodes(best_parsol);
-        return true;
+        sol.clear();
+        sol.reserve(best_parsol.size());
+        for (auto it = best_parsol.begin(); it != best_parsol.end(); ++it)
+            sol.push_back(*it);
+        return best_obj;
     }
-    return false;
+    return 0.0;
 }
 
-bool CutSearch::pfs(List<List<TID>>& batch, CutNode & sol, bool opt_tail, Score gap) {
+Score CutSearch::pfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_tail, Score gap) {
     // [zjl][TODO]: add pfs implement.
-    return false;
+    return 0.0;
 }
 
 void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<ItemNode> &branch_nodes, bool opt_tail) {

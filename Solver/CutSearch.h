@@ -12,8 +12,8 @@ class CutSearch {
 public:
     CutSearch(const TID plate, const TCoord start_pos) :
         defect_x_(GV::plate_defect_x[plate]), defect_y_(GV::plate_defect_y[plate]), start_pos_(start_pos) {}
-    bool dfs(List<List<TID>> &batch, CutNode &sol, bool opt_tail = false, Score gap = 0.0);
-    bool pfs(List<List<TID>> &batch, CutNode &sol, bool opt_tail = false, Score gap = 0.0);
+    Score dfs(List<List<TID>> &batch, List<SolutionNode> &sol, bool opt_tail = false, Score gap = 0.0);
+    Score pfs(List<List<TID>> &batch, List<SolutionNode> &sol, bool opt_tail = false, Score gap = 0.0);
 private:
     void branch(const ItemNode &old, const List<List<TID>> &batch, List<ItemNode> &branch_nodes, bool opt_tail = false);
     const bool constraintCheck(const ItemNode &old, ItemNode &node);

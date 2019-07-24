@@ -2,9 +2,5 @@
 
 namespace szx {
 
-PlateSearch::PlateSearch() {}
-
-
-PlateSearch::~PlateSearch() {}
 
 }
