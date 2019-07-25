@@ -48,6 +48,10 @@ public:
         }
     }
 
+    const List<SolutionNode>& get_solution_nodes() {
+        return partial_solution;
+    }
+
     void update_state(Status _state) { state |= state; }
     bool get_state(Status _flagbit) const { return state & _flagbit; }
 protected:
@@ -73,8 +77,15 @@ private:
 
 class PlateSearch {
 public:
-    PlateSearch() {};
-    ~PlateSearch() {};
+    PlateSearch(Random &rand, Timer &timer, TID plate) :
+        rand_(rand), timer_(timer), plate_(plate) {};
+    Score mcts(List<List<TID>> &batch, List<SolutionNode> &sol, int max_iter = 10000);
+protected:
+    bool gen_item_sequence(int seq_len, MCTNode *node, List<List<TID>> &batch, List<TID> &seq);
+private:
+    Random &rand_;
+    Timer &timer_;
+    TID plate_;
 };
 
 }
