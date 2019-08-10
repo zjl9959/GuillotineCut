@@ -4,7 +4,7 @@
 
 #include "CutSearch.h"
 
-using namespace szx;
+namespace szx{
 
 class MCTNode { // monte-carlo tree node.
 public:
@@ -81,21 +81,25 @@ public:
 		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate) {};
     Score mcts(List<List<TID>> &batch, List<SolutionNode> &sol, int max_iter = 10000);
 	
-	void branchOnePlate(int try_num, int real_num, const List<MyStack>& source_batch, List<MySolution>& psols);
-	void optimizeOnePlate(const List<MyStack>& source_batch, MySolution & psol);
+	void branchAndGetSomePlateSols(int try_num, int real_num, const List<MyStack>& source_batch, List<MySolution>& plate_sols);
+	void optimizeOnePlate(const List<MyStack>& source_batch, MySolution & plate_sol);
 
 protected:
     bool getItemSequence(int seq_len, MCTNode *node, List<List<TID>> &batch, List<TID> &seq);
-	int createItemBatchs(int nums, const SolutionNode & resume_point, const List<MyStack>& source_batch, List<List<MyStack>> &target_batchs);
-	ScorePair getBestTargetSol(int nums, const SolutionNode & resume_point, const List<MyStack>& source_batch, List<List<MyStack>>& target_batchs, List<MySolution>& target_sols, bool tail=false);
+	void createItemBatchs(int nums, const SolutionNode & resume_point, const List<MyStack>& source_batch, List<List<MyStack>> &target_batchs);
+	ScorePair branchAndGetBestOneCutSol(int nums, const SolutionNode & resume_point, const List<MyStack>& source_batch, List<List<MyStack>>& target_batchs, List<MySolution>& target_sols, bool tail=false);
 	Area evaluateOneCut(List<MyStack>& batch, MySolution & psol);
 	
 private:
-	Configuration cfg_;
+	Configuration &cfg_;
     Random &rand_;
     Timer &timer_;
     TID plate_;
+
+public:
+	static constexpr ScorePair InvalidPair = std::make_pair(-1, 0.0);
 };
 
+}
 
 #endif // !SMART_ZJL_GUILLOTINECUT_PLATESEARCH_H

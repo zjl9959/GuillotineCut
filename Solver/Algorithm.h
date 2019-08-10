@@ -79,17 +79,17 @@ struct ItemNode : public SolutionNode {
 struct Configuration {
 	int mcin; // maximum choose item number.
 	int mbpn; // maximum branch plate number.
-	int mhcn; // maximum hopeful 1-cut number.
+	int mbcn; // maximum branch 1-cut number.
 	String toBriefStr() const {
 		std::ostringstream os;
 		os << "GB2"
 			<< ";mcin=" << mcin
 			<< ";mbpn=" << mbpn
-			<< ";mhcn=" << mhcn;
+			<< ";mbcn=" << mbcn;
 		return os.str();
 	}
 	Configuration(int MCIN = 8, int MBPN = 4, int MHCN = 1) :
-		mcin(MCIN), mbpn(MBPN), mhcn(MHCN) {}
+		mcin(MCIN), mbpn(MBPN), mbcn(MHCN) {}
 };
 
 namespace GV {  // global variables
@@ -112,15 +112,15 @@ using AreaPair = std::pair<int, Area>;
 using LengthPair = std::pair<int, Length>;
 
 struct MyStack {
-	int begin;
-	int end;
-	MyStack(int b, int e) : begin(b), end(e) {}
+	TID begin;
+	TID end;
+	MyStack(TID b, TID e) : begin(b), end(e) {}
 	MyStack() : MyStack(0, 0) {}
 
 	bool empty() const { return begin == end; }
 	int size() const { return end - begin; }
-	int top() const { return end - 1; }
-	int bottom() const { return begin; }
+	TID top() const { return end - 1; }
+	TID bottom() const { return begin; }
 	void pop() { --end; }
 	void push() { ++end; }
 	List<TID> recoverStack(TID stack_id) {

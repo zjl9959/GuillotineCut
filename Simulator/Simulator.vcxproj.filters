@@ -16,24 +16,48 @@
     <Filter Include="Solver">
       <UniqueIdentifier>{084c3d0d-7a84-4349-a0f4-529941cdde14}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Solver\Header Files">
-      <UniqueIdentifier>{0e6a88d0-fe73-436f-b649-69fe0715169f}</UniqueIdentifier>
+    <Filter Include="Solver\algorithm">
+      <UniqueIdentifier>{7ceac20f-c2ee-4651-a494-06c6989b7fea}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Solver\Utility">
-      <UniqueIdentifier>{aa2bb08e-83da-4c57-978f-6e4a3a3c0419}</UniqueIdentifier>
+    <Filter Include="Solver\Header Files">
+      <UniqueIdentifier>{5b8fb3c1-2f52-4de0-b68d-8d88fbc408fc}</UniqueIdentifier>
     </Filter>
     <Filter Include="Solver\Source Files">
-      <UniqueIdentifier>{34b26482-fa2e-4df9-92eb-46aad7400d93}</UniqueIdentifier>
+      <UniqueIdentifier>{632e6805-8c93-4c7f-b6ee-f29774b0c4a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\algorithm\source">
+      <UniqueIdentifier>{888bb155-35e3-49bb-9c2d-58985bf41f9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\algorithm\header">
+      <UniqueIdentifier>{bb8291c1-f9e4-4f2d-8d48-d6b0f6490fc9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Simulator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ThreadPool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Algorithm.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\CutSearch.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\PlateSearch.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Solver.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\Solver\Common.h">
       <Filter>Solver\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Solver\Config.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\CsvReader.h">
       <Filter>Solver\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Solver\LogSwitch.h">
@@ -42,16 +66,10 @@
     <ClInclude Include="..\Solver\Problem.h">
       <Filter>Solver\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\ThreadPool.h">
+      <Filter>Solver\Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\Solver\Utility.h">
-      <Filter>Solver\Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\CsvReader.h">
-      <Filter>Solver\Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="ThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\Solver.h">
       <Filter>Solver\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,16 +80,22 @@
     <ClCompile Include="Simulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Solver\Utility.cpp">
-      <Filter>Solver\Utility</Filter>
+    <ClCompile Include="..\Solver\CutSearch.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\PlateSearch.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\Solver.cpp">
+      <Filter>Solver\algorithm\source</Filter>
     </ClCompile>
     <ClCompile Include="..\Solver\CsvReader.cpp">
-      <Filter>Solver\Utility</Filter>
+      <Filter>Solver\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Solver\Problem.cpp">
       <Filter>Solver\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Solver\Solver.cpp">
+    <ClCompile Include="..\Solver\Utility.cpp">
       <Filter>Solver\Source Files</Filter>
     </ClCompile>
   </ItemGroup>

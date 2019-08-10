@@ -12,11 +12,11 @@
     <Filter Include="algorithm">
       <UniqueIdentifier>{49780e5d-020a-4f1a-8d7f-553aed1a57c6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="algorithm\head">
-      <UniqueIdentifier>{ea7d104c-ce10-4749-864d-c47d2c2c9b85}</UniqueIdentifier>
-    </Filter>
     <Filter Include="algorithm\source">
       <UniqueIdentifier>{19ea94ba-5cdb-4564-bcbf-807167018158}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="algorithm\header">
+      <UniqueIdentifier>{ea7d104c-ce10-4749-864d-c47d2c2c9b85}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -36,13 +36,13 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="CutSearch.h">
-      <Filter>algorithm\head</Filter>
+      <Filter>algorithm\header</Filter>
     </ClInclude>
     <ClInclude Include="PlateSearch.h">
-      <Filter>algorithm\head</Filter>
+      <Filter>algorithm\header</Filter>
     </ClInclude>
     <ClInclude Include="Algorithm.h">
-      <Filter>algorithm\head</Filter>
+      <Filter>algorithm\header</Filter>
     </ClInclude>
     <ClInclude Include="CsvReader.h">
       <Filter>Header Files</Filter>
@@ -51,7 +51,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Solver.h">
-      <Filter>algorithm\head</Filter>
+      <Filter>algorithm\header</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

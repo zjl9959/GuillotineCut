@@ -7,11 +7,12 @@
 
 using namespace std;
 
+#pragma region GV Definition
 namespace GV {  // global variables
 	List<Rect> items;
 	List<Area> item_area;
-	List<List<TID>> stacks; // stacks[s][i] is the `i`_th item in stack `s`.
-	List<TID> item2stack;   // item2stack[i] is the stack of item `i`.
+	List<List<TID>> stacks;            // stacks[s][i] is the `i`_th item in stack `s`.
+	List<TID> item2stack;              // item2stack[i] is the stack of item `i`.
 	List<List<Defect>> plate_defect_x; // plate_defect_x[p][i] is the `i`_th defect on plate p, sorted by defect x position.
 	List<List<Defect>> plate_defect_y; // plate_defect_y[p][i] is the `i`_th defect on plate p, sorted by defect y position.
 	IdMap idMap;
@@ -20,10 +21,11 @@ namespace GV {  // global variables
 	int stack_num;
 	int support_thread;
 }
+#pragma endregion GV Definition
 
 namespace szx {
 
-#pragma region cli
+#pragma region Cli
 int Cli::run(int argc, char * argv[]) {
     Log(LogSwitch::Szx::Cli) << "parse command line arguments." << endl;
     Set<String> switchSet;
@@ -75,10 +77,10 @@ int Cli::run(int argc, char * argv[]) {
 
     return 0;
 }
-#pragma endregion cli
+#pragma endregion Cli
 
 
-#pragma region environment
+#pragma region Environment
 void Environment::load(const Map<String, char*> &optionMap) {
     char *str;
 
@@ -120,10 +122,10 @@ void Environment::calibrate() {
     // adjust timeout.
     msTimeout -= Environment::SaveSolutionTimeInMillisecond;
 }
-#pragma endregion environment
+#pragma endregion Environment
 
 
-#pragma region solver
+#pragma region Solver
 void Solver::solve() {
 	this->init();
 	this->run();
@@ -193,31 +195,34 @@ void Solver::init() {
 	GV::item_num = int(GV::items.size());
 	GV::stack_num = int(GV::stacks.size());
 	GV::support_thread = thread::hardware_concurrency();
-	// init this
+	// init *this
 	this->best_objective = GV::param.plateNum * GV::param.plateWidth;
 	this->source_batch.reserve(GV::stack_num);
-	for (int i = 0; i < GV::stack_num; ++i) { this->source_batch.emplace_back(0, int(GV::stacks[i].size())); }
+	for (int i = 0; i < GV::stack_num; ++i) { 
+		this->source_batch.emplace_back(0, int(GV::stacks[i].size())); 
+	}
 }
 
 void Solver::run() {
 	MySolution fixed_plate_sol; fixed_plate_sol.reserve(GV::item_num);
 	List<MySolution> target_sols;
-	List<List<MyStack>> eval_batchs;
 	List<MySolution> eval_sols;
+	List<List<MyStack>> eval_batchs;
 	List<LengthPair> eval_length;
 
 	// 循环每次固定一块 Plate
 	TID cur_plate = 0;
 	while (fixed_plate_sol.size() < GV::item_num) {
+		Log(Log::Debug) << "current plate:" << cur_plate << endl;
 		if (timer.isTimeOut()) { break; }
 
 		PlateSearch plate_search(this->cfg, this->rand, this->timer, cur_plate);
-		plate_search.branchOnePlate(cfg.mbpn * 2, cfg.mbpn, this->source_batch, target_sols);
+		plate_search.branchAndGetSomePlateSols(cfg.mbpn * 2, cfg.mbpn, this->source_batch, target_sols);
 		if (target_sols.empty()) { continue; }
 		int branch_num = int(target_sols.size());
 
-		eval_batchs.clear(); eval_batchs.resize(branch_num, this->source_batch);
 		eval_sols.clear(); eval_sols.resize(branch_num, fixed_plate_sol);
+		eval_batchs.clear(); eval_batchs.resize(branch_num, this->source_batch);
 		eval_length.clear(); eval_length.resize(branch_num);
 		ThreadPool tp(GV::support_thread);
 		for (int i = 0; i < branch_num; ++i) {
@@ -252,8 +257,8 @@ void Solver::run() {
 Length Solver::evaluateOnePlate(TID cur_plate, List<MyStack>& batch, MySolution &comp_sol) {
 	/*
 	* 评价一个 Plate 的切割方案
-	* @Input: fixed_sol（已固定 item），psol（新增 1-cut 解）
-	* @Return: 使用的 Plate 总宽度
+	* @Input: cur_plate（起始 Plate），batch（剩余物品集合），comp_sol（已放置物品）
+	* @Return: ① 已使用 Plate 总宽度；② comp_sol（整体完整解）
 	*/
 
 	// comp_sol 解不完整，继续构造一个完整的解
@@ -518,6 +523,6 @@ const TCoord Solver::get_next_2cut(int index) const {
     }
     return res;
 }
-#pragma endregion solver
+#pragma endregion Solver
 
 }

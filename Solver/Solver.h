@@ -6,7 +6,7 @@
 #include "Common.h"
 #include "Utility.h"
 #include "Problem.h"
-#include "Algorithm.h"
+
 #include "PlateSearch.h"
 
 namespace szx {
@@ -125,14 +125,14 @@ public:
     Problem::Output output;
     Environment env;
     Configuration cfg;
-	// 只在 run() 中修改
-	Length best_objective;
-	List<MyStack> source_batch;
 protected:
     Random rand;
     Timer timer;
-    List<SolutionNode> best_solution;
     Area total_item_area = 0;
+	// 只在 run() 中修改
+	Length best_objective;
+	List<SolutionNode> best_solution;
+	List<MyStack> source_batch;
 };
 
 }

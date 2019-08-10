@@ -162,18 +162,24 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\Solver\Algorithm.h" />
     <ClInclude Include="..\Solver\Common.h" />
     <ClInclude Include="..\Solver\Config.h" />
     <ClInclude Include="..\Solver\CsvReader.h" />
+    <ClInclude Include="..\Solver\CutSearch.h" />
     <ClInclude Include="..\Solver\LogSwitch.h" />
+    <ClInclude Include="..\Solver\PlateSearch.h" />
     <ClInclude Include="..\Solver\Problem.h" />
     <ClInclude Include="..\Solver\Solver.h" />
+    <ClInclude Include="..\Solver\ThreadPool.h" />
     <ClInclude Include="..\Solver\Utility.h" />
     <ClInclude Include="Simulator.h" />
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Solver\CsvReader.cpp" />
+    <ClCompile Include="..\Solver\CutSearch.cpp" />
+    <ClCompile Include="..\Solver\PlateSearch.cpp" />
     <ClCompile Include="..\Solver\Problem.cpp" />
     <ClCompile Include="..\Solver\Solver.cpp" />
     <ClCompile Include="..\Solver\Utility.cpp" />
