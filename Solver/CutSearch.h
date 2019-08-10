@@ -4,7 +4,6 @@
 #define SMART_ZJL_GUILLOTINECUT_CUTSEARCH_H
 
 #include "Algorithm.h"
-#include "Problem.h"
 
 namespace szx {
 

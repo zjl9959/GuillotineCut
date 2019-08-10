@@ -3,29 +3,15 @@
 #include <iostream>
 #include <fstream>
 
-#include "Algorithm.h"
+#include "TopSearch.h"
 #include "LogSwitch.h"
 
 using namespace std;
 
 namespace szx {
 
-namespace GV {  // global variables
-
-List<Rect> items;
-List<int> item2stack;
-List<Area> item_area;
-List<List<TID>> stacks;
-List<List<Defect>> plate_plate_defect_x;
-List<List<Defect>> plate_plate_defect_y;
-IdMap idMap;
-Problem::Input::Param param;
-
-}
-
-
 #pragma region cli
-int Cli::run(int argc, char **argv) {
+int Cli::run(int argc, char * argv[]) {
     Log(LogSwitch::Szx::Cli) << "parse command line arguments." << endl;
     Set<String> switchSet;
     Map<String, char*> optionMap({ // use string as key to compare string contents instead of pointers.
@@ -78,6 +64,7 @@ int Cli::run(int argc, char **argv) {
 }
 #pragma endregion cli
 
+
 #pragma region environment
 void Environment::load(const Map<String, char*> &optionMap) {
     char *str;
@@ -125,7 +112,8 @@ void Environment::calibrate() {
 
 #pragma region solver
 void Solver::solve() {
-    //[ZJL][TODO] add code...
+	TopSearch top_search(input, env, cfg);
+	top_search.solve();
 }
 
 void Solver::record() const {
@@ -171,67 +159,6 @@ void Solver::record() const {
     logFile << log.str();
     logFile.close();
     #endif // SZX_DEBUG
-}
-
-void Solver::init() {
-    constexpr TID InvalidItemId = Problem::InvalidItemId;
-
-    GV::items.reserve(input.batch.size());
-    GV::stacks.reserve(input.batch.size());
-    GV::item2stack.resize(input.batch.size());
-    // assign internal id to items and stacks, then push items into stacks.
-    for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
-        TID itemId = GV::idMap.item.toConsecutiveId(i->id);
-        GV::items.push_back(Rect(max(i->width, i->height), min(i->width, i->height)));
-        if (itemId != i->id) {
-            Log(LogSwitch::Szx::Preprocess) << "map item " << i->id << " to " << itemId << endl;
-        }
-
-        TID stackId = GV::idMap.stack.toConsecutiveId(i->stack);
-        if (GV::stacks.size() <= stackId) { GV::stacks.push_back(List<TID>()); } // create a new stack.
-        List<TID> &stack(GV::stacks[stackId]);
-        // OPTIMIZE[szx][6]: what if the sequence number could be negative or very large?
-        if (stack.size() <= i->seq) { stack.resize(i->seq + 1, InvalidItemId); }
-        stack[i->seq] = itemId;
-        GV::item2stack[itemId] = stackId;
-    }
-    // clear invalid items in stacks.
-    for (auto s = GV::stacks.begin(); s != GV::stacks.end(); ++s) {
-        s->erase(remove(s->begin(), s->end(), InvalidItemId), s->end());
-    }
-
-    // EXTEND[szx][9]: make sure that the plate IDs are already zero-base consecutive numbers.
-    GV::plate_defect_x.resize(Problem::MaxPlateNum);
-    GV::plate_defect_y.resize(Problem::MaxPlateNum);
-    for (TID p = 0; p < Problem::MaxPlateNum; ++p) { GV::idMap.plate.toConsecutiveId(p); }
-
-    // map defects to plates.
-    for (auto d = input.defects.begin(); d != input.defects.end(); ++d) {
-        TID defectId = GV::idMap.defect.toConsecutiveId(d->id);
-
-        TID plateId = GV::idMap.plate.toConsecutiveId(d->plateId);
-        if (GV::plate_defect_x.size() <= plateId) { GV::plate_defect_x.resize(plateId + 1); } // create new plates.
-        GV::plate_defect_x[plateId].push_back(Defect(defectId, d->x, d->y, d->width, d->height));
-        if (GV::plate_defect_y.size() <= plateId) { GV::plate_defect_y.resize(plateId + 1); } // create new plates.
-        GV::plate_defect_y[plateId].push_back(Defect(defectId, d->x, d->y, d->width, d->height));
-    }
-
-    GV::item_area.reserve(GV::items.size());
-    //calculate item areas.
-    for (int i = 0; i < GV::items.size(); ++i) {
-        GV::item_area.push_back(GV::items[i].h*GV::items[i].w);
-        total_item_area += GV::items[i].h*GV::items[i].w;
-    }
-    // sort defects by it's x position.
-    for (int p = 0; p < GV::plate_defect_x.size(); ++p)
-        for (int d = 0; d < GV::plate_defect_x[p].size(); ++d)
-            sort(GV::plate_defect_x[p].begin(), GV::plate_defect_x[p].end(), [](Defect &lhs, Defect &rhs) { return lhs.x < rhs.x; });
-    // sort defects by it's y position.
-    for (int p = 0; p < GV::plate_defect_y.size(); ++p)
-        for (int d = 0; d < GV::plate_defect_y[p].size(); ++d)
-            sort(GV::plate_defect_y[p].begin(), GV::plate_defect_y[p].end(), [](Defect &lhs, Defect &rhs) { return lhs.y < rhs.y; });
-    // init input param
-    GV::param = input.param;
 }
 
 bool Solver::check(Length & checkerObj) const {
@@ -433,7 +360,6 @@ const TCoord Solver::get_next_2cut(int index) const {
     }
     return res;
 }
+#pragma endregion solver
 
 }
-
-#pragma endregion solver

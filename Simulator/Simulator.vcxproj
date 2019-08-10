@@ -167,16 +167,15 @@
     <ClInclude Include="..\Solver\CsvReader.h" />
     <ClInclude Include="..\Solver\LogSwitch.h" />
     <ClInclude Include="..\Solver\Problem.h" />
-    <ClInclude Include="..\Solver\TreeSearch.h" />
+    <ClInclude Include="..\Solver\Solver.h" />
     <ClInclude Include="..\Solver\Utility.h" />
-    <ClInclude Include="..\Solver\Visualizer.h" />
     <ClInclude Include="Simulator.h" />
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Solver\CsvReader.cpp" />
     <ClCompile Include="..\Solver\Problem.cpp" />
-    <ClCompile Include="..\Solver\TreeSearch.cpp" />
+    <ClCompile Include="..\Solver\Solver.cpp" />
     <ClCompile Include="..\Solver\Utility.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Simulator.cpp" />

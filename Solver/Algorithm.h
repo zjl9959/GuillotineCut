@@ -10,7 +10,7 @@
 #include "Common.h"
 #include "Problem.h"
 
-namespace szx {
+using namespace szx;
 
 struct Rect {
     TLength w;
@@ -71,7 +71,7 @@ struct SolutionNode {
 };
 
 struct ItemNode : public SolutionNode {
-    Depth depth;
+    Depth depth;  // node depth in the tree.
     Score score;
     ItemNode(TCoord C1cpl) : SolutionNode(C1cpl), depth(0), score(0.0) {}
     ItemNode(const ItemNode &node, const TID item_id, const Status _flag, const Score _score = 0.0) :
@@ -79,18 +79,41 @@ struct ItemNode : public SolutionNode {
 };
 
 namespace GV {  // global variables
-
-extern List<Rect> items;
-extern List<int> item2stack;
-extern List<Area> item_area;
-extern List<List<TID>> stacks;
-extern List<List<Defect>> plate_defect_x;
-extern List<List<Defect>> plate_defect_y;
-extern IdMap idMap;
-extern Problem::Input::Param param;
-
+	extern List<Rect> items;
+	extern List<Area> item_area;
+	extern List<List<TID>> stacks; // stacks[s][i] is the `i`_th item in stack `s`.
+	extern List<TID> item2stack;   // item2stack[i] is the stack of item `i`.
+	extern List<List<Defect>> plate_defect_x; // plate_defect_x[p][i] is the `i`_th defect on plate p, sorted by defect x position.
+	extern List<List<Defect>> plate_defect_y; // plate_defect_y[p][i] is the `i`_th defect on plate p, sorted by defect y position.
+	extern IdMap idMap;
+	extern Problem::Input::Param param;
+	extern int item_num;
+	extern int stack_num;
+	extern int support_thread;
 }
 
-}
+using MySolution = List<SolutionNode>;
+using ScorePair = std::pair<int, Score>;
+using AreaPair = std::pair<int, Area>;
+using LengthPair = std::pair<int, Length>;
 
-#endif
+struct MyStack {
+	int begin;
+	int end;
+	MyStack(int b, int e) : begin(b), end(e) {}
+	MyStack() : MyStack(0, 0) {}
+
+	bool empty() const { return begin == end; }
+	int size() const { return end - begin; }
+	int top() const { return end - 1; }
+	int bottom() const { return begin; }
+	void pop() { --end; }
+	void push() { ++end; }
+	List<TID> recoverStack(TID stack_id) {
+		List<TID> recover_stack(this->size());
+		for (int i = begin; i < end; ++i) { recover_stack[i] = GV::stacks[stack_id][i]; }
+		return recover_stack;
+	}
+};
+
+#endif // !SMART_ZJL_GUILLOTINE_CUT_ALGORITHM_H

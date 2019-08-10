@@ -16,10 +16,10 @@ using namespace std;
 namespace szx {
 
 void Simulator::initDefaultEnvironment() {
-    TreeSearch::Environment env;
+    Environment env;
     //env.save(Env::DefaultEnvPath());
 
-    TreeSearch::Configuration cfg;
+    Configuration cfg;
     //cfg.save(Env::DefaultCfgPath());
 }
 

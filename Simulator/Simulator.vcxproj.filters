@@ -48,14 +48,11 @@
     <ClInclude Include="..\Solver\CsvReader.h">
       <Filter>Solver\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\Solver\Visualizer.h">
-      <Filter>Solver\Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\TreeSearch.h">
-      <Filter>Solver\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ThreadPool.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\Solver.h">
+      <Filter>Solver\Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -74,7 +71,7 @@
     <ClCompile Include="..\Solver\Problem.cpp">
       <Filter>Solver\Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Solver\TreeSearch.cpp">
+    <ClCompile Include="..\Solver\Solver.cpp">
       <Filter>Solver\Source Files</Filter>
     </ClCompile>
   </ItemGroup>

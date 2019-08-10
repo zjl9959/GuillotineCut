@@ -3,8 +3,9 @@
 #define SMART_ZJL_GUILLOTINECUT_PLATESEARCH_H
 
 #include "CutSearch.h"
+#include "TopSearch.h" /// Configuration
 
-namespace szx {
+using namespace szx;
 
 class MCTNode { // monte-carlo tree node.
 public:
@@ -77,17 +78,25 @@ private:
 
 class PlateSearch {
 public:
-    PlateSearch(Random &rand, Timer &timer, TID plate) :
-        rand_(rand), timer_(timer), plate_(plate) {};
+    PlateSearch(Configuration &cfg, Random &rand, Timer &timer, TID plate) :
+		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate) {};
     Score mcts(List<List<TID>> &batch, List<SolutionNode> &sol, int max_iter = 10000);
+	
+	void branchOnePlate(int try_num, int real_num, const List<MyStack>& source_batch, List<MySolution>& psols);
+	void optimizeOnePlate(const List<MyStack>& source_batch, MySolution & psol);
+
 protected:
-    bool gen_item_sequence(int seq_len, MCTNode *node, List<List<TID>> &batch, List<TID> &seq);
+    bool getItemSequence(int seq_len, MCTNode *node, List<List<TID>> &batch, List<TID> &seq);
+	int createItemBatchs(int nums, const SolutionNode & resume_point, const List<MyStack>& source_batch, List<List<MyStack>> &target_batchs);
+	ScorePair getBestTargetSol(int nums, const SolutionNode & resume_point, const List<MyStack>& source_batch, List<List<MyStack>>& target_batchs, List<MySolution>& target_sols, bool tail=false);
+	Area evaluateOneCut(List<MyStack>& batch, MySolution & psol);
+	
 private:
+	Configuration cfg_;
     Random &rand_;
     Timer &timer_;
     TID plate_;
 };
 
-}
 
 #endif // !SMART_ZJL_GUILLOTINECUT_PLATESEARCH_H

@@ -41,9 +41,6 @@
     <ClInclude Include="PlateSearch.h">
       <Filter>algorithm\head</Filter>
     </ClInclude>
-    <ClInclude Include="Solver.h">
-      <Filter>algorithm\head</Filter>
-    </ClInclude>
     <ClInclude Include="TopSearch.h">
       <Filter>algorithm\head</Filter>
     </ClInclude>
@@ -51,10 +48,13 @@
       <Filter>algorithm\head</Filter>
     </ClInclude>
     <ClInclude Include="CsvReader.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Utility.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Solver.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -73,13 +73,13 @@
     <ClCompile Include="TopSearch.cpp">
       <Filter>algorithm\source</Filter>
     </ClCompile>
-    <ClCompile Include="Solver.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
     <ClCompile Include="Utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CsvReader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Solver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

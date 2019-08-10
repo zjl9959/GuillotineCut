@@ -107,21 +107,19 @@ struct Environment {
 };
 
 struct Configuration {
-    TID mcin; // maximum choose item number.
+    int mcin; // maximum choose item number.
     int mbpn; // maximum branch plate number.
     int mhcn; // maximum hopeful 1-cut number.
-    int rcin; // repeat choose item number.
     String toBriefStr() const {
         std::ostringstream os;
-        os << "GB2"
-            << ";mcin=" << mcin
-            << ";mbpn=" << mbpn
-            << ";mhcn=" << mhcn
-            << ";rcin=" << rcin;
+		os << "GB2"
+			<< ";mcin=" << mcin
+			<< ";mbpn=" << mbpn
+			<< ";mhcn=" << mhcn;
         return os.str();
     }
-    Configuration(TID MCIN = 8, int MBPN = 4, int MHCN = 1, int RCIN = 1):
-        mcin(MCIN), mbpn(MBPN), mhcn(MHCN), rcin(RCIN) {}
+    Configuration(int MCIN = 8, int MBPN = 4, int MHCN = 1):
+        mcin(MCIN), mbpn(MBPN), mhcn(MHCN) {}
 };
 
 class Solver {
@@ -130,11 +128,9 @@ public:
         : input(inputData), env(environment), cfg(config), rand(environment.randSeed),
         timer(std::chrono::milliseconds(environment.msTimeout)) {}
     virtual ~Solver() {};
-
-    virtual void solve();
+	virtual void solve();
     void record() const;
 protected:
-    void init();
     bool check(Length &checkerObj) const;
     void toOutput();
 private:
