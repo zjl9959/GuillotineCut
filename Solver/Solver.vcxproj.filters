@@ -41,9 +41,6 @@
     <ClInclude Include="PlateSearch.h">
       <Filter>algorithm\head</Filter>
     </ClInclude>
-    <ClInclude Include="TopSearch.h">
-      <Filter>algorithm\head</Filter>
-    </ClInclude>
     <ClInclude Include="Algorithm.h">
       <Filter>algorithm\head</Filter>
     </ClInclude>
@@ -54,7 +51,7 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Solver.h">
-      <Filter>Header Files</Filter>
+      <Filter>algorithm\head</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -70,9 +67,6 @@
     <ClCompile Include="PlateSearch.cpp">
       <Filter>algorithm\source</Filter>
     </ClCompile>
-    <ClCompile Include="TopSearch.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
     <ClCompile Include="Utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -80,7 +74,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Solver.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>algorithm\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

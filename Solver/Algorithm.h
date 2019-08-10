@@ -2,10 +2,8 @@
 #ifndef SMART_ZJL_GUILLOTINE_CUT_ALGORITHM_H
 #define SMART_ZJL_GUILLOTINE_CUT_ALGORITHM_H
 
+#include <sstream>
 #include "Config.h"
-
-#include <mutex>
-
 #include "Utility.h"
 #include "Common.h"
 #include "Problem.h"
@@ -76,6 +74,22 @@ struct ItemNode : public SolutionNode {
     ItemNode(TCoord C1cpl) : SolutionNode(C1cpl), depth(0), score(0.0) {}
     ItemNode(const ItemNode &node, const TID item_id, const Status _flag, const Score _score = 0.0) :
         SolutionNode(node, item_id, _flag), depth(node.depth + 1), score(_score) {}
+};
+
+struct Configuration {
+	int mcin; // maximum choose item number.
+	int mbpn; // maximum branch plate number.
+	int mhcn; // maximum hopeful 1-cut number.
+	String toBriefStr() const {
+		std::ostringstream os;
+		os << "GB2"
+			<< ";mcin=" << mcin
+			<< ";mbpn=" << mbpn
+			<< ";mhcn=" << mhcn;
+		return os.str();
+	}
+	Configuration(int MCIN = 8, int MBPN = 4, int MHCN = 1) :
+		mcin(MCIN), mbpn(MBPN), mhcn(MHCN) {}
 };
 
 namespace GV {  // global variables

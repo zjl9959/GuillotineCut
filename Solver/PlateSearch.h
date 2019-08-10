@@ -3,7 +3,6 @@
 #define SMART_ZJL_GUILLOTINECUT_PLATESEARCH_H
 
 #include "CutSearch.h"
-#include "TopSearch.h" /// Configuration
 
 using namespace szx;
 

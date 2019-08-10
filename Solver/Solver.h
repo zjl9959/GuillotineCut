@@ -3,13 +3,11 @@
 #define SMART_ZJL_GUILLOTINE_CUT_SOLVER_H
 
 #include "Config.h"
-
-#include <sstream>
-
 #include "Common.h"
 #include "Utility.h"
 #include "Problem.h"
 #include "Algorithm.h"
+#include "PlateSearch.h"
 
 namespace szx {
 
@@ -106,31 +104,17 @@ struct Environment {
     String localTime;
 };
 
-struct Configuration {
-    int mcin; // maximum choose item number.
-    int mbpn; // maximum branch plate number.
-    int mhcn; // maximum hopeful 1-cut number.
-    String toBriefStr() const {
-        std::ostringstream os;
-		os << "GB2"
-			<< ";mcin=" << mcin
-			<< ";mbpn=" << mbpn
-			<< ";mhcn=" << mhcn;
-        return os.str();
-    }
-    Configuration(int MCIN = 8, int MBPN = 4, int MHCN = 1):
-        mcin(MCIN), mbpn(MBPN), mhcn(MHCN) {}
-};
-
 class Solver {
 public:
     Solver(const Problem::Input &inputData, const Environment &environment, const Configuration &config)
         : input(inputData), env(environment), cfg(config), rand(environment.randSeed),
         timer(std::chrono::milliseconds(environment.msTimeout)) {}
-    virtual ~Solver() {};
-	virtual void solve();
     void record() const;
+	void solve();
 protected:
+	void init();
+	void run();
+	Length evaluateOnePlate(TID cur_plate, List<MyStack>& batch, MySolution &comp_sol);
     bool check(Length &checkerObj) const;
     void toOutput();
 private:
@@ -141,6 +125,9 @@ public:
     Problem::Output output;
     Environment env;
     Configuration cfg;
+	// 只在 run() 中修改
+	Length best_objective;
+	List<MyStack> source_batch;
 protected:
     Random rand;
     Timer timer;
