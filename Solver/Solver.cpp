@@ -503,24 +503,32 @@ void Solver::toOutput() {
 // get c1cpr for this index's item.
 const TCoord Solver::get_next_1cut(int index) const {
     TCoord res = 0;
+    ++index;
     while (index < best_solution.size()) {
         if (best_solution[index].getFlagBit(NEW_L1))
             break;
         if (res < best_solution[index].c1cpr)
             res = best_solution[index].c1cpr;
+        ++index;
     }
+    if (index == best_solution.size())
+        return best_solution.back().c1cpr;
     return res;
 }
 
 // get c2cpu for this index's item.
 const TCoord Solver::get_next_2cut(int index) const {
     TCoord res = 0;
+    ++index;
     while (index < best_solution.size()) {
         if (best_solution[index].getFlagBit(NEW_L2))
             break;
         if (res < best_solution[index].c2cpu)
             res = best_solution[index].c2cpu;
+        ++index;
     }
+    if (index == best_solution.size())
+        return best_solution.back().c2cpu;
     return res;
 }
 #pragma endregion Solver

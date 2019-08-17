@@ -5,6 +5,7 @@ using namespace std;
 namespace szx {
 
 Score CutSearch::dfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_tail, Score gap) {
+    opt_tail = true;
     Area batch_item_area = 0;
     Area used_item_area = 0; // current used items area.
     const Area tail_area = (GV::param.plateWidth - start_pos_)*GV::param.plateHeight;
@@ -110,23 +111,27 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                 // check if item conflict with defect and try to fix it.
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                 {
-                    ItemNode node_a1(old, itemId, rotate|NEW_L1); // place in defect right(if no defect conflict, slip_r is 0).
+                    ItemNode node_a1(old, itemId, rotate | NEW_L1 | NEW_L2); // place in defect right(if no defect conflict, slip_r is 0).
                     node_a1.c3cp = node_a1.c1cpr = slip_r + item.w;
                     node_a1.c4cp = node_a1.c2cpu = item.h;
                     if (slip_r > old.c1cpr)
                         node_a1.setFlagBit(DEFECT_R);
                     if (constraintCheck(old, node_a1)) {
+                        if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
+                            node_a1.setFlagBit(NEW_PLATE);
                         branch_nodes.push_back(node_a1);
                     }
                 }
                 if (slip_r > old.c1cpr) { // item conflict with defect(two choice).
                     slip_u = sliptoDefectUp(old.c1cpr, 0, item.w);
                     if (slip_u != -1) {
-                        ItemNode node_a2(old, itemId, rotate | NEW_L1); // place in defect up.
+                        ItemNode node_a2(old, itemId, rotate | NEW_L1 | NEW_L2); // place in defect up.
                         node_a2.c3cp = node_a2.c1cpr = old.c1cpr + item.w;
                         node_a2.c4cp = node_a2.c2cpu = slip_u + item.h;
                         node_a2.setFlagBit(DEFECT_U);
                         if (constraintCheck(old, node_a2)) {
+                            if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
+                                node_a2.setFlagBit(NEW_PLATE);
                             branch_nodes.push_back(node_a2);
                         }
                     }
@@ -393,11 +398,13 @@ const bool CutSearch::constraintCheck(const ItemNode &old, ItemNode &node) {
         return false;
     }
     // check if minimum cut1 width not staisfy.
-    if (node.getFlagBit(NEW_L1) && old.c1cpr - old.c1cpl < GV::param.minL1Width) {
+    if (node.getFlagBit(NEW_L1) && old.item != Problem::InvalidItemId &&
+        old.c1cpr - old.c1cpl < GV::param.minL1Width) {
         return false;
     }
     // check if minimum cut2 height not staisfy.
-    if (node.getFlagBit(NEW_L2) && old.c2cpu - old.c2cpb < GV::param.minL2Height) {
+    if (node.getFlagBit(NEW_L2) && old.item != Problem::InvalidItemId &&
+        old.c2cpu - old.c2cpb < GV::param.minL2Height) {
         return false;
     }
     // check if cut1 and stock right side interval less than minimum waste width.
