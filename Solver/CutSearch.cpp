@@ -5,7 +5,6 @@ using namespace std;
 namespace szx {
 
 Score CutSearch::dfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_tail, Score gap) {
-    opt_tail = true;
     Area batch_item_area = 0;
     Area used_item_area = 0; // current used items area.
     const Area tail_area = (GV::param.plateWidth - start_pos_)*GV::param.plateHeight;
@@ -370,7 +369,7 @@ const bool CutSearch::constraintCheck(const ItemNode &old, ItemNode &node) {
         }
     }
     // check if new c2cpu and old c2cpu interval less than minWasteHeight
-    if (node.getFlagBit(NEW_L2) && node.c2cpu != old.c2cpu
+    if (node.getFlagBit(NEW_L2) && !node.getFlagBit(NEW_L1) && node.c2cpu != old.c2cpu
         && node.c2cpu - old.c2cpu < GV::param.minWasteHeight) {
         if (node.getFlagBit(LOCKC2)) {
             return false;

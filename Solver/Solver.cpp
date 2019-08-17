@@ -502,7 +502,7 @@ void Solver::toOutput() {
 
 // get c1cpr for this index's item.
 const TCoord Solver::get_next_1cut(int index) const {
-    TCoord res = 0;
+    TCoord res = best_solution[index].c1cpr;
     ++index;
     while (index < best_solution.size()) {
         if (best_solution[index].getFlagBit(NEW_L1))
@@ -518,7 +518,7 @@ const TCoord Solver::get_next_1cut(int index) const {
 
 // get c2cpu for this index's item.
 const TCoord Solver::get_next_2cut(int index) const {
-    TCoord res = 0;
+    TCoord res = best_solution[index].c2cpu;
     ++index;
     while (index < best_solution.size()) {
         if (best_solution[index].getFlagBit(NEW_L2))
