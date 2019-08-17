@@ -71,12 +71,12 @@ void PlateSearch::createItemBatchs(int nums, const SolutionNode & resume_point, 
 			int chosen_index = rand_.pick(candidate_items.size());
 			TID chosen_item  = candidate_items[chosen_index]; items_set[chosen_item] = true;
 			TID chosen_stack = GV::item2stack[chosen_item]; 
-			int temp_bottom  = temp_batch[chosen_stack].begin - 1; // 从 top 向 bottom 扩展一个物品
+			int temp_bottom  = temp_batch[chosen_stack].begin - 1;
 			if (temp_bottom < source_batch[chosen_stack].bottom()) { // ① 栈取空，擦除位置
 				candidate_items.erase(candidate_items.begin() + chosen_index);
 			}
 			else {
-				--temp_batch[chosen_stack].begin;
+				--temp_batch[chosen_stack].begin; // 从 top 向 bottom 扩展一个物品
 				TID bottom_item = GV::stacks[chosen_stack][temp_bottom];
 				if (GV::items[bottom_item].h < left_plate_width) { // ③ 将 bottom_item 填入 chosen_index 位置作为新的候选
 					candidate_items[chosen_index] = bottom_item;
@@ -111,22 +111,23 @@ ScorePair PlateSearch::branchAndGetBestOneCutSol(int nums, const SolutionNode & 
 	target_sols.clear(); target_sols.resize(branch_num);
 	List<ScorePair> scores(branch_num);
 	CutSearch cut_search(plate_, resume_point.c1cpr);
-	for (int i = 0; i < branch_num; ++i) {
-		List<List<TID>> recover_stacks; recover_stacks.reserve(GV::stack_num);
-		for (int j = 0; j < GV::stack_num; ++j) { 
-			 List<TID> recover_stack = target_batchs[i][j].recoverStack(j); 
-			 if (recover_stack.size()) { recover_stacks.push_back(recover_stack); }
-		}
-		scores[i] = make_pair(i, cut_search.dfs(recover_stacks, target_sols[i], tail));
-	}
 	//for (int i = 0; i < branch_num; ++i) {
-	//	tp.push([&, i]() {
-	//		List<List<TID>> recover_stacks(GV::stack_num);
-	//		for (int j = 0; j < GV::stack_num; ++j) { recover_stacks[j] = target_batchs[i][j].recoverStack(j); }
-	//		scores[i] = make_pair(i, cut_search.dfs(recover_stacks, target_sols[i], tail));
-	//	});
+	//	List<List<TID>> recover_stacks; recover_stacks.reserve(GV::stack_num);
+	//	for (int j = 0; j < GV::stack_num; ++j) { 
+	//		if (target_batchs[i][j].size()) { recover_stacks.emplace_back(target_batchs[i][j].recoverStack(j)); }
+	//	}
+	//	scores[i] = make_pair(i, cut_search.dfs(recover_stacks, target_sols[i], tail));
 	//}
-	//tp.pend();
+	for (int i = 0; i < branch_num; ++i) {
+		tp.push([&, i]() {
+			List<List<TID>> recover_stacks; recover_stacks.reserve(GV::stack_num);
+			for (int j = 0; j < GV::stack_num; ++j) {
+				if (target_batchs[i][j].size()) { recover_stacks.emplace_back(target_batchs[i][j].recoverStack(j)); }
+			}
+			scores[i] = make_pair(i, cut_search.dfs(recover_stacks, target_sols[i], tail));
+		});
+	}
+	tp.pend();
 	auto max_score = max_element(scores.begin(), scores.end(), [](ScorePair &lhs, ScorePair &rhs) { return lhs.second < rhs.second; });
 	if (target_sols[max_score->first].empty()) { return InvalidPair; }  // ② 所有分支都无法放下任一物品（瑕疵限制）
 	return *max_score;

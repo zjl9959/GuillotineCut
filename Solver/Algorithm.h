@@ -124,8 +124,8 @@ struct MyStack {
 	void pop() { --end; }
 	void push() { ++end; }
 	List<TID> recoverStack(TID stack_id) {
-		List<TID> recover_stack(this->size());
-		for (int i = begin; i < end; ++i) { recover_stack[i] = GV::stacks[stack_id][i]; }
+		List<TID> recover_stack; recover_stack.reserve(this->size());
+		for (int i = begin; i < end; ++i) { recover_stack.push_back(GV::stacks[stack_id][i]); }
 		return recover_stack;
 	}
 };
