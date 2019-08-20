@@ -96,9 +96,9 @@ void Simulator::run(const String &envPath) {
 void Simulator::debug() {
     Task task;
     task.instSet = "A";
-    task.instId = "17";
-    task.randSeed = "1543301757";
-    //task.randSeed = to_string(RandSeed::generate());
+    task.instId = "2";
+    task.randSeed = "1566269104";
+    //task.randSeed = to_string(Random::generateSeed());
     task.timeout = "180";
     //task.timeout = "3600";
     //task.maxIter = "1000000000";
@@ -112,7 +112,7 @@ void Simulator::debug() {
 
 void Simulator::benchmark(int repeat) {
     Task task;
-    task.instSet = "X";
+    task.instSet = "A";
     //task.timeout = "180";
     //task.maxIter = "1000000000";
     task.timeout = "3600";

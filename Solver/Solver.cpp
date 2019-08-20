@@ -135,9 +135,10 @@ void Solver::solve() {
 void Solver::init() {
 	constexpr TID InvalidItemId = Problem::InvalidItemId;
 
-	GV::items.reserve(input.batch.size());
-	GV::stacks.reserve(input.batch.size());
-	GV::item2stack.resize(input.batch.size());
+	GV::items.clear(); GV::items.reserve(input.batch.size());
+	GV::stacks.clear(); GV::stacks.reserve(input.batch.size());
+	GV::item2stack.clear(); GV::item2stack.resize(input.batch.size());
+	GV::idMap = IdMap();
 	// assign internal id to items and stacks, then push items into stacks.
 	for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
 		TID itemId = GV::idMap.item.toConsecutiveId(i->id);
@@ -160,8 +161,8 @@ void Solver::init() {
 	}
 
 	// EXTEND[szx][9]: make sure that the plate IDs are already zero-base consecutive numbers.
-	GV::plate_defect_x.resize(Problem::MaxPlateNum);
-	GV::plate_defect_y.resize(Problem::MaxPlateNum);
+	GV::plate_defect_x.clear(); GV::plate_defect_x.resize(Problem::MaxPlateNum);
+	GV::plate_defect_y.clear(); GV::plate_defect_y.resize(Problem::MaxPlateNum);
 	for (TID p = 0; p < Problem::MaxPlateNum; ++p) { GV::idMap.plate.toConsecutiveId(p); }
 
 	// map defects to plates.
@@ -174,7 +175,7 @@ void Solver::init() {
 		GV::plate_defect_y[plateId].push_back(Defect(defectId, d->x, d->y, d->width, d->height));
 	}
 
-	GV::item_area.reserve(GV::items.size());
+	GV::item_area.clear(); GV::item_area.reserve(GV::items.size());
 	//calculate item areas.
 	for (int i = 0; i < GV::items.size(); ++i) {
 		GV::item_area.push_back(GV::items[i].h*GV::items[i].w);
@@ -317,7 +318,7 @@ void Solver::record() const {
     ofstream logFile(env.logPath, ios::app);
     logFile.seekp(0, ios::end);
     if (logFile.tellp() <= 0) {
-        logFile << "Time,ID,Instance,Feasible,ObjMatch,Width,Duration,PhysMem,VirtMem,RandSeed,Config,Generation,Iteration,Util,Waste,Solution" << endl;
+        logFile << "Time,ID,Instance,Feasible,ObjMatch,Width,Duration,PhysMem,VirtMem,RandSeed,Config,UtilRatio,CheckerObj" << endl;
     }
     logFile << log.str();
     logFile.close();
