@@ -97,10 +97,10 @@ void Simulator::debug() {
     Task task;
     task.instSet = "A";
     task.instId = "2";
-    task.randSeed = "1566269104";
+    task.randSeed = "1577095960";
     //task.randSeed = to_string(Random::generateSeed());
-    task.timeout = "180";
-    //task.timeout = "3600";
+    //task.timeout = "180";
+    task.timeout = "3600";
     //task.maxIter = "1000000000";
     task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();

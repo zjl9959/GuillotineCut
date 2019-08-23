@@ -225,6 +225,8 @@ void Solver::run() {
 		eval_sols.clear(); eval_sols.resize(branch_num, fixed_plate_sol);
 		eval_batchs.clear(); eval_batchs.resize(branch_num, this->source_batch);
 		eval_length.clear(); eval_length.resize(branch_num);
+		
+		#if THREAD_ON
 		ThreadPool tp(GV::support_thread);
 		for (int i = 0; i < branch_num; ++i) {
 			tp.push([&, i]() {
@@ -236,22 +238,32 @@ void Solver::run() {
 			});
 		}
 		tp.pend();
+		#else
+		for (int i = 0; i < branch_num; ++i) {
+			for (auto &node : target_sols[i]) {
+				eval_sols[i].push_back(node);
+				eval_batchs[i][GV::item2stack[node.item]].pop();
+			}
+			eval_length[i] = make_pair(i, evaluateOnePlate(cur_plate + 1, eval_batchs[i], eval_sols[i]));
+		}
+		#endif // THREAD_ON
+		
 		auto min_length = min_element(eval_length.begin(), eval_length.end(), [](LengthPair &lhs, LengthPair &rhs) { return lhs.second < rhs.second; });
 		int best_index = min_length->first;
 		Length best_length = min_length->second;
-
+		// 更新完整解
 		if (this->best_objective > best_length) {
 			this->best_objective = best_length;
 			this->best_solution = eval_sols[best_index];
 			Log(Log::Debug) << "a better obj:" << best_objective << endl;
-
-			for (auto &node : target_sols[best_index]) {
-				fixed_plate_sol.push_back(node);
-				this->source_batch[GV::item2stack[node.item]].pop();
-			}
-			Log(Log::Debug) << "fix plate:" << cur_plate << endl;
-			++cur_plate;
 		}
+		// 固定平面解
+		for (auto &node : target_sols[best_index]) {
+			fixed_plate_sol.push_back(node);
+			this->source_batch[GV::item2stack[node.item]].pop();
+		}
+		Log(Log::Debug) << "fix plate:" << cur_plate << endl;
+		++cur_plate;
 	}
 }
 
@@ -265,7 +277,7 @@ Length Solver::evaluateOnePlate(TID cur_plate, List<MyStack>& batch, MySolution 
 	// comp_sol 解不完整，继续构造一个完整的解
 	MySolution cur_plate_sol;
 	while (comp_sol.size() < GV::item_num) {
-		if (timer.isTimeOut()) { break; }
+		//if (timer.isTimeOut()) { break; }
 
 		PlateSearch plate_search(this->cfg, this->rand, this->timer, cur_plate);
 		plate_search.optimizeOnePlate(batch, cur_plate_sol);
@@ -275,7 +287,7 @@ Length Solver::evaluateOnePlate(TID cur_plate, List<MyStack>& batch, MySolution 
 		}
 		++cur_plate;
 	}
-	if (comp_sol.size() != GV::item_num) { return GV::param.plateWidth * GV::param.plateNum; }
+	//if (comp_sol.size() != GV::item_num) { return GV::param.plateWidth * GV::param.plateNum; }
 
 	return cur_plate * GV::param.plateWidth + comp_sol.back().c1cpr;
 }

@@ -91,13 +91,11 @@ protected:
 	Area evaluateOneCut(List<MyStack>& batch, MySolution & psol);
 	
 private:
+	static constexpr ScorePair InvalidPair = std::make_pair(-1, 0.0);
 	Configuration &cfg_;
     Random &rand_;
     Timer &timer_;
     TID plate_;
-
-public:
-	static constexpr ScorePair InvalidPair = std::make_pair(-1, 0.0);
 };
 
 }

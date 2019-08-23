@@ -86,6 +86,7 @@ void PlateSearch::createItemBatchs(int nums, const SolutionNode & resume_point, 
 				}
 			}
 		}
+
 		if (!comb_cache.get(items_set)) {
 			comb_cache.set(items_set);
 			target_batchs.push_back(temp_batch);
@@ -101,8 +102,6 @@ ScorePair PlateSearch::branchAndGetBestOneCutSol(int nums, const SolutionNode & 
 	* @Input: nums（尝试分支数）, resume_point（分支起点）, source_batch（候选 item 集合），tail（是否为最后 1-cut）
 	* @Return: target_batchs[b][s]（分支），target_sols[b]（分支解），best_index（最大利用率解的下标）
 	*/
-	ThreadPool tp(GV::support_thread);
-
 	target_batchs.clear(); target_batchs.reserve(nums);
 	createItemBatchs(nums, resume_point, source_batch, target_batchs);
 	if (target_batchs.empty()) { return InvalidPair; } // ① 无法继续分支（余料宽度限制）
@@ -111,13 +110,9 @@ ScorePair PlateSearch::branchAndGetBestOneCutSol(int nums, const SolutionNode & 
 	target_sols.clear(); target_sols.resize(branch_num);
 	List<ScorePair> scores(branch_num);
 	CutSearch cut_search(plate_, resume_point.c1cpr);
-	//for (int i = 0; i < branch_num; ++i) {
-	//	List<List<TID>> recover_stacks; recover_stacks.reserve(GV::stack_num);
-	//	for (int j = 0; j < GV::stack_num; ++j) { 
-	//		if (target_batchs[i][j].size()) { recover_stacks.emplace_back(target_batchs[i][j].recoverStack(j)); }
-	//	}
-	//	scores[i] = make_pair(i, cut_search.dfs(recover_stacks, target_sols[i], tail));
-	//}
+
+	#if 1  // 此处可以开启多线程
+	ThreadPool tp(GV::support_thread);
 	for (int i = 0; i < branch_num; ++i) {
 		tp.push([&, i]() {
 			List<List<TID>> recover_stacks; recover_stacks.reserve(GV::stack_num);
@@ -128,6 +123,16 @@ ScorePair PlateSearch::branchAndGetBestOneCutSol(int nums, const SolutionNode & 
 		});
 	}
 	tp.pend();
+	#else
+	for (int i = 0; i < branch_num; ++i) {
+		List<List<TID>> recover_stacks; recover_stacks.reserve(GV::stack_num);
+		for (int j = 0; j < GV::stack_num; ++j) {
+			if (target_batchs[i][j].size()) { recover_stacks.emplace_back(target_batchs[i][j].recoverStack(j)); }
+		}
+		scores[i] = make_pair(i, cut_search.dfs(recover_stacks, target_sols[i], tail));
+	}
+	#endif // THREAD_ON
+
 	auto max_score = max_element(scores.begin(), scores.end(), [](ScorePair &lhs, ScorePair &rhs) { return lhs.second < rhs.second; });
 	if (target_sols[max_score->first].empty()) { return InvalidPair; }  // ② 所有分支都无法放下任一物品（瑕疵限制）
 	return *max_score;
@@ -165,10 +170,9 @@ void PlateSearch::optimizeOnePlate(const List<MyStack>& source_batch, MySolution
 	SolutionNode resume_point(0); // 搜索起点
 	TID cur_cut1 = 0;             // 当前 1-cut id
 	Area max_item_area = 0;       // 最大放置面积，下界
-	ThreadPool tp(GV::support_thread);
 	
 	while (1) {
-		if (timer_.isTimeOut()) { break; }
+		//if (timer_.isTimeOut()) { break; }
 
 		if (InvalidPair == branchAndGetBestOneCutSol(cfg_.mbcn, resume_point, batch, target_batchs, target_sols)) { break; }
 		int branch_num = int(target_batchs.size());
@@ -176,6 +180,9 @@ void PlateSearch::optimizeOnePlate(const List<MyStack>& source_batch, MySolution
 		eval_batchs.clear(); eval_batchs.resize(branch_num, batch);
 		eval_sols.clear(); eval_sols.resize(branch_num, fixed_sol);
 		eval_areas.clear(); eval_areas.resize(branch_num);
+		
+		#if THREAD_ON
+		ThreadPool tp(GV::support_thread);
 		for (int i = 0; i < branch_num; ++i) {
 			tp.push([&, i]() {
 				for (auto &node : target_sols[i]) {
@@ -186,6 +193,16 @@ void PlateSearch::optimizeOnePlate(const List<MyStack>& source_batch, MySolution
 			});
 		}
 		tp.pend();
+		#else
+		for (int i = 0; i < branch_num; ++i) {
+			for (auto &node : target_sols[i]) {
+				eval_batchs[i][GV::item2stack[node.item]].pop();
+				eval_sols[i].push_back(node);
+			}
+			eval_areas[i] = make_pair(i, evaluateOneCut(eval_batchs[i], eval_sols[i]));
+		}
+		#endif // THREAD_ON
+		
 		auto max_area = max_element(eval_areas.begin(), eval_areas.end(), [](AreaPair &lhs, AreaPair &rhs) { return lhs.second < rhs.second; });
 		int best_index = max_area->first;
 		Area best_area = max_area->second;
@@ -214,18 +231,21 @@ void PlateSearch::branchAndGetSomePlateSols(int try_num, int real_num, const Lis
 	@Input: try_nums(尝试分支数目)，real_nums（保留较好的分支数），source_batch（候选 item 集合）
 	@Return: plate_sols[]
 	*/
-
+	
 	// target_batchs[b][s]：分支 b，栈 s
 	// target_sols[b]：
 	List<List<MyStack>> target_batchs;
 	List<MySolution> target_sols;
 	SolutionNode resume_point(0);
-	ThreadPool tp(GV::support_thread);
-
 	if (InvalidPair == branchAndGetBestOneCutSol(try_num, resume_point, source_batch, target_batchs, target_sols)) { return; }
 	int branch_num = int(target_batchs.size());
+	// eval_batchs[b][s]：分支 b，栈 s
+	// eval_areas[b]：分支 b 的评分：每个部分解补全为完整解的总面积
 	List<AreaPair> eval_areas(branch_num);
 	List<List<MyStack>> eval_batchs(branch_num, source_batch);
+	
+	#if THREAD_ON
+	ThreadPool tp(GV::support_thread);
 	for (int i = 0; i < branch_num; ++i) {
 		tp.push([&, i]() {
 			for (auto &node : target_sols[i]) { eval_batchs[i][GV::item2stack[node.item]].pop(); }
@@ -233,6 +253,13 @@ void PlateSearch::branchAndGetSomePlateSols(int try_num, int real_num, const Lis
 		});
 	}
 	tp.pend();
+	#else
+	for (int i = 0; i < branch_num; ++i) {
+		for (auto &node : target_sols[i]) { eval_batchs[i][GV::item2stack[node.item]].pop(); }
+		eval_areas[i] = make_pair(i, evaluateOneCut(eval_batchs[i], target_sols[i]));
+	}
+	#endif // THREAD_ON
+
 	sort(eval_areas.begin(), eval_areas.end(), [](AreaPair &lhs, AreaPair &rhs) { return lhs.second > rhs.second; });
 	real_num = real_num > branch_num ? branch_num : real_num;
 	plate_sols.clear(); plate_sols.resize(real_num);
@@ -260,7 +287,7 @@ Area PlateSearch::evaluateOneCut(List<MyStack>& batch, MySolution & psol) {
 	resume_point.c2cpb = resume_point.c2cpu = 0;
 	
 	while (1) {
-		if (timer_.isTimeOut()) { break; }
+		//if (timer_.isTimeOut()) { break; }
 
 		ScorePair best_pair = branchAndGetBestOneCutSol(cfg_.mbcn, resume_point, batch, target_batchs, target_sols);
 		if (best_pair == InvalidPair) { break; }

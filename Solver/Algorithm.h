@@ -130,4 +130,6 @@ struct MyStack {
 	}
 };
 
+#define THREAD_ON 0
+
 #endif // !SMART_ZJL_GUILLOTINE_CUT_ALGORITHM_H
