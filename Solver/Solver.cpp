@@ -355,6 +355,9 @@ bool Solver::check(Length & checkerObj) const {
 }
 
 void Solver::toOutput() {
+    // ¥Ú”°Ω‚
+    //for (auto &solnode : best_solution)
+    //    cout << solnode.tostr() << endl;
     if (best_solution.size() == 0)return;
     using SpecialType = Problem::Output::Node::SpecialType;
     const TLength PW = input.param.plateWidth, PH = input.param.plateHeight;

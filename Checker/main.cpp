@@ -173,6 +173,7 @@ int main(int argc, char* argv[]) {
     batchPath = PATH_TO_INSTANCES + file_idx + "_batch.csv";
     defectsPath = PATH_TO_INSTANCES + file_idx + "_defects.csv";
     optParamsPath = PATH_TO_INSTANCES "global_param.csv";
+    solutionPath = PATH_TO_SOLUTIONS + file_idx + "_solution.csv";
 
     //Redirect output if not verbose
     if (!verbose) {

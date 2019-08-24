@@ -341,43 +341,36 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
    function: check if new branch satisfy all the constraints.
    if some constraints not staisfy, try to fix is by move item. */
 const bool CutSearch::constraintCheck(const ItemNode &old, ItemNode &node) {
-    bool moved_cut1 = false, moved_cut2 = false;
     // if c2cpu less than c4cp, move it up.
     if (node.c2cpu < node.c4cp) {
         node.c2cpu = node.c4cp;
-        moved_cut2 = true;
     }
     // check if item right side and c1cpr interval less than minWasteWidth.
     if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < GV::param.minWasteWidth) {
         node.c1cpr += GV::param.minWasteWidth; // move c1cpr right to staisfy constraint.
-        moved_cut1 = true;
     }
     // check if new c1cpr and old c1cpr interval less than minWasteWidth.
     if (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < GV::param.minWasteWidth) {
         node.c1cpr += GV::param.minWasteWidth;
-        moved_cut1 = true;
     }
     // check if item up side and c2cpu interval less than minWasteHeight.
-    if (node.c4cp != node.c2cpu && node.c2cpu - node.c4cp < GV::param.minWasteHeight) {
+    if (node.c2cpu != node.c4cp && node.c2cpu - node.c4cp < GV::param.minWasteHeight) {
         if (node.getFlagBit(LOCKC2)) { // c2cpu cant's move in this case.
             return false;
         } else {
             node.c2cpu += GV::param.minWasteHeight; // move c2cpu up to satisfy constraint.
             if (node.getFlagBit(DEFECT_U))
                 node.c4cp = node.c2cpu;
-            moved_cut2 = true;
         }
     }
     // check if new c2cpu and old c2cpu interval less than minWasteHeight
-    if (node.getFlagBit(NEW_L2) && !node.getFlagBit(NEW_L1) && node.c2cpu != old.c2cpu
-        && node.c2cpu - old.c2cpu < GV::param.minWasteHeight) {
+    if (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < GV::param.minWasteHeight) {
         if (node.getFlagBit(LOCKC2)) {
             return false;
         } else {
             node.c2cpu += GV::param.minWasteHeight;
             if (node.getFlagBit(DEFECT_U))
                 node.c4cp = node.c2cpu;
-            moved_cut2 = true;
         }
     }
     

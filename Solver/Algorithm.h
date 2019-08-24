@@ -66,6 +66,24 @@ struct SolutionNode {
 
     void setFlagBit(const int bit_flag = ROTATE) { flag |= bit_flag; }
     const bool getFlagBit(const int bit_flag = ROTATE) const { return flag & bit_flag; }
+
+    const String tostr() {
+        std::ostringstream os;
+        os << "item: " << item
+            << " c1cpl: " << c1cpl
+            << " c1cpr: " << c1cpr
+            << " c2cpb: " << c2cpb
+            << " c2cpu: " << c2cpu
+            << " c3cp: " << c3cp
+            << " c4cp: " << c4cp;
+        if (this->getFlagBit(NEW_PLATE))
+            os << " +P ";
+        if (this->getFlagBit(NEW_L1))
+            os << " +L1 ";
+        if (this->getFlagBit(NEW_L2))
+            os << " +L2 ";
+        return os.str();
+    }
 };
 
 struct ItemNode : public SolutionNode {
