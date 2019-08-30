@@ -36,6 +36,7 @@ void TestSolver::test_toOutput() {
     // ²âÊÔtoOutputº¯Êı
     toOutput();
     #else
+    init();
     solve();
     ofstream ofs("tmp/" + env.friendlyInstName());
     if (!ofs.is_open())return;

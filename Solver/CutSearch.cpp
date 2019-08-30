@@ -450,7 +450,7 @@ const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLe
             }
         }
     }
-    return res != -1 && res - x < GV::param.minWasteHeight ? x + GV::param.minWasteHeight : res;
+    return res != -1 && res - y < GV::param.minWasteHeight ? y + GV::param.minWasteHeight : res;
 }
 
 // check if 1-cut through defect, return new 1-cut x coord. [not consider minwasteWidth constraint]
