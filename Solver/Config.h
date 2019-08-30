@@ -97,6 +97,7 @@
 #define SZX_DEBUG  _CC_MS_VC
 #pragma endregion DebugHelper
 
+#define TEST_SOLVER 1
 
 #pragma region SolverBehavior
 #pragma endregion SolverBehavior

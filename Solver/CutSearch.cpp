@@ -41,7 +41,7 @@ Score CutSearch::dfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_t
             batch[item2batch[node.item]].pop_back();
             used_item_area += GV::item_area[node.item];
         } else if (node.depth - pre_depth < 1) { // search back.
-            for (int i = cur_parsol.size() - 1; i >= node.depth; --i) { // resume stack.
+            for (int i = static_cast<int>(cur_parsol.size()) - 1; i >= node.depth; --i) { // resume stack.
                 batch[item2batch[cur_parsol[i].item]].push_back(
                     cur_parsol[i].item);
                 used_item_area -= GV::item_area[cur_parsol[i].item];

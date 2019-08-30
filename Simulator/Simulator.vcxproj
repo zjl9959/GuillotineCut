@@ -171,6 +171,7 @@
     <ClInclude Include="..\Solver\PlateSearch.h" />
     <ClInclude Include="..\Solver\Problem.h" />
     <ClInclude Include="..\Solver\Solver.h" />
+    <ClInclude Include="..\Solver\test\test.h" />
     <ClInclude Include="..\Solver\ThreadPool.h" />
     <ClInclude Include="..\Solver\Utility.h" />
     <ClInclude Include="Simulator.h" />
@@ -182,6 +183,7 @@
     <ClCompile Include="..\Solver\PlateSearch.cpp" />
     <ClCompile Include="..\Solver\Problem.cpp" />
     <ClCompile Include="..\Solver\Solver.cpp" />
+    <ClCompile Include="..\Solver\test\test.cpp" />
     <ClCompile Include="..\Solver\Utility.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Simulator.cpp" />

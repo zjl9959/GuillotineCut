@@ -31,6 +31,9 @@
     <Filter Include="Solver\algorithm\header">
       <UniqueIdentifier>{bb8291c1-f9e4-4f2d-8d48-d6b0f6490fc9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Solver\test">
+      <UniqueIdentifier>{a71f3311-d92b-48b4-98ff-76d541594f65}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Simulator.h">
@@ -72,6 +75,9 @@
     <ClInclude Include="..\Solver\Utility.h">
       <Filter>Solver\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\test\test.h">
+      <Filter>Solver\test</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -97,6 +103,9 @@
     </ClCompile>
     <ClCompile Include="..\Solver\Utility.cpp">
       <Filter>Solver\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\test\test.cpp">
+      <Filter>Solver\test</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

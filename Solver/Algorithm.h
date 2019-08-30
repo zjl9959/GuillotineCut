@@ -57,6 +57,7 @@ struct SolutionNode {
     TCoord c4cp;  // current 4-cut position up.
     Status flag;
 
+    SolutionNode() {};
     // construct a node based on c1cpl
     SolutionNode(const TCoord C1cpl) : item(Problem::InvalidItemId), c1cpl(C1cpl), c1cpr(C1cpl), c2cpb(0),
         c2cpu(0), c3cp(C1cpl), c4cp(0), flag(0) {};

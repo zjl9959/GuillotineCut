@@ -5,6 +5,11 @@
 #include "LogSwitch.h"
 #include "ThreadPool.h"
 
+#if TEST_SOLVER
+#include "test/test.h"
+#endif
+
+
 using namespace std;
 
 #pragma region GV Definition
@@ -67,12 +72,19 @@ int Cli::run(int argc, char * argv[]) {
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
+    #if TEST_SOLVER
+    Log(Log::Info) << "Program running in test mode." << endl;
+    zjl_test::TestSolver tsolver(input, env, cfg);
+    tsolver.TestToOutput();
+    #else
     Solver solver(input, env, cfg);
     solver.solve();
     solver.output.save(env.solutionPath());
+
     #if SZX_DEBUG
     solver.output.save(env.solutionPathWithTime());
     solver.record();
+    #endif
     #endif
 
     return 0;

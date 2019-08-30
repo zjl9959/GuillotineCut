@@ -14,8 +14,8 @@ Score PlateSearch::mcts(List<List<TID>>& batch, List<SolutionNode>& sol, int max
 // 从batch中随机产生一个可行物品序列，并保证该序列和node子节点中的物品序列不同。
 bool PlateSearch::getItemSequence(int seq_len, MCTNode *node, List<List<TID>>& batch, List<TID>& seq) {
     int left_item = 0;
-    for (int i = 0; i < batch.size(); ++i)
-        left_item += batch[i].size();
+    for (auto it = batch.begin(); it != batch.end(); ++it)
+        left_item += static_cast<int>(it->size());
     seq_len = min(seq_len, left_item);  // seq_len不大于batch中剩余物品数
     for (int i = 0; i < seq_len; ++i) {
         List<bool> item_hash(1000, false);
@@ -68,7 +68,7 @@ void PlateSearch::createItemBatchs(int nums, const SolutionNode & resume_point, 
 		int chosen_items_num = 0;
 		while (candidate_items.size() && chosen_items_num < cfg_.mcin) {
 			++chosen_items_num;
-			int chosen_index = rand_.pick(candidate_items.size());
+			int chosen_index = rand_.pick(static_cast<int>(candidate_items.size()));
 			TID chosen_item  = candidate_items[chosen_index]; items_set[chosen_item] = true;
 			TID chosen_stack = GV::item2stack[chosen_item]; 
 			int temp_bottom  = temp_batch[chosen_stack].begin - 1;
@@ -111,7 +111,7 @@ ScorePair PlateSearch::branchAndGetBestOneCutSol(int nums, const SolutionNode & 
 	List<ScorePair> scores(branch_num);
 	CutSearch cut_search(plate_, resume_point.c1cpr);
 
-	#if 1  // 此处可以开启多线程
+	#if 0  // 此处可以开启多线程
 	ThreadPool tp(GV::support_thread);
 	for (int i = 0; i < branch_num; ++i) {
 		tp.push([&, i]() {
