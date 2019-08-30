@@ -111,8 +111,8 @@ public:
         timer(std::chrono::milliseconds(environment.msTimeout)) {}
     void record() const;
 	void solve();
+    void init();
 protected:
-	void init();
 	void run();
 	Length evaluateOnePlate(TID cur_plate, List<MyStack>& batch, MySolution &comp_sol);
     bool check(Length &checkerObj) const;

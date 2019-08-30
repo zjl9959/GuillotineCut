@@ -400,12 +400,12 @@ const bool CutSearch::constraintCheck(const ItemNode &old, ItemNode &node) {
         return false;
     }
     // check if cut1 and stock right side interval less than minimum waste width.
-    if (GV::param.plateWidth - node.c1cpr != 0 &&
+    if (GV::param.plateWidth != node.c1cpr &&
         GV::param.plateWidth - node.c1cpr < GV::param.minWasteWidth) {
         return false;
     }
     // check if cut2 and stock up side interval less than minimum waste height.
-    if (GV::param.plateHeight - node.c2cpu != 0 &&
+    if (GV::param.plateHeight != node.c2cpu &&
         GV::param.plateHeight - node.c2cpu < GV::param.minWasteHeight) {
         return false;
     }
@@ -450,7 +450,7 @@ const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLe
             }
         }
     }
-    return res - x < GV::param.minWasteHeight ? x + GV::param.minWasteHeight : res;
+    return res != -1 && res - x < GV::param.minWasteHeight ? x + GV::param.minWasteHeight : res;
 }
 
 // check if 1-cut through defect, return new 1-cut x coord. [not consider minwasteWidth constraint]

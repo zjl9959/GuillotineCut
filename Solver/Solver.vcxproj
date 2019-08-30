@@ -171,6 +171,7 @@
     <ClInclude Include="PlateSearch.h" />
     <ClInclude Include="Problem.h" />
     <ClInclude Include="Solver.h" />
+    <ClInclude Include="test\test.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="Utility.h" />
   </ItemGroup>
@@ -181,6 +182,7 @@
     <ClCompile Include="PlateSearch.cpp" />
     <ClCompile Include="Problem.cpp" />
     <ClCompile Include="Solver.cpp" />
+    <ClCompile Include="test\test.cpp" />
     <ClCompile Include="Utility.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

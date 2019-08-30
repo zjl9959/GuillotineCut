@@ -5,7 +5,7 @@
 #include "LogSwitch.h"
 #include "ThreadPool.h"
 
-#if TEST_SOLVER
+#ifdef ZJL_TEST
 #include "test/test.h"
 #endif
 
@@ -72,19 +72,24 @@ int Cli::run(int argc, char * argv[]) {
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
-    #if TEST_SOLVER
-    Log(Log::Info) << "Program running in test mode." << endl;
-    zjl_test::TestSolver tsolver(input, env, cfg);
-    tsolver.TestToOutput();
-    #else
     Solver solver(input, env, cfg);
-    solver.solve();
-    solver.output.save(env.solutionPath());
+    solver.init();
 
-    #if SZX_DEBUG
-    solver.output.save(env.solutionPathWithTime());
-    solver.record();
-    #endif
+    #if ZJL_TEST
+        #if 0
+            zjl_test::TestSolver tsolver(input, env, cfg);
+            tsolver.test_toOutput();
+        #endif
+        #if 1
+            zjl_test::test_cutSearch_branch();
+        #endif
+    #else
+        solver.solve();
+        solver.output.save(env.solutionPath());
+        #if SZX_DEBUG
+            solver.output.save(env.solutionPathWithTime());
+            solver.record();
+        #endif
     #endif
 
     return 0;
@@ -139,7 +144,6 @@ void Environment::calibrate() {
 
 #pragma region Solver
 void Solver::solve() {
-	this->init();
 	this->run();
 	this->toOutput();
 }

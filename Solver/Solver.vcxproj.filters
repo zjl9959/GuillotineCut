@@ -18,6 +18,9 @@
     <Filter Include="algorithm\header">
       <UniqueIdentifier>{ea7d104c-ce10-4749-864d-c47d2c2c9b85}</UniqueIdentifier>
     </Filter>
+    <Filter Include="test">
+      <UniqueIdentifier>{1815b86d-f242-4997-9366-475f6986b835}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Config.h">
@@ -53,6 +56,9 @@
     <ClInclude Include="Solver.h">
       <Filter>algorithm\header</Filter>
     </ClInclude>
+    <ClInclude Include="test\test.h">
+      <Filter>test</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -75,6 +81,9 @@
     </ClCompile>
     <ClCompile Include="Solver.cpp">
       <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="test\test.cpp">
+      <Filter>test</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

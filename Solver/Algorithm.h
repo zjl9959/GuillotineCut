@@ -90,6 +90,7 @@ struct SolutionNode {
 struct ItemNode : public SolutionNode {
     Depth depth;  // node depth in the tree.
     Score score;
+    ItemNode() {}
     ItemNode(TCoord C1cpl) : SolutionNode(C1cpl), depth(-1), score(0.0) {}
     ItemNode(const ItemNode &node, const TID item_id, const Status _flag, const Score _score = 0.0) :
         SolutionNode(node, item_id, _flag), depth(node.depth + 1), score(_score) {}

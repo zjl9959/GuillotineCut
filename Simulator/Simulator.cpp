@@ -124,7 +124,7 @@ void Simulator::benchmark(int repeat) {
     random_device rd;
     mt19937 rgen(rd());
     vector<int> instList;
-    for (int inst = 16; inst <= 20; ++inst) { instList.push_back(inst); }
+    for (int inst = 1; inst <= 20; ++inst) { instList.push_back(inst); }
     for (int i = 0; i < repeat; ++i) {
         //shuffle(instList.begin(), instList.end(), rgen);
         for (auto inst = instList.begin(); inst != instList.end(); ++inst) {
