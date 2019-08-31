@@ -253,5 +253,5 @@ ModelManifest.xml
 /Deploy/log*.csv
 /Lib/gurobi/lib/*.lib
 /Doc/debug_log
-/Doc/FixLog
 /Deploy/tmp
+/Deploy/analyzer.xlsx
