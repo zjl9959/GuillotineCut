@@ -162,28 +162,36 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Algorithm.h" />
+    <ClInclude Include="algorithm\CutSearch.h" />
+    <ClInclude Include="algorithm\Factory.h" />
+    <ClInclude Include="algorithm\Picker.h" />
+    <ClInclude Include="algorithm\PlateSearch.h" />
+    <ClInclude Include="algorithm\TopSearch.h" />
     <ClInclude Include="Common.h" />
-    <ClInclude Include="Config.h" />
-    <ClInclude Include="CsvReader.h" />
-    <ClInclude Include="CutSearch.h" />
-    <ClInclude Include="LogSwitch.h" />
-    <ClInclude Include="PlateSearch.h" />
-    <ClInclude Include="Problem.h" />
+    <ClInclude Include="data\Auxiliary.h" />
+    <ClInclude Include="data\Batch.h" />
+    <ClInclude Include="data\Configuration.h" />
+    <ClInclude Include="data\MCTNode.h" />
+    <ClInclude Include="data\Placement.h" />
+    <ClInclude Include="data\Problem.h" />
     <ClInclude Include="Solver.h" />
-    <ClInclude Include="test\test.h" />
-    <ClInclude Include="ThreadPool.h" />
-    <ClInclude Include="Utility.h" />
+    <ClInclude Include="utility\Config.h" />
+    <ClInclude Include="utility\CsvReader.h" />
+    <ClInclude Include="utility\LogSwitch.h" />
+    <ClInclude Include="utility\ThreadPool.h" />
+    <ClInclude Include="utility\Utility.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CsvReader.cpp" />
-    <ClCompile Include="CutSearch.cpp" />
+    <ClCompile Include="algorithm\CutSearch.cpp" />
+    <ClCompile Include="algorithm\Factory.cpp" />
+    <ClCompile Include="algorithm\Picker.cpp" />
+    <ClCompile Include="algorithm\PlateSearch.cpp" />
+    <ClCompile Include="algorithm\TopSearch.cpp" />
+    <ClCompile Include="data\Problem.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="PlateSearch.cpp" />
-    <ClCompile Include="Problem.cpp" />
     <ClCompile Include="Solver.cpp" />
-    <ClCompile Include="test\test.cpp" />
-    <ClCompile Include="Utility.cpp" />
+    <ClCompile Include="utility\CsvReader.cpp" />
+    <ClCompile Include="utility\Utility.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

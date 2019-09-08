@@ -776,7 +776,7 @@ protected:
 };
 
 struct CombinationCache {
-    using ID = int;
+    using ID = short;
     using ItemList = std::vector<ID>; // `itemList` is a list of item IDs in increasing order.
     using ItemSet = std::vector<bool>; // `itemSet[n]` is true if item `n` is included in the set.
 

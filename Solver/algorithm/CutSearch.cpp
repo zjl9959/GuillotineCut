@@ -4,71 +4,56 @@ using namespace std;
 
 namespace szx {
 
-Score CutSearch::dfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_tail, Score gap) {
-    Area batch_item_area = 0;
-    Area used_item_area = 0; // current used items area.
-    const Area tail_area = (GV::param.plateWidth - start_pos_)*GV::param.plateHeight;
-    Timer timer(static_cast<chrono::milliseconds>(timeout_ms_));
-    int see_timeout = 100000;
-    List<TID> item2batch(GV::items.size());
-    for (int i = 0; i < batch.size(); ++i) {
-        for (auto item : batch[i]) {
-            batch_item_area += GV::item_area[item];
-            item2batch[item] = i;
-        }
-    }
+Score CutSearch::run(Batch & batch, Solution & sol, bool opt_tail) {
+    return Score();
+}
 
-    Score best_obj = 0.0;
-    Score best_ub = 0.0;
-    List<ItemNode> live_nodes; // the tree nodes to be branched.
-    List<ItemNode> cur_parsol; // current partial solution, best partial solution.
-    List<ItemNode> best_parsol;
-    live_nodes.reserve(100);
-    cur_parsol.reserve(20);
-    Depth pre_depth = -1; // last node depth.
-    ItemNode resume_point(start_pos_);
+Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
+    List<TreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
+    List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解
+    List<TreeNode> best_sol; Score best_obj = 0.0;      // 最优解及对应目标函数值
     
-    branch(resume_point, batch, live_nodes, opt_tail);
+    Depth pre_depth = -1;    // 上一个节点深度
+    Area used_item_area = 0; // 已使用物品面积
+    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight;
+
+    Timer timer(static_cast<chrono::milliseconds>(timeout_ms_));
+    int see_timeout = 100000;   // 检查是否超时间隔时间
+    
+    branch(TreeNode(start_pos_), batch, live_nodes, opt_tail);
     while (live_nodes.size()) {
-        ItemNode node = live_nodes.back();
+        TreeNode node = live_nodes.back();
         live_nodes.pop_back();
-        Score ub = (double)batch_item_area / (double)((node.c1cpr - resume_point.c1cpl)*GV::param.plateHeight);
-        if (best_ub < ub) best_ub = ub;
-        if (ub < best_obj) continue;
-        
-        if (node.depth - pre_depth == 1) { // search forward.
-            cur_parsol.push_back(node);
-            batch[item2batch[node.item]].pop_back();
-            used_item_area += GV::item_area[node.item];
-        } else if (node.depth - pre_depth < 1) { // search back.
-            for (int i = static_cast<int>(cur_parsol.size()) - 1; i >= node.depth; --i) { // resume stack.
-                batch[item2batch[cur_parsol[i].item]].push_back(
-                    cur_parsol[i].item);
-                used_item_area -= GV::item_area[cur_parsol[i].item];
+        if (node.depth - pre_depth == 1) { // 向下扩展
+            cur_sol.push_back(node);
+            batch.pop(node.item);
+            used_item_area += item_area_[node.item];
+        } else if (node.depth - pre_depth < 1) { // 向上回溯
+            for (int i = static_cast<int>(cur_sol.size()) - 1; i >= node.depth; --i) {
+                batch.push(cur_sol[i].item);    // 恢复栈
+                used_item_area -= item_area_[cur_sol[i].item];  // 更新使用物品面积
             }
-            cur_parsol.erase(cur_parsol.begin() + node.depth, cur_parsol.end()); // erase extend nodes.
-            cur_parsol.push_back(node); // push current node into cur_parsol.
-            batch[item2batch[node.item]].pop_back();
-            used_item_area += GV::item_area[node.item];
+            cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end());
+            cur_sol.push_back(node); // 更新当前解
+            batch.pop(node.item);
+            used_item_area += item_area_[node.item];
         }
         const size_t old_live_nodes_size = live_nodes.size();
         branch(node, batch, live_nodes, opt_tail);
         pre_depth = node.depth;
-        if (old_live_nodes_size == live_nodes.size()) { // fill a complate 1-cut.
-            TLength cur_width = cur_parsol.back().c1cpr - start_pos_;
+        if (old_live_nodes_size == live_nodes.size()) { // 找到一个完整解
+            Length cur_width = cur_sol.back().c1cpr - start_pos_;
             Score cur_obj = 0.0;
             if (opt_tail)
                 cur_obj = (double)used_item_area / (double)tail_area;
             else
-                cur_obj = (double)used_item_area / (double)(cur_width*GV::param.plateHeight);
+                cur_obj = (double)used_item_area / (double)(cur_width*param_.plateHeight);
             if (best_obj < cur_obj) {
                 best_obj = cur_obj;
-                best_parsol = cur_parsol;
+                best_sol = cur_sol;
             }
-            if (cur_obj > best_ub - gap)
-                break;
         }
-        if (see_timeout == 0) {
+        if (see_timeout == 0) { // 检查是否超时
             if (timer.isTimeOut())
                 break;
             else
@@ -76,61 +61,61 @@ Score CutSearch::dfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_t
         }
         --see_timeout;
     }
-    if (!best_parsol.empty()) {
+    if (!best_sol.empty()) {
         sol.clear();
-        sol.reserve(best_parsol.size());
-        for (auto it = best_parsol.begin(); it != best_parsol.end(); ++it)
+        sol.reserve(best_sol.size());
+        for (auto it = best_sol.begin(); it != best_sol.end(); ++it)
             sol.push_back(*it);
         return best_obj;
     }
     return 0.0;
 }
 
-Score CutSearch::pfs(List<List<TID>>& batch, List<SolutionNode>& sol, bool opt_tail, Score gap) {
+Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
     // [zjl][TODO]: add pfs implement.
     return 0.0;
 }
 
-void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<ItemNode> &branch_nodes, bool opt_tail) {
-    const bool c2cpu_locked = old.getFlagBit(LOCKC2); // status: current c2cpu was locked.
+void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
+    const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: current c2cpu was locked.
+    ID itemId = Problem::InvalidItemId;
     // case A, place item in a new L1.
     if (old.c2cpu == 0) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
-            for (int i = 0; i < batch.size(); ++i) {
+            while (Problem::InvalidItemId != (itemId = batch.get())) {
                 // pretreatment.
-                if (!batch[i].size())continue; // skip empty stack.
-                TID itemId = batch[i].back();
-                Rect item = GV::items[itemId];
+                Rect item = items_[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
-                if (old.c1cpr + item.w > GV::param.plateWidth)continue;
+                if (old.c1cpr + item.w > param_.plateWidth)continue;
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                TLength slip_r = 0, slip_u = 0;
+                Length slip_r = 0, slip_u = 0;
                 // TODO: precheck if item exceed plate bound to speed up branch.
                 // check if item conflict with defect and try to fix it.
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                 {
-                    ItemNode node_a1(old, itemId, rotate | NEW_L1 | NEW_L2); // place in defect right(if no defect conflict, slip_r is 0).
+                    // place in defect right(if no defect conflict, slip_r is 0).
+                    TreeNode node_a1(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2);
                     node_a1.c3cp = node_a1.c1cpr = slip_r + item.w;
                     node_a1.c4cp = node_a1.c2cpu = item.h;
                     if (slip_r > old.c1cpr)
-                        node_a1.setFlagBit(DEFECT_R);
+                        node_a1.setFlagBit(Placement::DEFECT_R);
                     if (constraintCheck(old, node_a1)) {
                         if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
-                            node_a1.setFlagBit(NEW_PLATE);
+                            node_a1.setFlagBit(Placement::NEW_PLATE);
                         branch_nodes.push_back(node_a1);
                     }
                 }
                 if (slip_r > old.c1cpr) { // item conflict with defect(two choice).
                     slip_u = sliptoDefectUp(old.c1cpr, 0, item.w);
                     if (slip_u != -1) {
-                        ItemNode node_a2(old, itemId, rotate | NEW_L1 | NEW_L2); // place in defect up.
+                        TreeNode node_a2(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2); // place in defect up.
                         node_a2.c3cp = node_a2.c1cpr = old.c1cpr + item.w;
                         node_a2.c4cp = node_a2.c2cpu = slip_u + item.h;
-                        node_a2.setFlagBit(DEFECT_U);
+                        node_a2.setFlagBit(Placement::DEFECT_U);
                         if (constraintCheck(old, node_a2)) {
                             if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
-                                node_a2.setFlagBit(NEW_PLATE);
+                                node_a2.setFlagBit(Placement::NEW_PLATE);
                             branch_nodes.push_back(node_a2);
                         }
                     }
@@ -141,35 +126,33 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
     // case B, extend c1cpr or place item in a new L2.
     else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
-            for (int i = 0; i < batch.size(); ++i) {
+            while (Problem::InvalidItemId != (itemId = batch.get())) {
                 // pretreatment.
-                if (!batch[i].size())continue; // skip empty stack.
-                TID itemId = batch[i].back();
-                Rect item = GV::items[itemId];
+                Rect item = items_[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                TLength slip_r = 0, slip_u = 0;
+                Length slip_r = 0, slip_u = 0;
                 // place in the right of old.c1cpr.
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                 {
-                    ItemNode node_b1(old, itemId, rotate);
+                    TreeNode node_b1(old, itemId, rotate);
                     node_b1.c3cp = node_b1.c1cpr = slip_r + item.w;
                     node_b1.c4cp = item.h;
                     if (slip_r > old.c1cpr)
-                        node_b1.setFlagBit(DEFECT_R);
+                        node_b1.setFlagBit(Placement::DEFECT_R);
                     if (constraintCheck(old, node_b1)) {
                         branch_nodes.push_back(node_b1);
                     }
                 }
                 if (slip_r > old.c1cpr) {
-                    slip_u = sliptoDefectUp(old.c1cpr, old.c2cpu - item.h > GV::param.minWasteHeight ?
+                    slip_u = sliptoDefectUp(old.c1cpr, old.c2cpu - item.h > param_.minWasteHeight ?
                         old.c2cpu - item.h : 0, item.w);    // [zjl][TODO]:consider more.
                     if (slip_u != -1) {
-                        ItemNode node_b2(old, itemId, rotate);
+                        TreeNode node_b2(old, itemId, rotate);
                         node_b2.c3cp = node_b2.c1cpr = old.c1cpr + item.w;
                         node_b2.c4cp = slip_u + item.h;
-                        node_b2.setFlagBit(DEFECT_U);
+                        node_b2.setFlagBit(Placement::DEFECT_U);
                         if (constraintCheck(old, node_b2)) {
                             branch_nodes.push_back(node_b2);
                         }
@@ -178,15 +161,15 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                 // place in the upper of old.c2cpu.
                 slip_r = sliptoDefectRight(old.c1cpl, old.c2cpu, item.w, item.h);
                 {
-                    ItemNode node_b3(old, itemId, rotate);
+                    TreeNode node_b3(old, itemId, rotate);
                     node_b3.c2cpb = old.c2cpu;
                     node_b3.c4cp = node_b3.c2cpu = old.c2cpu + item.h;
                     node_b3.c3cp = slip_r + item.w;
                     if (node_b3.c1cpr < node_b3.c3cp)
                         node_b3.c1cpr = node_b3.c3cp;
-                    node_b3.setFlagBit(NEW_L2);
+                    node_b3.setFlagBit(Placement::NEW_L2);
                     if (slip_r > old.c1cpl)
-                        node_b3.setFlagBit(DEFECT_R);
+                        node_b3.setFlagBit(Placement::DEFECT_R);
                     if (constraintCheck(old, node_b3)) {
                         branch_nodes.push_back(node_b3);
                     }
@@ -194,14 +177,14 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                 if (slip_r > old.c1cpl) {
                     slip_u = sliptoDefectUp(old.c1cpl, old.c2cpu, item.w);
                     if (slip_u != -1) {
-                        ItemNode node_b4(old, itemId, rotate);
+                        TreeNode node_b4(old, itemId, rotate);
                         node_b4.c2cpb = old.c2cpu;
                         node_b4.c4cp = node_b4.c2cpu = slip_u + item.h;
                         node_b4.c3cp = old.c1cpl + item.w;
                         if (node_b4.c1cpr < node_b4.c3cp)
                             node_b4.c1cpr = node_b4.c3cp;
-                        node_b4.setFlagBit(NEW_L2);
-                        node_b4.setFlagBit(DEFECT_U);
+                        node_b4.setFlagBit(Placement::NEW_L2);
+                        node_b4.setFlagBit(Placement::DEFECT_U);
                         if (constraintCheck(old, node_b4)) {
                             branch_nodes.push_back(node_b4);
                         }
@@ -213,21 +196,19 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
     // case C, place item in the old L2 or a new L2 when item extend c1cpr too much.
     else {
         for (int rotate = 0; rotate <= 1; ++rotate) {
-            for (int i = 0; i < batch.size(); ++i) {
+            while (Problem::InvalidItemId != (itemId = batch.get())) {
                 // pretreatment.
-                if (!batch[i].size())continue; // skip empty stack.
-                TID itemId = batch[i].back();
-                Rect item = GV::items[itemId];
+                Rect item = items_[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                TLength slip_r = 0, slip_u = 0;
+                Length slip_r = 0, slip_u = 0;
                 // place item in the up of current c4cp.
-                Length last_item_w = old.getFlagBit(ROTATE) ? GV::items[old.item].h : GV::items[old.item].w;
-                if (old.c2cpu > old.c4cp && last_item_w == item.w && !old.getFlagBit(DEFECT_U) &&
+                Length last_item_w = old.getFlagBit(Placement::ROTATE) ? items_[old.item].h : items_[old.item].w;
+                if (old.c2cpu > old.c4cp && last_item_w == item.w && !old.getFlagBit(Placement::DEFECT_U) &&
                     ((c2cpu_locked && old.c4cp + item.h == old.c2cpb) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpb)) &&
                     !sliptoDefectRight(old.c3cp - item.w, old.c4cp, item.w, item.h)) {
-                    ItemNode node_c1(old, itemId, rotate|BIN4|LOCKC2); // place item in L4 bin.
+                    TreeNode node_c1(old, itemId, rotate| Placement::BIN4| Placement::LOCKC2); // place item in L4 bin.
                     node_c1.c2cpu = node_c1.c4cp = old.c4cp + item.h;
                     if (constraintCheck(old, node_c1)) {
                         branch_nodes.push_back(node_c1);
@@ -238,31 +219,31 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                     slip_r = sliptoDefectRight(old.c3cp, old.c2cpb, item.w, item.h);
                     // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu constraint must meet.
                     if (!c2cpu_locked || (c2cpu_locked && old.c2cpb + item.h <= old.c2cpu)) {
-                        ItemNode node_c2(old, itemId, rotate);
+                        TreeNode node_c2(old, itemId, rotate);
                         node_c2.c3cp = slip_r + item.w;
                         if (node_c2.c1cpr < node_c2.c3cp)
                             node_c2.c1cpr = node_c2.c3cp;
                         node_c2.c4cp = old.c2cpb + item.h;
                         if (slip_r > old.c3cp)
-                            node_c2.setFlagBit(DEFECT_R);
+                            node_c2.setFlagBit(Placement::DEFECT_R);
                         if (c2cpu_locked)
-                            node_c2.setFlagBit(LOCKC2);
+                            node_c2.setFlagBit(Placement::LOCKC2);
                         if (constraintCheck(old, node_c2)) {
                             branch_nodes.push_back(node_c2);
                         }
                     }
                     if (slip_r > old.c3cp) {
-                        slip_u = sliptoDefectUp(old.c3cp, old.c2cpu - item.h > old.c2cpb + GV::param.minWasteHeight ?
+                        slip_u = sliptoDefectUp(old.c3cp, old.c2cpu - item.h > old.c2cpb + param_.minWasteHeight ?
                             old.c2cpu - item.h : old.c2cpb, item.w);
                         if (slip_u != -1) {
                             if (!c2cpu_locked || (c2cpu_locked && slip_u + item.h <= old.c2cpu)) {
-                                ItemNode node_c3(old, itemId, rotate | DEFECT_U);
+                                TreeNode node_c3(old, itemId, rotate | Placement::DEFECT_U);
                                 node_c3.c3cp = old.c3cp + item.w;
                                 if (node_c3.c1cpr < node_c3.c3cp)
                                     node_c3.c1cpr = node_c3.c3cp;
                                 node_c3.c4cp = item.h + slip_u;
                                 if (c2cpu_locked)
-                                    node_c3.setFlagBit(LOCKC2);
+                                    node_c3.setFlagBit(Placement::LOCKC2);
                                 if (constraintCheck(old, node_c3)) {
                                     branch_nodes.push_back(node_c3);
                                 }
@@ -275,14 +256,14 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                     // creat a new L2 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpl, old.c2cpu, item.w, item.h);
                     {
-                        ItemNode node_c4(old, itemId, rotate|NEW_L2);
+                        TreeNode node_c4(old, itemId, rotate| Placement::NEW_L2);
                         node_c4.c3cp = slip_r + item.w;
                         if (node_c4.c1cpr < node_c4.c3cp)
                             node_c4.c1cpr = node_c4.c3cp;
                         node_c4.c2cpb = old.c2cpu;
                         node_c4.c4cp = node_c4.c2cpu = old.c2cpu + item.h;
                         if (slip_r > old.c1cpl)
-                            node_c4.setFlagBit(DEFECT_R);
+                            node_c4.setFlagBit(Placement::DEFECT_R);
                         if (constraintCheck(old, node_c4)) {
                             branch_nodes.push_back(node_c4);
                             flag = true;
@@ -291,7 +272,7 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                     if (slip_r > old.c1cpl) {
                         slip_u = sliptoDefectUp(old.c1cpl, old.c2cpu, item.w);
                         if (slip_u != -1) {
-                            ItemNode node_c5(old, itemId, rotate | NEW_L2 | DEFECT_U);
+                            TreeNode node_c5(old, itemId, rotate | Placement::NEW_L2 | Placement::DEFECT_U);
                             node_c5.c3cp = old.c1cpl + item.w;
                             if (node_c5.c1cpr < node_c5.c3cp)
                                 node_c5.c1cpr = node_c5.c3cp;
@@ -307,13 +288,13 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                     {
-                        ItemNode node_c6(old, itemId, rotate|NEW_L1|NEW_L2);
+                        TreeNode node_c6(old, itemId, rotate| Placement::NEW_L1| Placement::NEW_L2);
                         node_c6.c1cpl = old.c1cpr;
                         node_c6.c3cp = node_c6.c1cpr = item.w + slip_r;
                         node_c6.c2cpb = 0;
                         node_c6.c4cp = node_c6.c2cpu = item.h;
                         if (slip_r > old.c1cpr)
-                            node_c6.setFlagBit(DEFECT_R);
+                            node_c6.setFlagBit(Placement::DEFECT_R);
                         if (constraintCheck(old, node_c6)) {
                             branch_nodes.push_back(node_c6);
                         }
@@ -321,7 +302,7 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
                     if (slip_r > old.c1cpr) {
                         slip_u = sliptoDefectUp(old.c1cpr, 0, item.w);
                         if (slip_u != -1) {
-                            ItemNode node_c7(old, itemId, rotate | DEFECT_U | NEW_L1 | NEW_L2);
+                            TreeNode node_c7(old, itemId, rotate | Placement::DEFECT_U | Placement::NEW_L1 | Placement::NEW_L2);
                             node_c7.c1cpl = old.c1cpr;
                             node_c7.c3cp = node_c7.c1cpr = old.c1cpr + item.w;
                             node_c7.c2cpb = 0;
@@ -340,36 +321,36 @@ void CutSearch::branch(const ItemNode &old, const List<List<TID>> &batch, List<I
 /* input: old branch node, current partial solution, new branch node.
    function: check if new branch satisfy all the constraints.
    if some constraints not staisfy, try to fix is by move item. */
-const bool CutSearch::constraintCheck(const ItemNode &old, ItemNode &node) {
+const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
     // if c2cpu less than c4cp, move it up.
     if (node.c2cpu < node.c4cp) {
         node.c2cpu = node.c4cp;
     }
     // check if item right side and c1cpr interval less than minWasteWidth.
-    if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < GV::param.minWasteWidth) {
-        node.c1cpr += GV::param.minWasteWidth; // move c1cpr right to staisfy constraint.
+    if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < param_.minWasteWidth) {
+        node.c1cpr += param_.minWasteWidth; // move c1cpr right to staisfy constraint.
     }
     // check if new c1cpr and old c1cpr interval less than minWasteWidth.
-    if (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < GV::param.minWasteWidth) {
-        node.c1cpr += GV::param.minWasteWidth;
+    if (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < param_.minWasteWidth) {
+        node.c1cpr += param_.minWasteWidth;
     }
     // check if item up side and c2cpu interval less than minWasteHeight.
-    if (node.c2cpu != node.c4cp && node.c2cpu - node.c4cp < GV::param.minWasteHeight) {
-        if (node.getFlagBit(LOCKC2)) { // c2cpu cant's move in this case.
+    if (node.c2cpu != node.c4cp && node.c2cpu - node.c4cp < param_.minWasteHeight) {
+        if (node.getFlagBit(Placement::LOCKC2)) { // c2cpu cant's move in this case.
             return false;
         } else {
-            node.c2cpu += GV::param.minWasteHeight; // move c2cpu up to satisfy constraint.
-            if (node.getFlagBit(DEFECT_U))
+            node.c2cpu += param_.minWasteHeight; // move c2cpu up to satisfy constraint.
+            if (node.getFlagBit(Placement::DEFECT_U))
                 node.c4cp = node.c2cpu;
         }
     }
     // check if new c2cpu and old c2cpu interval less than minWasteHeight
-    if (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < GV::param.minWasteHeight) {
-        if (node.getFlagBit(LOCKC2)) {
+    if (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < param_.minWasteHeight) {
+        if (node.getFlagBit(Placement::LOCKC2)) {
             return false;
         } else {
-            node.c2cpu += GV::param.minWasteHeight;
-            if (node.getFlagBit(DEFECT_U))
+            node.c2cpu += param_.minWasteHeight;
+            if (node.getFlagBit(Placement::DEFECT_U))
                 node.c4cp = node.c2cpu;
         }
     }
@@ -378,43 +359,43 @@ const bool CutSearch::constraintCheck(const ItemNode &old, ItemNode &node) {
     node.c2cpu = cut2ThroughDefect(node.c1cpl, node.c1cpr, node.c2cpu);
 
     // check if cut1 exceed stock right side.
-    if (node.c1cpr > GV::param.plateWidth) {
+    if (node.c1cpr > param_.plateWidth) {
         return false;
     }
     // check if cut2 exceed stock up side.
-    if (node.c2cpu > GV::param.plateHeight) {
+    if (node.c2cpu > param_.plateHeight) {
         return false;
     }
     // check if maximum cut1 width not staisfy.
-    if (node.c1cpr - node.c1cpl > GV::param.maxL1Width) {
+    if (node.c1cpr - node.c1cpl > param_.maxL1Width) {
         return false;
     }
     // check if minimum cut1 width not staisfy.
-    if (node.getFlagBit(NEW_L1) && old.item != Problem::InvalidItemId &&
-        old.c1cpr - old.c1cpl < GV::param.minL1Width) {
+    if (node.getFlagBit(Placement::NEW_L1) && old.item != Problem::InvalidItemId &&
+        old.c1cpr - old.c1cpl < param_.minL1Width) {
         return false;
     }
     // check if minimum cut2 height not staisfy.
-    if (node.getFlagBit(NEW_L2) && old.item != Problem::InvalidItemId &&
-        old.c2cpu - old.c2cpb < GV::param.minL2Height) {
+    if (node.getFlagBit(Placement::NEW_L2) && old.item != Problem::InvalidItemId &&
+        old.c2cpu - old.c2cpb < param_.minL2Height) {
         return false;
     }
     // check if cut1 and stock right side interval less than minimum waste width.
-    if (GV::param.plateWidth != node.c1cpr &&
-        GV::param.plateWidth - node.c1cpr < GV::param.minWasteWidth) {
+    if (param_.plateWidth != node.c1cpr &&
+        param_.plateWidth - node.c1cpr < param_.minWasteWidth) {
         return false;
     }
     // check if cut2 and stock up side interval less than minimum waste height.
-    if (GV::param.plateHeight != node.c2cpu &&
-        GV::param.plateHeight - node.c2cpu < GV::param.minWasteHeight) {
+    if (param_.plateHeight != node.c2cpu &&
+        param_.plateHeight - node.c2cpu < param_.minWasteHeight) {
         return false;
     }
     return true; // every constraints satisfied.
 }
 
 // if item or 1-cut conflict with defect, move item/1-cut to the defect right side.
-const TCoord CutSearch::sliptoDefectRight(const TCoord x, const TCoord y, const TLength w, const TLength h) const {
-    TCoord slip = x;
+const Coord CutSearch::sliptoDefectRight(const Coord x, const Coord y, const Length w, const Length h) const {
+    Coord slip = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= slip + w) {
             break; // the defects is sorted by x position, so in this case just break.
@@ -422,22 +403,22 @@ const TCoord CutSearch::sliptoDefectRight(const TCoord x, const TCoord y, const 
         // item not in defect (right or bottom or top).
         if (!(slip - it->x >= it->w || it->y - y >= h || y - it->y >= it->h)) {
             slip = it->x + it->w;
-            if (slip - x < GV::param.minWasteWidth)
-                slip = x + GV::param.minWasteWidth;
+            if (slip - x < param_.minWasteWidth)
+                slip = x + param_.minWasteWidth;
         }
         // check if dir-cut cut through defect.
         if (it->x < slip + w && it->x + it->w > slip + w) {
             slip = it->x + it->w - w;
-            if (slip - x < GV::param.minWasteWidth)
-                slip = x + GV::param.minWasteWidth;
+            if (slip - x < param_.minWasteWidth)
+                slip = x + param_.minWasteWidth;
         }
     }
     return slip;
 }
 
 // if area(x, y, w, plateHeight-y) has just one defect, slip item to defect up, or return -1.
-const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLength w) const {
-    TCoord res = -1;
+const Coord CutSearch::sliptoDefectUp(const Coord x, const Coord y, const Length w) const {
+    Coord res = -1;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= x + w) {
             break;
@@ -450,12 +431,12 @@ const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLe
             }
         }
     }
-    return res != -1 && res - y < GV::param.minWasteHeight ? y + GV::param.minWasteHeight : res;
+    return res != -1 && res - y < param_.minWasteHeight ? y + param_.minWasteHeight : res;
 }
 
 // check if 1-cut through defect, return new 1-cut x coord. [not consider minwasteWidth constraint]
-const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
-    TCoord res = x;
+const Coord CutSearch::cut1ThroughDefect(const Coord x) const {
+    Coord res = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x > res)break;
         if (it->x < res && it->x + it->w > res) {   // 1-cut cut through defect.
@@ -466,14 +447,14 @@ const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
 }
 
 // check if 2-cut through defect, return new 2-cut y coord.
-const TCoord CutSearch::cut2ThroughDefect(const TCoord x1, const TCoord x2, const TCoord y) const {
-    TCoord res = y;
+const Coord CutSearch::cut2ThroughDefect(const Coord x1, const Coord x2, const Coord y) const {
+    Coord res = y;
     for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
         if (it->y > res)break;
         if (!(it->y + it->h <= res || it->x + it->w <= x1 || it->x >= x2)) {    // 2-cut through defect.
             res = it->y + it->h;
-            if (res - y < GV::param.minWasteHeight)
-                res = y + GV::param.minWasteHeight;
+            if (res - y < param_.minWasteHeight)
+                res = y + param_.minWasteHeight;
         }
     }
     return res;

@@ -162,31 +162,41 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\Solver\Algorithm.h" />
+    <ClInclude Include="..\Solver\algorithm\CutSearch.h" />
+    <ClInclude Include="..\Solver\algorithm\Factory.h" />
+    <ClInclude Include="..\Solver\algorithm\Picker.h" />
+    <ClInclude Include="..\Solver\algorithm\PlateSearch.h" />
+    <ClInclude Include="..\Solver\algorithm\TopSearch.h" />
     <ClInclude Include="..\Solver\Common.h" />
-    <ClInclude Include="..\Solver\Config.h" />
-    <ClInclude Include="..\Solver\CsvReader.h" />
-    <ClInclude Include="..\Solver\CutSearch.h" />
-    <ClInclude Include="..\Solver\LogSwitch.h" />
-    <ClInclude Include="..\Solver\PlateSearch.h" />
-    <ClInclude Include="..\Solver\Problem.h" />
+    <ClInclude Include="..\Solver\data\Auxiliary.h" />
+    <ClInclude Include="..\Solver\data\Batch.h" />
+    <ClInclude Include="..\Solver\data\Configuration.h" />
+    <ClInclude Include="..\Solver\data\MCTNode.h" />
+    <ClInclude Include="..\Solver\data\Placement.h" />
+    <ClInclude Include="..\Solver\data\Problem.h" />
     <ClInclude Include="..\Solver\Solver.h" />
-    <ClInclude Include="..\Solver\test\test.h" />
-    <ClInclude Include="..\Solver\ThreadPool.h" />
-    <ClInclude Include="..\Solver\Utility.h" />
+    <ClInclude Include="..\Solver\utility\Config.h" />
+    <ClInclude Include="..\Solver\utility\CsvReader.h" />
+    <ClInclude Include="..\Solver\utility\LogSwitch.h" />
+    <ClInclude Include="..\Solver\utility\ThreadPool.h" />
+    <ClInclude Include="..\Solver\utility\Utility.h" />
     <ClInclude Include="Simulator.h" />
+    <ClInclude Include="SolutionNode.h" />
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Solver\CsvReader.cpp" />
-    <ClCompile Include="..\Solver\CutSearch.cpp" />
-    <ClCompile Include="..\Solver\PlateSearch.cpp" />
-    <ClCompile Include="..\Solver\Problem.cpp" />
+    <ClCompile Include="..\Solver\algorithm\CutSearch.cpp" />
+    <ClCompile Include="..\Solver\algorithm\Factory.cpp" />
+    <ClCompile Include="..\Solver\algorithm\Picker.cpp" />
+    <ClCompile Include="..\Solver\algorithm\PlateSearch.cpp" />
+    <ClCompile Include="..\Solver\algorithm\TopSearch.cpp" />
+    <ClCompile Include="..\Solver\data\Problem.cpp" />
     <ClCompile Include="..\Solver\Solver.cpp" />
-    <ClCompile Include="..\Solver\test\test.cpp" />
-    <ClCompile Include="..\Solver\Utility.cpp" />
+    <ClCompile Include="..\Solver\utility\CsvReader.cpp" />
+    <ClCompile Include="..\Solver\utility\Utility.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Simulator.cpp" />
+    <ClCompile Include="SolutionNode.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -98,6 +98,7 @@
 #pragma endregion DebugHelper
 
 #define ZJL_TEST 0
+// ZJL_TEST用于使能测试部分代码
 
 #pragma region SolverBehavior
 #pragma endregion SolverBehavior

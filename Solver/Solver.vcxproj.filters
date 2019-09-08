@@ -1,89 +1,115 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="algorithm">
       <UniqueIdentifier>{49780e5d-020a-4f1a-8d7f-553aed1a57c6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="algorithm\source">
-      <UniqueIdentifier>{19ea94ba-5cdb-4564-bcbf-807167018158}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="algorithm\header">
-      <UniqueIdentifier>{ea7d104c-ce10-4749-864d-c47d2c2c9b85}</UniqueIdentifier>
     </Filter>
     <Filter Include="test">
       <UniqueIdentifier>{1815b86d-f242-4997-9366-475f6986b835}</UniqueIdentifier>
     </Filter>
+    <Filter Include="utility">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="data">
+      <UniqueIdentifier>{c8de0589-b4da-444f-9f65-14b593feafa1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="solver">
+      <UniqueIdentifier>{6857f250-6a6e-41f7-acbb-1fdd518eb40c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="algorithm\header">
+      <UniqueIdentifier>{a5d497cc-cb47-4051-838e-1afda4d02ae8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="algorithm\source">
+      <UniqueIdentifier>{4cb9bad0-7766-47a6-b5a9-eb9e32258ed8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Config.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="data\Placement.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="data\Batch.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="data\Auxiliary.h">
+      <Filter>data</Filter>
     </ClInclude>
     <ClInclude Include="Common.h">
-      <Filter>Header Files</Filter>
+      <Filter>solver</Filter>
     </ClInclude>
-    <ClInclude Include="LogSwitch.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="utility\Config.h">
+      <Filter>utility</Filter>
     </ClInclude>
-    <ClInclude Include="Problem.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="utility\CsvReader.h">
+      <Filter>utility</Filter>
     </ClInclude>
-    <ClInclude Include="ThreadPool.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="utility\LogSwitch.h">
+      <Filter>utility</Filter>
     </ClInclude>
-    <ClInclude Include="CutSearch.h">
-      <Filter>algorithm\header</Filter>
+    <ClInclude Include="utility\ThreadPool.h">
+      <Filter>utility</Filter>
     </ClInclude>
-    <ClInclude Include="PlateSearch.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="Algorithm.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="CsvReader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Utility.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="utility\Utility.h">
+      <Filter>utility</Filter>
     </ClInclude>
     <ClInclude Include="Solver.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+    <ClInclude Include="data\Problem.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="data\Configuration.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="data\MCTNode.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\CutSearch.h">
       <Filter>algorithm\header</Filter>
     </ClInclude>
-    <ClInclude Include="test\test.h">
-      <Filter>test</Filter>
+    <ClInclude Include="algorithm\Factory.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\Picker.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\PlateSearch.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\TopSearch.h">
+      <Filter>algorithm\header</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>solver</Filter>
     </ClCompile>
-    <ClCompile Include="Problem.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="utility\CsvReader.cpp">
+      <Filter>utility</Filter>
     </ClCompile>
-    <ClCompile Include="CutSearch.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="PlateSearch.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="Utility.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="CsvReader.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="utility\Utility.cpp">
+      <Filter>utility</Filter>
     </ClCompile>
     <ClCompile Include="Solver.cpp">
+      <Filter>solver</Filter>
+    </ClCompile>
+    <ClCompile Include="data\Problem.cpp">
+      <Filter>data</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\CutSearch.cpp">
       <Filter>algorithm\source</Filter>
     </ClCompile>
-    <ClCompile Include="test\test.cpp">
-      <Filter>test</Filter>
+    <ClCompile Include="algorithm\Factory.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\Picker.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\PlateSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\TopSearch.cpp">
+      <Filter>algorithm\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

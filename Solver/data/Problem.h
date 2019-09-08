@@ -4,13 +4,13 @@
 /// note  : 1.	
 ////////////////////////////////
 
-#ifndef SMART_SZX_GUILLOTINE_CUT_PROBLEM_H
-#define SMART_SZX_GUILLOTINE_CUT_PROBLEM_H
+#ifndef GUILLOTINE_CUT_PROBLEM_H
+#define GUILLOTINE_CUT_PROBLEM_H
 
 
-#include "Config.h"
+#include "../utility/Config.h"
 
-#include "Common.h"
+#include "../Common.h"
 
 
 namespace szx {
@@ -133,4 +133,4 @@ public:
 }
 
 
-#endif // SMART_SZX_GUILLOTINE_CUT_PROBLEM_H
+#endif // GUILLOTINE_CUT_PROBLEM_H

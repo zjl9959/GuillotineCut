@@ -4,9 +4,8 @@
 /// note  : 1.	
 ////////////////////////////////
 
-#ifndef SMART_SZX_GUILLOTINE_CUT_COMMON_H
-#define SMART_SZX_GUILLOTINE_CUT_COMMON_H
-
+#ifndef GUILLOTINE_CUT_COMMON_H
+#define GUILLOTINE_CUT_COMMON_H
 
 #include <vector>
 #include <set>
@@ -14,21 +13,14 @@
 #include <unordered_map>
 #include <string>
 
-
 namespace szx {
 
-// zero-based consecutive integer identifier.
-using ID = int;
-// the unit of width and height.
-using Length = int;
-// the unit of x and y coordinates.
-using Coord = Length;
 // zero-based consecutive integer identifier for tree search
-using TID = short;
+using ID = short;
 // the unit of tree search width and height
-using TLength = short;
+using Length = short;
 // the unit of tree search x and y coordinates.
-using TCoord = TLength;
+using Coord = Length;
 // the unit of area size
 using Area = int;
 // the unit of status or flag
@@ -56,6 +48,11 @@ using HashMap = std::unordered_map<Key, Val>;
 
 using String = std::string;
 
+using ScorePair = std::pair<int, Score>;
+
+using AreaPair = std::pair<int, Area>;
+
+using LengthPair = std::pair<int, Length>;
 
 class FileExtension {
 public:
@@ -66,4 +63,4 @@ public:
 }
 
 
-#endif // SMART_SZX_GUILLOTINE_CUT_COMMON_H
+#endif // GUILLOTINE_CUT_COMMON_H

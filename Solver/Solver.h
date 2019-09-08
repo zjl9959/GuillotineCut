@@ -1,13 +1,12 @@
 #pragma once
-#ifndef SMART_ZJL_GUILLOTINE_CUT_SOLVER_H
-#define SMART_ZJL_GUILLOTINE_CUT_SOLVER_H
+#ifndef GUILLOTINE_CUT_SOLVER_H
+#define GUILLOTINE_CUT_SOLVER_H
 
-#include "Config.h"
 #include "Common.h"
-#include "Utility.h"
-#include "Problem.h"
-
-#include "PlateSearch.h"
+#include "utility/Utility.h"
+#include "data/Problem.h"
+#include "data/Auxiliary.h"
+#include "data/Configuration.h"
 
 namespace szx {
 
@@ -109,32 +108,21 @@ public:
     Solver(const Problem::Input &inputData, const Environment &environment, const Configuration &config)
         : input(inputData), env(environment), cfg(config), rand(environment.randSeed),
         timer(std::chrono::milliseconds(environment.msTimeout)) {}
-    void record() const;
-	void solve();
-    void init();
+    void run();
 protected:
-	void run();
-	Length evaluateOnePlate(TID cur_plate, List<MyStack>& batch, MySolution &comp_sol);
     bool check(Length &checkerObj) const;
-    void toOutput();
+    void record() const;
 private:
-    const TCoord get_next_1cut(int index) const;
-    const TCoord get_next_2cut(int index) const;
-public:
     Problem::Input input;
-    Problem::Output output;
     Environment env;
     Configuration cfg;
-protected:
+
+    Problem::Output output;
     Random rand;
     Timer timer;
-    Area total_item_area = 0;
-	// 只在 run() 中修改
-	Length best_objective;
-	List<SolutionNode> best_solution;
-	List<MyStack> source_batch;
+    Auxiliary aux;
 };
 
 }
 
-#endif // !SMART_ZJL_GUILLOTINE_CUT_SOLVER_H
+#endif // !GUILLOTINE_CUT_SOLVER_H

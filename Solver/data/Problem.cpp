@@ -2,9 +2,9 @@
 
 #include <cstdlib>
 
-#include "Utility.h"
-#include "LogSwitch.h"
-#include "CsvReader.h"
+#include "../utility/Utility.h"
+#include "../utility/LogSwitch.h"
+#include "../utility/CsvReader.h"
 
 
 using namespace std;
