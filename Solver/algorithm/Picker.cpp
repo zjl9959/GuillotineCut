@@ -4,11 +4,6 @@ using namespace std;
 
 namespace szx {
 
-/*
-根据source随机挑选最多max_num个物品。
-输入：max_num（最多挑多少个物品），max_width（物品最大宽度限制）
-输出：target_batch（挑选出来的物品所形成的栈），true：挑选成功，false：挑选失败
-*/
 bool Picker::rand_pick(int max_num, Length max_width, Batch &target_batch) {
     /* 实现原理
       pool:         chosen:       source_bacth:

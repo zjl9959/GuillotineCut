@@ -4,8 +4,11 @@ using namespace std;
 
 namespace szx {
 
-Score CutSearch::run(Batch & batch, Solution & sol, bool opt_tail) {
-    return Score();
+/* 优化1-cut
+   输入：batch（物品栈），opt_tail（是否优化原料末尾）
+   输出：sol（该1-cut的最优解），返回：1-cut对应利用率 */
+Score CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
+    return dfs(batch, sol, opt_tail);
 }
 
 Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
@@ -19,7 +22,7 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
 
     Timer timer(static_cast<chrono::milliseconds>(timeout_ms_));
     int see_timeout = 100000;   // 检查是否超时间隔时间
-    
+
     branch(TreeNode(start_pos_), batch, live_nodes, opt_tail);
     while (live_nodes.size()) {
         TreeNode node = live_nodes.back();
