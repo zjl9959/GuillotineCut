@@ -40,12 +40,23 @@ public:
     Batch(Batch &&rhs) : stack_index_(0), left_items_(rhs.left_items_),
         stacks_(move(rhs.stacks_)), item2stack_(move(rhs.item2stack_)) {}
 
+    /* 拷贝赋值函数 */
+    Batch& operator=(const Batch &rhs) {
+        if (this != &rhs) {
+            stack_index_ = 0;
+            left_items_ = rhs.left_items_;
+            stacks_ = rhs.stacks_;
+            item2stack_ = rhs.item2stack_;
+        }
+        return *this;
+    }
     /* 转移赋值函数 */
     Batch& operator=(Batch &&rhs) {
         stack_index_ = 0;
         left_items_ = rhs.left_items_;
         stacks_ = move(rhs.stacks_);
         item2stack_ = move(rhs.item2stack_);
+        return *this;
     }
 
     /* 从Batch中弹出一个物品 */
@@ -53,11 +64,25 @@ public:
         stacks_[item2stack_[item]].pop_back();
         left_items_--;
     }
+    /* 从Batch中弹出多个物品，输入：sol（包含待弹出物品节点） */
+    Batch& operator>>(Solution &sol) {
+        for (auto it = sol.begin(); it != sol.end(); ++it) {
+            pop(it->item);
+        }
+        return *this;
+    }
 
     /* 向Batch中添加一个物品，必须是之前从Batch中弹出的物品 */
     void push(ID item) {
         stacks_[item2stack_[item]].push_back(item);
         left_items_++;
+    }
+    /* 向Batch中添加多个物品，输入：sol（包含待添加物品节点） */
+    Batch& operator<<(Solution &sol) {
+        for (auto it = sol.begin(); it != sol.end(); ++it) {
+            push(it->item);
+        }
+        return *this;
     }
 
     /* 依次获取栈首物品，如果超过最后一个栈，则返回无效的物品ID */
@@ -72,7 +97,6 @@ public:
         }
         return stacks_[stack_index_++].back();
     }
-
     /* 获取第stack_id个栈中，第offset个物品的id */
     ID get(ID stack_id, ID offset) const {
         if (stack_id < stacks_.size() && offset < stacks_[stack_id].size()) {

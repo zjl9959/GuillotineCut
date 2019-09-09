@@ -7,18 +7,20 @@
 namespace szx {
 
 struct Configuration {
+    int mtbn; // TopSearch最大分支数目
+    int mpbn; // PlateSearch最大分支数目
     int mcin; // CutSearch最大优化物品数目
-    int mbpn; // TopSearch最大分支数目
-    int mbcn; // PlateSearch最大分支数目
+    int mcrn; // CutSearch最大重复优化次数
 
-    Configuration(int MCIN = 8, int MBPN = 4, int MHCN = 10) :
-        mcin(MCIN), mbpn(MBPN), mbcn(MHCN) {}
+    Configuration(int MTBN = 8, int MPBN = 4, int MCIN = 1, int MCRN = 1) :
+        mtbn(MTBN), mpbn(MPBN), mcin(MCIN), mcrn(MCRN) {}
 
     String toBriefStr() const {
         std::ostringstream os;
-        os << "mcin=" << mcin
-            << ";mbpn=" << mbpn
-            << ";mbcn=" << mbcn;
+        os << "mtbn=" << mtbn
+            << ";mpbn=" << mpbn
+            << ";mcin=" << mcin
+            << ";mcrn=" << mcrn;
         return os.str();
     }
 };

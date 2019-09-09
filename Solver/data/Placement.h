@@ -45,6 +45,14 @@ public:
 
 using Solution = List<Placement>;   //代表部分解或完全解
 
+/* 连接两个局部解，将右值中的节点依次添加到左值中去 */
+Solution& operator+=(Solution &lhs, Solution &rhs) {
+    for (auto it = rhs.begin(); it != rhs.end(); ++it) {
+        lhs.push_back(*it);
+    }
+    return lhs;
+}
+
 }
 
 #endif

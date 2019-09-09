@@ -1,18 +1,36 @@
 #include "PlateSearch.h"
-#include "../utility/ThreadPool.h"
 #include "Picker.h"
+#include "../utility/ThreadPool.h"
 
 using namespace std;
 
 namespace szx{
 
-Score PlateSearch::run(const Batch &batch, Solution &sol, bool fast_opt = false) {
-    beam_search(batch, sol);
-    return Score();
-}
-
-Score PlateSearch::beam_search(const Batch &source_batch, Solution &sol) {
-    // [zjl][TODO]: add code.
+/* 束搜索，输入：物品栈 */
+void PlateSearch::beam_search(const Batch &source_batch) {
+    Solution fix_sol;                           // 已经固定的解
+    Coord c1cpr = 0;
+    Batch batch(source_batch);
+    Solution best_cutsol, cutsol;               // 每一轮的最优1-cut和缓存1-cut
+    while (!timer_.isTimeOut()) {               // 每次固定一个1-cut，直到原料末尾
+        Area best_obj = 0;
+        for (int i = 0; i < cfg_.mpbn; ++i) {   // 每轮分出多个分支
+            if (get_cutsol(1, c1cpr, batch, cutsol) < -1.0)
+                continue;
+            Area obj = greedy_evaluate(cfg_.mcrn, batch, cutsol);   // 评估
+            if (best_obj < obj) {               // 记录最好的1-cut
+                best_cutsol = cutsol;
+                best_obj = obj;
+            }
+        }
+        if (best_obj > 0) {                     // 固定最好的1-cut
+            fix_sol += best_cutsol;
+            batch >> cutsol;
+            c1cpr = best_cutsol.back().c1cpr;
+        } else {
+            break;
+        }
+    }
 }
 
 /* 评估某一个部分解的好坏
@@ -23,31 +41,28 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
     Coord c1cpr = sol.back().c1cpr;     // 当前1-cut推进情况
     Coord last_c1cpr = 0;               // 记录上一轮的c1cpr值，用于优化原料尾部
     Batch batch(source_batch);
-    Solution cur_sol(sol);              // cur_sol被贪心的构造
+    Solution fix_sol(sol);              // fix_sol被贪心的构造，每次固定一个1-cut
     Solution cut_sol;                   // 储存每次贪心前解时1-cut的解
     // 贪心构造
     while (get_cutsol(repeat_num, c1cpr, batch, cut_sol) > -1.0) {
         last_c1cpr = c1cpr;
         c1cpr = cut_sol.back().c1cpr;
-        for (auto it = cut_sol.begin(); it != cut_sol.end(); ++it) {
-            cur_sol.push_back(*it);
-            batch.pop(it->item);
-        }
+        fix_sol += cut_sol;
+        batch >> cut_sol;
+        if (timer_.isTimeOut())
+            break;
     }
-    Area res = item_area(cur_sol);
-    update_bestsol(cur_sol, res);
+    Area res = item_area(fix_sol);
+    update_bestsol(fix_sol, res);
     // 优化最后一个1-cut
-    for (auto it = cut_sol.begin(); it != cut_sol.end(); ++it) {
-        batch.push(it->item);
-        cur_sol.pop_back();
-    }
+    batch << cut_sol;
+    fix_sol.erase(fix_sol.begin() + (fix_sol.size() - cut_sol.size()), fix_sol.end());
     if (get_cutsol(repeat_num, last_c1cpr, batch, cut_sol, true) > -1.0) {
         Area new_res = item_area(cut_sol);
-        for (auto it = cur_sol.begin(); it != cur_sol.end(); ++it)
-            cur_sol.push_back(*it);
+        fix_sol += cut_sol;
         if (new_res > res) {
             res = new_res;
-            update_bestsol(cur_sol, res);
+            update_bestsol(fix_sol, new_res);
         }
     }
     return res;
@@ -65,7 +80,9 @@ Score PlateSearch::get_cutsol(int repeat_num, Coord start_pos, const Batch &sour
     Score best_obj = -2.0;  // 本轮最优1-cut解的目标函数值
     for (int i = 0; i < repeat_num; ++i) {
         Batch sub_batch;    // 从batch中挑选的子集
-        if (!picker.rand_pick(cfg_.mcin, aux_.param.plateWidth - start_pos, sub_batch))
+        Picker::Filter filter(aux_.param.plateWidth - start_pos);
+        Picker::Terminator terminator(cfg_.mcin);
+        if (!picker.rand_pick(sub_batch, terminator, filter))
             continue;
         cut_sol.clear();
         Score obj = solver.run(sub_batch, cut_sol, tail);
@@ -90,11 +107,16 @@ Area PlateSearch::item_area(const Solution &sol) {
 void PlateSearch::update_bestsol(const Solution &sol, Area obj) {
     if(obj == 0)
         obj = item_area(sol);
-    lock_guard<mutex> gurad(sol_mutex_);
+    lock_guard<mutex> guard(sol_mutex_);
     if (bestobj_ < obj) {
         bestobj_ = obj;
         bestsol_ = sol;
     }
+}
+
+Area PlateSearch::get_bestsol(Solution &sol) {
+    sol = bestsol_;
+    return bestobj_;
 }
 
 }
