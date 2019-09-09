@@ -7,6 +7,7 @@
 #include "utility/LogSwitch.h"
 #include "utility/ThreadPool.h"
 #include "algorithm/Factory.h"
+#include "algorithm/TopSearch.h"
 
 using namespace std;
 
@@ -110,9 +111,13 @@ void Environment::calibrate() {
 #pragma region Solver
 void Solver::run() {
     aux = createAuxiliary(input);
-
-    // [zjl][TODO]:add code.
-
+    // 调用topSearch进行求解
+    TopSearch solver(rand, timer, cfg, aux);
+    Solution best_sol;
+    solver.beam_search();
+    solver.get_bestsol(best_sol);
+    output = createOutput(best_sol, aux);
+    // 输出解
     output.save(env.solutionPath());
     #if SZX_DEBUG
     output.save(env.solutionPathWithTime());

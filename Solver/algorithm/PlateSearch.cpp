@@ -25,7 +25,7 @@ void PlateSearch::beam_search(const Batch &source_batch) {
         }
         if (best_obj > 0) {                     // 固定最好的1-cut
             fix_sol += best_cutsol;
-            batch >> cutsol;
+            batch >> best_cutsol;
             c1cpr = best_cutsol.back().c1cpr;
         } else {
             break;
