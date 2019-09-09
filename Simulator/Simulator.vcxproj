@@ -181,7 +181,6 @@
     <ClInclude Include="..\Solver\utility\ThreadPool.h" />
     <ClInclude Include="..\Solver\utility\Utility.h" />
     <ClInclude Include="Simulator.h" />
-    <ClInclude Include="SolutionNode.h" />
     <ClInclude Include="ThreadPool.h" />
   </ItemGroup>
   <ItemGroup>
@@ -196,7 +195,6 @@
     <ClCompile Include="..\Solver\utility\Utility.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Simulator.cpp" />
-    <ClCompile Include="SolutionNode.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

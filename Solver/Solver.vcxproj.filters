@@ -4,9 +4,6 @@
     <Filter Include="algorithm">
       <UniqueIdentifier>{49780e5d-020a-4f1a-8d7f-553aed1a57c6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="test">
-      <UniqueIdentifier>{1815b86d-f242-4997-9366-475f6986b835}</UniqueIdentifier>
-    </Filter>
     <Filter Include="utility">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
