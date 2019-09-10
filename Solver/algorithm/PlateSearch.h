@@ -13,7 +13,7 @@ namespace szx{
 class PlateSearch {
 public:
     PlateSearch(TID plate, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
-		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux) {};
+		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux), bestobj_(0) {};
 
     /* ÊøËÑË÷£¬ÊäÈë£ºÎïÆ·Õ» */
     void beam_search(const Batch &source_batch);

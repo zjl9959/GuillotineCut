@@ -29,20 +29,21 @@ bool Picker::rand_pick(Batch &target_batch, Terminator &terminator, Filter &filt
             swap(pool[i], pool[--max_rand_num]);
         }
     }
+    if (!max_rand_num)return false;
     List<List<TID>> chosen; chosen.resize(stack_num); // 被挑选的物品列表
     List<TID> item_set;                               // 被挑物品id集合，用于判断重复
     while (true) {
         // 随机挑选一个物品，并放入chosen列表中
         int rand_num = rand_.pick(max_rand_num);
         TID chosen_stack = pool[rand_num].first;
-        TID chosen_item = source_.get(chosen_stack, pool[rand_num].second);
-        chosen[chosen_stack].push_back(chosen_item);
-        item_set.push_back(chosen_item);
-        if (terminator(chosen_item, aux_))
+        item_id = source_.get(chosen_stack, pool[rand_num].second);
+        if (terminator(item_id, aux_))
             break;
+        chosen[chosen_stack].push_back(item_id);
+        item_set.push_back(item_id);
         // 从source_batch中拿出一个物品
         TID substitute_item = source_.get(chosen_stack, ++pool[rand_num].second);
-        if (!(Problem::InvalidItemId != item_id && filter(item_id, aux_))) {
+        if (!(Problem::InvalidItemId != substitute_item && filter(substitute_item, aux_))) {
             // 无替代物品，或替代物品超过最大宽度限制
             swap(pool[rand_num], pool[--max_rand_num]);
             if (!max_rand_num) break;  // pool空了，提前停止
@@ -57,6 +58,8 @@ bool Picker::rand_pick(Batch &target_batch, Terminator &terminator, Filter &filt
 }
 
 bool Picker::Filter::operator()(TID item, const Auxiliary &aux) {
+    if (item == Problem::InvalidItemId)
+        return false;
     if(min_width_ && aux.items[item].w < min_width_)
         return false;
     if (max_width_ && aux.items[item].w > max_width_)
@@ -69,6 +72,8 @@ bool Picker::Filter::operator()(TID item, const Auxiliary &aux) {
 }
 
 bool Picker::Terminator::operator()(TID item, const Auxiliary &aux) {
+    if (item == Problem::InvalidItemId)
+        return false;
     cur_item_num_++;
     cur_total_area_ += aux.item_area[item];
     if(max_item_num_ && cur_item_num_ > max_item_num_)

@@ -10,7 +10,7 @@ namespace szx {
 class TopSearch {
 public:
     TopSearch(Random &rand, Timer &timer, Configuration &cfg, const Auxiliary &aux) :
-        rand_(rand), timer_(timer), cfg_(cfg), aux_(aux) {};
+        rand_(rand), timer_(timer), cfg_(cfg), aux_(aux), best_obj_(Problem::Output::MaxWidth) {};
 
     /* 调用束搜索算法进行优化 */
     void beam_search();

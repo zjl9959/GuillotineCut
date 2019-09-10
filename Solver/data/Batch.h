@@ -11,11 +11,11 @@ namespace szx {
 class Batch {   /* 实现物品栈，支持增减物品，查询栈首物品的操作 */
 public:
     /* 默认构造函数 */
-    Batch() {}
+    Batch() : left_items_(0) {}
 
     /* 通过拷贝list构造
        Input: stacks（存放物品的栈），reverse_stack（是否翻转栈中的物品）*/
-    Batch(const List<List<TID>> &stacks, bool reverse_stack = false) : stack_index_(0) {
+    Batch(const List<List<TID>> &stacks, bool reverse_stack = false) {
         // 将item从stacks拷贝到stacks_
         for (auto stack = stacks.begin(); stack != stacks.end(); ++stack) {
             if (!stack->empty()) {
@@ -35,16 +35,15 @@ public:
     }
 
     /* 拷贝构造函数 */
-    Batch(const Batch &rhs) : stack_index_(0), left_items_(rhs.left_items_),
+    Batch(const Batch &rhs) : left_items_(rhs.left_items_),
         stacks_(rhs.stacks_), item2stack_(rhs.item2stack_) {}
     /* 转移构造函数 */
-    Batch(Batch &&rhs) : stack_index_(0), left_items_(rhs.left_items_),
+    Batch(Batch &&rhs) : left_items_(rhs.left_items_),
         stacks_(move(rhs.stacks_)), item2stack_(move(rhs.item2stack_)) {}
 
     /* 拷贝赋值函数 */
     Batch& operator=(const Batch &rhs) {
         if (this != &rhs) {
-            stack_index_ = 0;
             left_items_ = rhs.left_items_;
             stacks_ = rhs.stacks_;
             item2stack_ = rhs.item2stack_;
@@ -53,7 +52,6 @@ public:
     }
     /* 转移赋值函数 */
     Batch& operator=(Batch &&rhs) {
-        stack_index_ = 0;
         left_items_ = rhs.left_items_;
         stacks_ = move(rhs.stacks_);
         item2stack_ = move(rhs.item2stack_);
@@ -80,23 +78,18 @@ public:
     }
     /* 向Batch中添加多个物品，输入：sol（包含待添加物品节点） */
     Batch& operator<<(const Solution &sol) {
-        for (auto it = sol.begin(); it != sol.end(); ++it) {
+        for (auto it = sol.rbegin(); it != sol.rend(); ++it) {
             push(it->item);
         }
         return *this;
     }
 
-    /* 依次获取栈首物品，如果超过最后一个栈，则返回无效的物品TID */
-    TID get() {
-        while (stack_index_ < stacks_.size() &&
-            stacks_[stack_index_].empty()) {
-            stack_index_++;   // 跳过空的栈
+    /* 获取第stack_id个栈的栈首物品 */
+    TID get(TID stack_id) const {
+        if (!stacks_[stack_id].empty()) {
+            return stacks_[stack_id].back();
         }
-        if (stack_index_ = static_cast<TID>(stacks_.size())) {
-            stack_index_ = 0;
-            return Problem::InvalidItemId;
-        }
-        return stacks_[stack_index_++].back();
+        return Problem::InvalidItemId;
     }
     /* 获取第stack_id个栈中，第offset个物品的id */
     TID get(TID stack_id, TID offset) const {
@@ -112,7 +105,6 @@ public:
     /* 返回Batch中栈的数目 */
     TID stack_num() const { return static_cast<TID>(stacks_.size()); }
 private:
-    TID stack_index_;                // 指示下一次get要获取哪个栈中的物品
     TID left_items_;                 // 剩余物品数目
     List<List<TID>> stacks_;         // 存放物品的栈
     HashMap<TID, int> item2stack_;   // 物品TID到栈TID的映射

@@ -9,11 +9,13 @@ void TopSearch::beam_search() {
     Batch batch(aux_.stacks);           // 当前物品栈
     Solution best_platesol, platesol;   // 每一轮的最优plate解和缓存plate解
     while (!timer_.isTimeOut()) {
-        Length best_obj = aux_.param.plateWidth * aux_.param.plateNum;
+        Length best_obj = Problem::Output::MaxWidth;
         for (int i = 0; i < cfg_.mtbn; ++i) {
             if (get_platesol(cur_plate, batch, platesol) < -1.0)
                 continue;
+            batch >> platesol;
             Length obj = greedy_evaluate(cur_plate, batch, platesol);
+            batch << platesol;
             if (best_obj > obj) {
                 best_obj = obj;
                 best_platesol = platesol;
@@ -63,13 +65,14 @@ Length TopSearch::greedy_evaluate(ID plate_id, const Batch &source_batch, const 
             plate_id++;
         }
     }
-    update_bestsol(fix_sol, plate_id*aux_.param.plateWidth + fix_sol.back().c1cpr);
-    return Length();
+    Length obj = plate_id * aux_.param.plateWidth + fix_sol.back().c1cpr;
+    update_bestsol(fix_sol, obj);
+    return obj;
 }
 
 /* 返回目标函数值，已使用原料的总长度 */
 Length TopSearch::get_obj(const Solution &sol) {
-    if(sol.empty()) return aux_.param.plateWidth *aux_.param.plateNum;
+    if(sol.empty()) return Problem::Output::MaxWidth;
     ID plate_num = 0;
     for (auto it = sol.begin(); it != sol.end(); ++it) {
         if (it->getFlagBit(Placement::NEW_PLATE))

@@ -36,7 +36,7 @@ public:
     };
 public:
     Picker(const Batch &source, Random &rand, const Auxiliary &aux) :
-        source_(source), rand_(rand), aux_(aux) {};
+        source_(source), rand_(rand), aux_(aux), cache_(static_cast<ID>(aux.items.size())) {};
 
     /* 根据source随机挑选最多max_num个物品。
     输入：terminator（停止条件判断器），filter（物品筛选器）

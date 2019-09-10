@@ -17,7 +17,9 @@ void PlateSearch::beam_search(const Batch &source_batch) {
         for (int i = 0; i < cfg_.mpbn; ++i) {   // 每轮分出多个分支
             if (get_cutsol(1, c1cpr, batch, cutsol) < -1.0)
                 continue;
+            batch >> cutsol;
             Area obj = greedy_evaluate(cfg_.mcrn, batch, cutsol);   // 评估
+            batch << cutsol;
             if (best_obj < obj) {               // 记录最好的1-cut
                 best_cutsol = cutsol;
                 best_obj = obj;

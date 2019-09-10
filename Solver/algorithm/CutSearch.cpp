@@ -79,13 +79,15 @@ Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
     return 0.0;
 }
 
-void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
+void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
     const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: current c2cpu was locked.
     TID itemId = Problem::InvalidItemId;
     // case A, place item in a new L1.
     if (old.c2cpu == 0) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
-            while (Problem::InvalidItemId != (itemId = batch.get())) {
+            for (TID i = 0; i < batch.stack_num(); ++i) {
+                itemId = batch.get(i);
+                if (itemId == Problem::InvalidItemId)continue;
                 // pretreatment.
                 Rect item = items_[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
@@ -129,7 +131,9 @@ void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch
     // case B, extend c1cpr or place item in a new L2.
     else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
-            while (Problem::InvalidItemId != (itemId = batch.get())) {
+            for (TID i = 0; i < batch.stack_num(); ++i) {
+                itemId = batch.get(i);
+                if (itemId == Problem::InvalidItemId)continue;
                 // pretreatment.
                 Rect item = items_[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
@@ -199,7 +203,9 @@ void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch
     // case C, place item in the old L2 or a new L2 when item extend c1cpr too much.
     else {
         for (int rotate = 0; rotate <= 1; ++rotate) {
-            while (Problem::InvalidItemId != (itemId = batch.get())) {
+            for (TID i = 0; i < batch.stack_num(); ++i) {
+                itemId = batch.get(i);
+                if (itemId == Problem::InvalidItemId)continue;
                 // pretreatment.
                 Rect item = items_[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.

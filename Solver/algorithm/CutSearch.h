@@ -30,7 +30,7 @@ public:
 protected:
     Score dfs(Batch &batch, Solution &sol, bool opt_tail = false);
     Score pfs(Batch &batch, Solution &sol, bool opt_tail = false);
-    void branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail = false);
+    void branch(const TreeNode &old, const Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail = false);
     const bool constraintCheck(const TreeNode &old, TreeNode &node);
     const TCoord sliptoDefectRight(const TCoord x, const TCoord y, const TLength w, const TLength h) const;
     const TCoord sliptoDefectUp(const TCoord x, const TCoord y, const TLength w) const;
