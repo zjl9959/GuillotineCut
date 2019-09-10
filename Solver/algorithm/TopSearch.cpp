@@ -24,6 +24,8 @@ void TopSearch::beam_search() {
         if (best_obj < aux_.param.plateWidth * aux_.param.plateNum) {
             fix_sol += best_platesol;
             batch >> best_platesol;
+            Log(Log::Debug) << "[TopSearch] fix plate:" << cur_plate
+                << " add item num:" << best_platesol.size() << std::endl;
             cur_plate++;
         } else {
             break;

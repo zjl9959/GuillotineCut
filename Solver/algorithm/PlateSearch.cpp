@@ -29,6 +29,8 @@ void PlateSearch::beam_search(const Batch &source_batch) {
             fix_sol += best_cutsol;
             batch >> best_cutsol;
             c1cpr = best_cutsol.back().c1cpr;
+            Log(Log::Debug) << "[PlateSearch] plate:" << plate_
+                << " c1cpr:" << c1cpr << endl;
         } else {
             break;
         }

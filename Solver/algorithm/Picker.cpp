@@ -15,21 +15,17 @@ bool Picker::rand_pick(Batch &target_batch, Terminator &terminator, Filter &filt
                                             ^
     */
     TID stack_num = source_.stack_num();
-    TID max_rand_num = stack_num;
     List<pair<TID, TID>> pool; pool.reserve(stack_num); // pair<备选栈id，对应栈内物品offset>
-    // 初始化pool，备选栈id依次增长，栈偏移为0
-    for (int i = 0; i < stack_num; ++i) {
-        pool.push_back(make_pair(i, 0));
-    }
     TID item_id = Problem::InvalidItemId;
     for (int i = 0; i < stack_num; ++i) {
         item_id = source_.get(i, 0);
-        if (!(Problem::InvalidItemId != item_id && filter(item_id, aux_))) {
-            // 物品非法或物品宽度超过最大限制，则不会挑选该物品所在栈
-            swap(pool[i], pool[--max_rand_num]);
+        if (Problem::InvalidItemId != item_id && filter(item_id, aux_)) {
+            // 挑选合法物品栈放入备选池
+            pool.push_back(make_pair(i, 0));
         }
     }
-    if (!max_rand_num)return false;
+    if (pool.empty())return false;
+    TID max_rand_num = pool.size();
     List<List<TID>> chosen; chosen.resize(stack_num); // 被挑选的物品列表
     List<TID> item_set;                               // 被挑物品id集合，用于判断重复
     while (true) {
