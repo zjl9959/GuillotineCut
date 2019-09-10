@@ -37,7 +37,7 @@ void TopSearch::beam_search() {
 Score TopSearch::get_platesol(ID plate_id, const Batch &source_batch, Solution &sol) {
     Picker picker(source_batch, rand_, aux_);
     Batch batch;
-    Picker::Terminator terminator(0, aux_.param.plateHeight * aux_.param.plateWidth * 1.2);
+    Picker::Terminator terminator(0, static_cast<Area>(aux_.param.plateHeight * aux_.param.plateWidth * 1.2));
     if (picker.rand_pick(batch, terminator)) {
         PlateSearch solver(plate_id, cfg_, rand_, timer_, aux_);
         solver.beam_search(batch);
@@ -79,7 +79,7 @@ Length TopSearch::get_obj(const Solution &sol) {
 }
 
 /* 检查sol是否优于bestsol_，如是则更新bestsol_ */
-void TopSearch::update_bestsol(const Solution &sol, Length obj = -1) {
+void TopSearch::update_bestsol(const Solution &sol, Length obj) {
     if (sol.empty() || sol.size() != aux_.items.size())
         return;
     if (obj < 0)

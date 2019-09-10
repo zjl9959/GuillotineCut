@@ -108,5 +108,8 @@
     <ClCompile Include="algorithm\TopSearch.cpp">
       <Filter>algorithm\source</Filter>
     </ClCompile>
+    <ClCompile Include="data\Placement.cpp">
+      <Filter>data</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

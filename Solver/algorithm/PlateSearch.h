@@ -12,7 +12,7 @@ namespace szx{
 
 class PlateSearch {
 public:
-    PlateSearch(ID plate, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
+    PlateSearch(TID plate, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
 		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux) {};
 
     /* 束搜索，输入：物品栈 */
@@ -23,13 +23,13 @@ public:
 
 protected:
 	Area greedy_evaluate(int repeat_num, const Batch &source_batch, const Solution &sol);
-    Score get_cutsol(int repeat_num, Coord start_pos, const Batch &source_batch, Solution &sol, bool tail = false);
+    Score get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail = false);
 private:
     Area item_area(const Solution &sol);
     void update_bestsol(const Solution &sol, Area obj = 0);
 private:
 	static constexpr ScorePair InvalidPair = std::make_pair(-1, 0.0);
-    ID plate_;              // 优化的原料id
+    TID plate_;              // 优化的原料id
     Configuration &cfg_;
     Random &rand_;
     Timer &timer_;

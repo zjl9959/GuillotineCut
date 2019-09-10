@@ -9,7 +9,7 @@ namespace szx{
 /* 束搜索，输入：物品栈 */
 void PlateSearch::beam_search(const Batch &source_batch) {
     Solution fix_sol;                           // 已经固定的解
-    Coord c1cpr = 0;
+    TCoord c1cpr = 0;
     Batch batch(source_batch);
     Solution best_cutsol, cutsol;               // 每一轮的最优1-cut和缓存1-cut
     while (!timer_.isTimeOut()) {               // 每次固定一个1-cut，直到原料末尾
@@ -38,8 +38,8 @@ void PlateSearch::beam_search(const Batch &source_batch) {
    输出：该块原料上放置的物品面积和 */
 Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, const Solution &sol) {
     if (sol.empty()) return -1;
-    Coord c1cpr = sol.back().c1cpr;     // 当前1-cut推进情况
-    Coord last_c1cpr = 0;               // 记录上一轮的c1cpr值，用于优化原料尾部
+    TCoord c1cpr = sol.back().c1cpr;     // 当前1-cut推进情况
+    TCoord last_c1cpr = 0;               // 记录上一轮的c1cpr值，用于优化原料尾部
     Batch batch(source_batch);
     Solution fix_sol(sol);              // fix_sol被贪心的构造，每次固定一个1-cut
     Solution cut_sol;                   // 储存每次贪心前解时1-cut的解
@@ -72,7 +72,7 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
    输入：repeat_num（重复调用CutSearch次数），start_pos（1-cut开始位置），source_batch（物品栈），tail（优化原料尾部）
    输出：sol（得到的最优1-cut解），返回：对应最优解的目标函数值/-2.0
 */
-Score PlateSearch::get_cutsol(int repeat_num, Coord start_pos, const Batch &source_batch, Solution &sol, bool tail) {
+Score PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail) {
     // 多次调用CutSearch，选一个最好的解
     CutSearch solver(plate_, start_pos, aux_);
     Picker picker(source_batch, rand_, aux_);

@@ -6,26 +6,26 @@ using namespace std;
 
 namespace szx {
 
-Coord get_next_1cut(int index, const Solution &sol);
-Coord get_next_2cut(int index, const Solution &sol);
+TCoord get_next_1cut(int index, const Solution &sol);
+TCoord get_next_2cut(int index, const Solution &sol);
 
 /* 将Input中的数据转换成Auxiliary中的数据 */
 Auxiliary createAuxiliary(const Problem::Input & input) {
-    constexpr ID InvalidItemId = Problem::InvalidItemId;
+    constexpr TID InvalidItemId = Problem::InvalidItemId;
     Auxiliary aux;
     aux.items.reserve(input.batch.size());
     aux.stacks.reserve(input.batch.size());
     aux.idMap = IdMap();
     // 将分配物品到每一个栈，并将其放入栈中
     for (auto i = input.batch.begin(); i != input.batch.end(); ++i) {
-        ID itemId = aux.idMap.item.toConsecutiveId(i->id);
+        TID itemId = aux.idMap.item.toConsecutiveId(i->id);
         aux.items.push_back(Rect(max(i->width, i->height), min(i->width, i->height)));
         if (itemId != i->id) {
             Log(LogSwitch::Szx::Preprocess) << "map item " << i->id << " to " << itemId << endl;
         }
-        ID stackId = aux.idMap.stack.toConsecutiveId(i->stack);
-        if (aux.stacks.size() <= stackId) { aux.stacks.push_back(List<ID>()); }
-        List<ID> &stack(aux.stacks[stackId]);
+        TID stackId = aux.idMap.stack.toConsecutiveId(i->stack);
+        if (aux.stacks.size() <= stackId) { aux.stacks.push_back(List<TID>()); }
+        List<TID> &stack(aux.stacks[stackId]);
         if (stack.size() <= i->seq) { stack.resize(i->seq + 1, InvalidItemId); }
         stack[i->seq] = itemId;
     }
@@ -35,11 +35,11 @@ Auxiliary createAuxiliary(const Problem::Input & input) {
     }
     aux.plate_defect_x.resize(Problem::MaxPlateNum);
     aux.plate_defect_y.resize(Problem::MaxPlateNum);
-    for (ID p = 0; p < Problem::MaxPlateNum; ++p) { aux.idMap.plate.toConsecutiveId(p); }
+    for (TID p = 0; p < Problem::MaxPlateNum; ++p) { aux.idMap.plate.toConsecutiveId(p); }
     // 将瑕疵映射到每块原料上
     for (auto d = input.defects.begin(); d != input.defects.end(); ++d) {
-        ID defectId = aux.idMap.defect.toConsecutiveId(d->id);
-        ID plateId = aux.idMap.plate.toConsecutiveId(d->plateId);
+        TID defectId = aux.idMap.defect.toConsecutiveId(d->id);
+        TID plateId = aux.idMap.plate.toConsecutiveId(d->plateId);
         if (aux.plate_defect_x.size() <= plateId) { aux.plate_defect_x.resize(plateId + 1); }
         aux.plate_defect_x[plateId].push_back(Defect(defectId, d->x, d->y, d->width, d->height));
         if (aux.plate_defect_y.size() <= plateId) { aux.plate_defect_y.resize(plateId + 1); }
@@ -78,7 +78,7 @@ Problem::Output createOutput(const Solution & sol, const Auxiliary &aux) {
                       3-cut           1-cut
 */
     Problem::Output output;
-    if (sol.size() == 0)return;
+    if (sol.size() == 0)return output;
     using SpecialType = Problem::Output::Node::SpecialType;
     const Length PW = aux.param.plateWidth, PH = aux.param.plateHeight;
     ID cur_plate = -1;
@@ -227,8 +227,8 @@ Problem::Output createOutput(const Solution & sol, const Auxiliary &aux) {
 }
 
 /* 从sol[index]开始，获取下一个1-cut的位置 */
-Coord get_next_1cut(int index, const Solution &sol) {
-    Coord res = sol[index].c1cpr;
+TCoord get_next_1cut(int index, const Solution &sol) {
+    TCoord res = sol[index].c1cpr;
     ++index;
     while (index < sol.size()) {
         if (sol[index].getFlagBit(Placement::NEW_L1))
@@ -243,8 +243,8 @@ Coord get_next_1cut(int index, const Solution &sol) {
 }
 
 /* 从sol[index]开始，获取下一个2-cut的位置 */
-Coord get_next_2cut(int index, const Solution &sol) {
-    Coord res = sol[index].c2cpu;
+TCoord get_next_2cut(int index, const Solution &sol) {
+    TCoord res = sol[index].c2cpu;
     ++index;
     while (index < sol.size()) {
         if (sol[index].getFlagBit(Placement::NEW_L2))

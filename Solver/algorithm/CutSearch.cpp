@@ -45,7 +45,7 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
         branch(node, batch, live_nodes, opt_tail);
         pre_depth = node.depth;
         if (old_live_nodes_size == live_nodes.size()) { // 找到一个完整解
-            Length cur_width = cur_sol.back().c1cpr - start_pos_;
+            TLength cur_width = cur_sol.back().c1cpr - start_pos_;
             Score cur_obj = 0.0;
             if (opt_tail)
                 cur_obj = (double)used_item_area / (double)tail_area;
@@ -81,7 +81,7 @@ Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
 
 void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
     const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: current c2cpu was locked.
-    ID itemId = Problem::InvalidItemId;
+    TID itemId = Problem::InvalidItemId;
     // case A, place item in a new L1.
     if (old.c2cpu == 0) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
@@ -92,7 +92,7 @@ void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch
                 if (rotate) swap(item.w, item.h);
                 if (old.c1cpr + item.w > param_.plateWidth)continue;
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                Length slip_r = 0, slip_u = 0;
+                TLength slip_r = 0, slip_u = 0;
                 // TODO: precheck if item exceed plate bound to speed up branch.
                 // check if item conflict with defect and try to fix it.
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
@@ -135,7 +135,7 @@ void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                Length slip_r = 0, slip_u = 0;
+                TLength slip_r = 0, slip_u = 0;
                 // place in the right of old.c1cpr.
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                 {
@@ -205,9 +205,9 @@ void CutSearch::branch(const TreeNode &old, Batch &batch, List<TreeNode> &branch
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                Length slip_r = 0, slip_u = 0;
+                TLength slip_r = 0, slip_u = 0;
                 // place item in the up of current c4cp.
-                Length last_item_w = old.getFlagBit(Placement::ROTATE) ? items_[old.item].h : items_[old.item].w;
+                TLength last_item_w = old.getFlagBit(Placement::ROTATE) ? items_[old.item].h : items_[old.item].w;
                 if (old.c2cpu > old.c4cp && last_item_w == item.w && !old.getFlagBit(Placement::DEFECT_U) &&
                     ((c2cpu_locked && old.c4cp + item.h == old.c2cpb) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpb)) &&
                     !sliptoDefectRight(old.c3cp - item.w, old.c4cp, item.w, item.h)) {
@@ -397,8 +397,8 @@ const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
 }
 
 // if item or 1-cut conflict with defect, move item/1-cut to the defect right side.
-const Coord CutSearch::sliptoDefectRight(const Coord x, const Coord y, const Length w, const Length h) const {
-    Coord slip = x;
+const TCoord CutSearch::sliptoDefectRight(const TCoord x, const TCoord y, const TLength w, const TLength h) const {
+    TCoord slip = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= slip + w) {
             break; // the defects is sorted by x position, so in this case just break.
@@ -420,8 +420,8 @@ const Coord CutSearch::sliptoDefectRight(const Coord x, const Coord y, const Len
 }
 
 // if area(x, y, w, plateHeight-y) has just one defect, slip item to defect up, or return -1.
-const Coord CutSearch::sliptoDefectUp(const Coord x, const Coord y, const Length w) const {
-    Coord res = -1;
+const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLength w) const {
+    TCoord res = -1;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= x + w) {
             break;
@@ -438,8 +438,8 @@ const Coord CutSearch::sliptoDefectUp(const Coord x, const Coord y, const Length
 }
 
 // check if 1-cut through defect, return new 1-cut x coord. [not consider minwasteWidth constraint]
-const Coord CutSearch::cut1ThroughDefect(const Coord x) const {
-    Coord res = x;
+const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
+    TCoord res = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x > res)break;
         if (it->x < res && it->x + it->w > res) {   // 1-cut cut through defect.
@@ -450,8 +450,8 @@ const Coord CutSearch::cut1ThroughDefect(const Coord x) const {
 }
 
 // check if 2-cut through defect, return new 2-cut y coord.
-const Coord CutSearch::cut2ThroughDefect(const Coord x1, const Coord x2, const Coord y) const {
-    Coord res = y;
+const TCoord CutSearch::cut2ThroughDefect(const TCoord x1, const TCoord x2, const TCoord y) const {
+    TCoord res = y;
     for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
         if (it->y > res)break;
         if (!(it->y + it->h <= res || it->x + it->w <= x1 || it->x >= x2)) {    // 2-cut through defect.

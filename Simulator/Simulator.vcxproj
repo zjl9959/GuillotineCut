@@ -189,6 +189,7 @@
     <ClCompile Include="..\Solver\algorithm\Picker.cpp" />
     <ClCompile Include="..\Solver\algorithm\PlateSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\TopSearch.cpp" />
+    <ClCompile Include="..\Solver\data\Placement.cpp" />
     <ClCompile Include="..\Solver\data\Problem.cpp" />
     <ClCompile Include="..\Solver\Solver.cpp" />
     <ClCompile Include="..\Solver\utility\CsvReader.cpp" />

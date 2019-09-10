@@ -9,23 +9,23 @@ namespace szx {
 
 struct Placement { /* 一个物品的放置位置信息 */
 public:
-    ID item;        // 放置物品ID
-    Coord c1cpl;    // 一层桶左边界
-    Coord c1cpr;    // 一层桶右边界
-    Coord c2cpb;    // 二层桶下边界
-    Coord c2cpu;    // 二层桶上边界
-    Coord c3cp;     // 三层桶右边界
-    Coord c4cp;     // 四层桶上边界
+    TID item;        // 放置物品ID
+    TCoord c1cpl;    // 一层桶左边界
+    TCoord c1cpr;    // 一层桶右边界
+    TCoord c2cpb;    // 二层桶下边界
+    TCoord c2cpu;    // 二层桶上边界
+    TCoord c3cp;     // 三层桶右边界
+    TCoord c4cp;     // 四层桶上边界
     Status flag;    // 与枚举类型Flag对应
 
     Placement() {};
 
     /* 基于1-cut位置构造，一般用于起始放置位置 */
-    Placement(Coord C1cpl) : item(Problem::InvalidItemId), c1cpl(C1cpl), c1cpr(C1cpl), c2cpb(0),
+    Placement(TCoord C1cpl) : item(Problem::InvalidItemId), c1cpl(C1cpl), c1cpr(C1cpl), c2cpb(0),
         c2cpu(0), c3cp(C1cpl), c4cp(0), flag(0) {};
     
     /* 基于上一个Placement构造 */
-    Placement(const Placement &node, ID item_id, Status _flag) : item(item_id), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
+    Placement(const Placement &node, TID item_id, Status _flag) : item(item_id), c1cpl(node.c1cpl), c1cpr(node.c1cpr),
         c2cpb(node.c2cpb), c2cpu(node.c2cpu), c3cp(node.c3cp), c4cp(node.c4cp), flag(_flag) {};
 
     void setFlagBit(const int bit_flag = ROTATE) { flag |= bit_flag; }
@@ -46,12 +46,7 @@ public:
 using Solution = List<Placement>;   //代表部分解或完全解
 
 /* 连接两个局部解，将右值中的节点依次添加到左值中去 */
-Solution& operator+=(Solution &lhs, Solution &rhs) {
-    for (auto it = rhs.begin(); it != rhs.end(); ++it) {
-        lhs.push_back(*it);
-    }
-    return lhs;
-}
+Solution& operator+=(Solution &lhs, Solution &rhs);
 
 }
 

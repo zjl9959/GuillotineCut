@@ -13,25 +13,25 @@ class Picker {  /* 使用不同的策略挑选物品 */
 public:
     class Filter { /* 针对某一个物品的筛选 */
     public:
-        Filter(Length max_width = 0, Length max_height = 0, Length min_width = 0, Length min_height = 0) :
+        Filter(TLength max_width = 0, TLength max_height = 0, TLength min_width = 0, TLength min_height = 0) :
             max_width_(max_width), max_height_(max_height), min_width_(min_width), min_height_(min_height) {};
-        bool operator()(ID item, const Auxiliary &aux);
+        bool operator()(TID item, const Auxiliary &aux);
     private:
-        Length max_width_;
-        Length max_height_;
-        Length min_width_;
-        Length min_height_;
+        TLength max_width_;
+        TLength max_height_;
+        TLength min_width_;
+        TLength min_height_;
     };
     class Terminator { /* 判断选择器是否满足停止条件 */
     public:
-        Terminator(ID max_item_num = 0, Area total_area_lb = 0) : max_item_num_(max_item_num),
+        Terminator(TID max_item_num = 0, Area total_area_lb = 0) : max_item_num_(max_item_num),
             total_area_lb_(total_area_lb), cur_item_num_(0), cur_total_area_(0) {};
-        bool operator()(ID item, const Auxiliary &aux);
+        bool operator()(TID item, const Auxiliary &aux);
     private:
-        ID max_item_num_;       // 最大挑选物品数目
+        TID max_item_num_;       // 最大挑选物品数目
         Area total_area_lb_;   // 最大挑选物品面积和
         
-        ID cur_item_num_;       // 当前已挑选物品数目
+        TID cur_item_num_;       // 当前已挑选物品数目
         Area cur_total_area_;   // 当前已挑选物品面积和
     };
 public:
