@@ -30,6 +30,9 @@
     <Filter Include="Solver\algorithm\source">
       <UniqueIdentifier>{5639e9bb-8034-4199-9cd1-b19f8941f7e4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Solver\unit_test">
+      <UniqueIdentifier>{3a65a7d6-c497-4bde-a01c-bc9534f4e66d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Simulator.h">
@@ -92,6 +95,9 @@
     <ClInclude Include="..\Solver\algorithm\TopSearch.h">
       <Filter>Solver\algorithm\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\unit_test\test.h">
+      <Filter>Solver\unit_test</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -129,6 +135,9 @@
     </ClCompile>
     <ClCompile Include="..\Solver\data\Placement.cpp">
       <Filter>Solver\data</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\unit_test\test.cpp">
+      <Filter>Solver\unit_test</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

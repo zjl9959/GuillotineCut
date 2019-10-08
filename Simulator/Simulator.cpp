@@ -96,8 +96,8 @@ void Simulator::run(const String &envPath) {
 void Simulator::debug() {
     Task task;
     task.instSet = "A";
-    task.instId = "5";
-    task.randSeed = "1568100505";
+    task.instId = "6";
+    task.randSeed = "1571256724";
     //task.randSeed = to_string(Random::generateSeed());
     task.timeout = "180";
     //task.timeout = "3600";

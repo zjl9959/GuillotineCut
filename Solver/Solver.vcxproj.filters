@@ -20,6 +20,9 @@
     <Filter Include="algorithm\source">
       <UniqueIdentifier>{4cb9bad0-7766-47a6-b5a9-eb9e32258ed8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="unit_test">
+      <UniqueIdentifier>{14a8fded-d3f5-4578-820a-6c643a999b33}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="data\Placement.h">
@@ -76,6 +79,9 @@
     <ClInclude Include="algorithm\TopSearch.h">
       <Filter>algorithm\header</Filter>
     </ClInclude>
+    <ClInclude Include="unit_test\test.h">
+      <Filter>unit_test</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -110,6 +116,9 @@
     </ClCompile>
     <ClCompile Include="data\Placement.cpp">
       <Filter>data</Filter>
+    </ClCompile>
+    <ClCompile Include="unit_test\test.cpp">
+      <Filter>unit_test</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

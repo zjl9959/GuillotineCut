@@ -8,6 +8,7 @@
 #include "utility/ThreadPool.h"
 #include "algorithm/Factory.h"
 #include "algorithm/TopSearch.h"
+#include "unit_test/test.h"
 
 using namespace std;
 
@@ -55,8 +56,28 @@ int Cli::run(int argc, char * argv[]) {
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
+    
     Solver solver(input, env, cfg);
     solver.run();
+    
+
+    /*
+    // ≤‚ ‘cutSearch
+    Auxiliary aux = createAuxiliary(input);
+    Solution sol = unit_test::test_CutSearch(aux);
+    Problem::Output out = createOutput(sol, aux);
+    out.save(env.solutionPathWithTime());
+    */
+
+    /*
+    // ≤‚ ‘plateSearch
+    Auxiliary aux = createAuxiliary(input);
+    Timer timer(chrono::milliseconds(env.msTimeout));
+    Random rand(env.randSeed);
+    Solution sol = unit_test::test_PlateSearch(timer, rand, cfg, aux);
+    Problem::Output out = createOutput(sol, aux);
+    out.save(env.solutionPathWithTime());
+    */
 
     return 0;
 }

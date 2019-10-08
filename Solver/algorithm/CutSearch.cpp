@@ -71,12 +71,12 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
             sol.push_back(*it);
         return best_obj;
     }
-    return 0.0;
+    return -2.0;
 }
 
 Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
     // [zjl][TODO]: add pfs implement.
-    return 0.0;
+    return -2.0;
 }
 
 void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {

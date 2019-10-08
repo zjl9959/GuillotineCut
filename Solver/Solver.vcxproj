@@ -175,6 +175,7 @@
     <ClInclude Include="data\Placement.h" />
     <ClInclude Include="data\Problem.h" />
     <ClInclude Include="Solver.h" />
+    <ClInclude Include="unit_test\test.h" />
     <ClInclude Include="utility\Config.h" />
     <ClInclude Include="utility\CsvReader.h" />
     <ClInclude Include="utility\LogSwitch.h" />
@@ -191,6 +192,7 @@
     <ClCompile Include="data\Problem.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Solver.cpp" />
+    <ClCompile Include="unit_test\test.cpp" />
     <ClCompile Include="utility\CsvReader.cpp" />
     <ClCompile Include="utility\Utility.cpp" />
   </ItemGroup>

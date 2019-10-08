@@ -39,12 +39,13 @@ protected:
 private:
     static constexpr int timeout_ms_ = 100;
 private:
+    // [zjl][TODO]: 将以下数据替换成aux的引用，这种拷贝并不能带来效率提升
     const TCoord start_pos_;
-    const List<Defect> defect_x_;
-    const List<Defect> defect_y_;
-    const List<Rect> items_;
-    const List<Area> item_area_;
-    const Problem::Input::Param param_;
+    const List<Defect> &defect_x_;
+    const List<Defect> &defect_y_;
+    const List<Rect> &items_;
+    const List<Area> &item_area_;
+    const Problem::Input::Param &param_;
 };
 
 }
