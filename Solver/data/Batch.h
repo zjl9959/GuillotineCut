@@ -5,6 +5,7 @@
 #include "../Common.h"
 #include "Problem.h"
 #include "../data/Placement.h"
+#include <cassert> 
 
 namespace szx {
 
@@ -60,6 +61,7 @@ public:
 
     /* 从Batch中弹出一个物品 */
     void pop(TID item) {
+		assert(stacks_[item2stack_[item]].back() == item); // [?] 增加断言或者其他判断
         stacks_[item2stack_[item]].pop_back();
         left_items_--;
     }
@@ -73,7 +75,7 @@ public:
 
     /* 向Batch中添加一个物品，必须是之前从Batch中弹出的物品 */
     void push(TID item) {
-        stacks_[item2stack_[item]].push_back(item);
+        stacks_[item2stack_[item]].push_back(item);  // [?] 增加断言
         left_items_++;
     }
     /* 向Batch中添加多个物品，输入：sol（包含待添加物品节点） */
@@ -102,7 +104,7 @@ public:
     /* 返回Batch中剩余物品数目 */
     TID size() const { return left_items_; }
 
-    /* 返回Batch中栈的数目 */
+    /* 返回Batch中栈的数目，Ps：栈的数目是不定的 */
     TID stack_num() const { return static_cast<TID>(stacks_.size()); }
 private:
     TID left_items_;                 // 剩余物品数目

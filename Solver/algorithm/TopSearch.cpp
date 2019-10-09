@@ -45,7 +45,7 @@ Score TopSearch::get_platesol(ID plate_id, const Batch &source_batch, Solution &
     if (picker.rand_pick(batch, terminator)) {
         PlateSearch solver(plate_id, cfg_, rand_, timer_, aux_);
         solver.beam_search(batch);
-        return solver.get_bestsol(sol);
+        return solver.get_bestsol(sol);  // [?] bug
     }
     return -2.0;
 }

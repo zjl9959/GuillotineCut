@@ -18,7 +18,7 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
     
     Depth pre_depth = -1;    // 上一个节点深度
     Area used_item_area = 0; // 已使用物品面积
-    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight;
+    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
 
     Timer timer(static_cast<chrono::milliseconds>(timeout_ms_));
     int see_timeout = 100000;   // 检查是否超时间隔时间
@@ -31,7 +31,8 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
             cur_sol.push_back(node);
             batch.pop(node.item);
             used_item_area += item_area_[node.item];
-        } else if (node.depth - pre_depth < 1) { // 向上回溯
+        } 
+		else if (node.depth - pre_depth < 1) { // 向上回溯
             for (int i = static_cast<int>(cur_sol.size()) - 1; i >= node.depth; --i) {
                 batch.push(cur_sol[i].item);    // 恢复栈
                 used_item_area -= item_area_[cur_sol[i].item];  // 更新使用物品面积
@@ -79,10 +80,15 @@ Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
     return 0.0;
 }
 
+/*
+  分支函数：
+  输入：old（分支起点），batch（物品栈），opt_tail（优化尾部）
+  输出：branch_nodes（）
+*/
 void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
-    const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: current c2cpu was locked.
+    const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: 当前L2上界不能移动
     TID itemId = Problem::InvalidItemId;
-    // case A, place item in a new L1.
+    // case A, 开一个新的L1桶.
     if (old.c2cpu == 0) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
             for (TID i = 0; i < batch.stack_num(); ++i) {
@@ -93,25 +99,26 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 if (old.c1cpr + item.w > param_.plateWidth)continue;
-                // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
-                TLength slip_r = 0, slip_u = 0;
                 // TODO: precheck if item exceed plate bound to speed up branch.
-                // check if item conflict with defect and try to fix it.
+
+				// 瑕疵冲突, slip_r：瑕疵右边界到左侧cut的距离, slip_u：瑕疵上边界到下侧cut的距离
+				TLength slip_r = 0, slip_u = 0;
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
+				/* 不冲突直接放置，或者放在瑕疵右侧 */
                 {
-                    // place in defect right(if no defect conflict, slip_r is 0).
                     TreeNode node_a1(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2);
-                    node_a1.c3cp = node_a1.c1cpr = slip_r + item.w;
+                    node_a1.c3cp = node_a1.c1cpr = slip_r + item.w; 
                     node_a1.c4cp = node_a1.c2cpu = item.h;
                     if (slip_r > old.c1cpr)
-                        node_a1.setFlagBit(Placement::DEFECT_R);
+                        node_a1.setFlagBit(Placement::DEFECT_R); // 放在瑕疵右侧
                     if (constraintCheck(old, node_a1)) {
                         if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
                             node_a1.setFlagBit(Placement::NEW_PLATE);
                         branch_nodes.push_back(node_a1);
                     }
                 }
-                if (slip_r > old.c1cpr) { // item conflict with defect(two choice).
+				/* 放在瑕疵上侧 */
+                if (slip_r > old.c1cpr) { // 已知和瑕疵冲突
                     slip_u = sliptoDefectUp(old.c1cpr, 0, item.w);
                     if (slip_u != -1) {
                         TreeNode node_a2(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2); // place in defect up.
@@ -128,7 +135,7 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
             }
         }
     }
-    // case B, extend c1cpr or place item in a new L2.
+    // case B, 向右放置则拓宽c1cpr，向上放置则开一个新的L2桶.
     else if (old.c2cpb == 0 && old.c1cpr == old.c3cp) {
         for (int rotate = 0; rotate <= 1; ++rotate) {
             for (TID i = 0; i < batch.stack_num(); ++i) {
@@ -327,14 +334,15 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
     }
 }
 
-/* input: old branch node, current partial solution, new branch node.
-   function: check if new branch satisfy all the constraints.
-   if some constraints not staisfy, try to fix is by move item. */
+/* 
+   检查新的分支节点是否满足约束。如果不满足，则修复。
+   input: old branch node, current partial solution, new branch node.
+*/
 const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
     // if c2cpu less than c4cp, move it up.
-    if (node.c2cpu < node.c4cp) {
-        node.c2cpu = node.c4cp;
-    }
+    if (node.c2cpu < node.c4cp) { node.c2cpu = node.c4cp; }
+
+#pragma region minWasteFixer
     // check if item right side and c1cpr interval less than minWasteWidth.
     if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < param_.minWasteWidth) {
         node.c1cpr += param_.minWasteWidth; // move c1cpr right to staisfy constraint.
@@ -350,7 +358,7 @@ const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
         } else {
             node.c2cpu += param_.minWasteHeight; // move c2cpu up to satisfy constraint.
             if (node.getFlagBit(Placement::DEFECT_U))
-                node.c4cp = node.c2cpu;
+                node.c4cp = node.c2cpu;  // 物品在上，废料在下，防止在物品上方产生废料
         }
     }
     // check if new c2cpu and old c2cpu interval less than minWasteHeight
@@ -363,10 +371,14 @@ const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
                 node.c4cp = node.c2cpu;
         }
     }
+#pragma endregion minWasteFixer
     
+#pragma region defectFixer
     node.c1cpr = cut1ThroughDefect(node.c1cpr);
     node.c2cpu = cut2ThroughDefect(node.c1cpl, node.c1cpr, node.c2cpu);
+#pragma endregion defectFixer
 
+#pragma region sideChecker
     // check if cut1 exceed stock right side.
     if (node.c1cpr > param_.plateWidth) {
         return false;
@@ -375,6 +387,19 @@ const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
     if (node.c2cpu > param_.plateHeight) {
         return false;
     }
+	// check if cut1 and stock right side interval less than minimum waste width.
+	if (param_.plateWidth != node.c1cpr &&
+		param_.plateWidth - node.c1cpr < param_.minWasteWidth) {
+		return false;
+	}
+	// check if cut2 and stock up side interval less than minimum waste height.
+	if (param_.plateHeight != node.c2cpu &&
+		param_.plateHeight - node.c2cpu < param_.minWasteHeight) {
+		return false;
+	}
+#pragma endregion sideChecker
+
+#pragma region cutWidthHeightChecker
     // check if maximum cut1 width not staisfy.
     if (node.c1cpr - node.c1cpl > param_.maxL1Width) {
         return false;
@@ -389,16 +414,8 @@ const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
         old.c2cpu - old.c2cpb < param_.minL2Height) {
         return false;
     }
-    // check if cut1 and stock right side interval less than minimum waste width.
-    if (param_.plateWidth != node.c1cpr &&
-        param_.plateWidth - node.c1cpr < param_.minWasteWidth) {
-        return false;
-    }
-    // check if cut2 and stock up side interval less than minimum waste height.
-    if (param_.plateHeight != node.c2cpu &&
-        param_.plateHeight - node.c2cpu < param_.minWasteHeight) {
-        return false;
-    }
+#pragma endregion cutWidthHeightChecker
+
     return true; // every constraints satisfied.
 }
 
@@ -407,15 +424,15 @@ const TCoord CutSearch::sliptoDefectRight(const TCoord x, const TCoord y, const 
     TCoord slip = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= slip + w) {
-            break; // the defects is sorted by x position, so in this case just break.
+            break; // 物品在瑕疵左侧不冲突，物品可以直接放置.
         }
-        // item not in defect (right or bottom or top).
-        if (!(slip - it->x >= it->w || it->y - y >= h || y - it->y >= it->h)) {
+        // 物品不在瑕疵的右、上、下侧，冲突
+        if (!(slip - it->x >= it->w || y - it->y >= it->h || it->y - y >= h)) {
             slip = it->x + it->w;
             if (slip - x < param_.minWasteWidth)
                 slip = x + param_.minWasteWidth;
         }
-        // check if dir-cut cut through defect.
+        // 没有直接冲突但可能会切过瑕疵，使与瑕疵右边界对齐，slip+w是c1cpr
         if (it->x < slip + w && it->x + it->w > slip + w) {
             slip = it->x + it->w - w;
             if (slip - x < param_.minWasteWidth)
@@ -460,6 +477,7 @@ const TCoord CutSearch::cut2ThroughDefect(const TCoord x1, const TCoord x2, cons
     TCoord res = y;
     for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
         if (it->y > res)break;
+		// (it->y <= res && it->y + it->h > res && it->x + it->w > x1 && it->x < x2)
         if (!(it->y + it->h <= res || it->x + it->w <= x1 || it->x >= x2)) {    // 2-cut through defect.
             res = it->y + it->h;
             if (res - y < param_.minWasteHeight)

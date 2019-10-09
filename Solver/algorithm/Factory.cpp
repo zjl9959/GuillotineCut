@@ -117,7 +117,8 @@ Problem::Output createOutput(const Solution & sol, const Auxiliary &aux) {
             parent_L2 = nodeId;
             output.nodes.push_back(Problem::Output::Node( // + 二层桶节点
                 cur_plate, nodeId++, 0, 0, c1cpr, c2cpu, SpecialType::Branch, 2, parent_L1));
-        } else if (sol[n].getFlagBit(Placement::NEW_L1)) { // 使用新的一层桶
+        } 
+		else if (sol[n].getFlagBit(Placement::NEW_L1)) { // 使用新的一层桶
             if (c3cp < c1cpr) { // + waste_3
                 output.nodes.push_back(Problem::Output::Node(
                     cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
@@ -137,7 +138,8 @@ Problem::Output createOutput(const Solution & sol, const Auxiliary &aux) {
             parent_L2 = nodeId;
             output.nodes.push_back(Problem::Output::Node( // + 二层桶
                 cur_plate, nodeId++, c1cpl, 0, c1cpr - c1cpl, c2cpu, SpecialType::Branch, 2, parent_L1));
-        } else if (sol[n].getFlagBit(Placement::NEW_L2)) {  // 使用新的二层桶
+        } 
+		else if (sol[n].getFlagBit(Placement::NEW_L2)) {  // 使用新的二层桶
             if (c3cp < c1cpr) { // + waste_2
                 output.nodes.push_back(Problem::Output::Node(
                     cur_plate, nodeId++, c3cp, c2cpb, c1cpr - c3cp, c2cpu - c2cpb, SpecialType::Waste, 3, parent_L2));
