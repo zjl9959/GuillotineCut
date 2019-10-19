@@ -82,6 +82,9 @@
     <ClInclude Include="unit_test\test.h">
       <Filter>unit_test</Filter>
     </ClInclude>
+    <ClInclude Include="algorithm\MyCutSearch.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -119,6 +122,9 @@
     </ClCompile>
     <ClCompile Include="unit_test\test.cpp">
       <Filter>unit_test</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\MyCutSearch.cpp">
+      <Filter>algorithm\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

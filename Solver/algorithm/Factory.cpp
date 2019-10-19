@@ -219,12 +219,7 @@ Problem::Output createOutput(const Solution & sol, const Auxiliary &aux) {
             cur_plate, nodeId++, c1cpr, 0, PW - c1cpr, PH, SpecialType::Residual, 1, parent_L0));
     }
     // 计算已使用原料的宽度
-    output.totalWidth = 0;
-    for (int i = 0; i < sol.size(); ++i) {
-        if (output.totalWidth < cur_plate*aux.param.plateWidth + sol[i].c1cpr) {
-            output.totalWidth = cur_plate * aux.param.plateWidth + sol[i].c1cpr;
-        }
-    }
+    output.totalWidth = cur_plate * aux.param.plateWidth + sol.back().c1cpr;
     return output;
 }
 

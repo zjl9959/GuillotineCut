@@ -102,10 +102,19 @@ public:
     }
 
     /* 返回Batch中剩余物品数目 */
-    TID size() const { return left_items_; }
+    inline TID size() const { return left_items_; }
+
+	/* 返回第stack_id个栈中剩余物品数目 */
+	TID size(TID stack_id) const { 
+		if (stack_id < stacks_.size()) {
+			return static_cast<TID>(stacks_[stack_id].size());
+		}
+		return 0;
+	}
 
     /* 返回Batch中栈的数目，Ps：栈的数目是不定的 */
-    TID stack_num() const { return static_cast<TID>(stacks_.size()); }
+    inline TID stack_num() const { return static_cast<TID>(stacks_.size()); }
+
 private:
     TID left_items_;                 // 剩余物品数目
     List<List<TID>> stacks_;         // 存放物品的栈

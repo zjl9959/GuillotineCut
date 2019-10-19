@@ -5,12 +5,15 @@
 #include <mutex>
 
 #include "CutSearch.h"
+#include "MyCutSearch.h"
 #include "../data/Configuration.h"
 #include "../data/Auxiliary.h"
 
 namespace szx{
 
 class PlateSearch {
+	using CutSearch = CutSearch;
+
 public:
     PlateSearch(TID plate, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
 		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux), bestobj_(0) {};

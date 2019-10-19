@@ -98,6 +98,9 @@
     <ClInclude Include="..\Solver\unit_test\test.h">
       <Filter>Solver\unit_test</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\algorithm\MyCutSearch.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -138,6 +141,9 @@
     </ClCompile>
     <ClCompile Include="..\Solver\unit_test\test.cpp">
       <Filter>Solver\unit_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\algorithm\MyCutSearch.cpp">
+      <Filter>Solver\algorithm\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

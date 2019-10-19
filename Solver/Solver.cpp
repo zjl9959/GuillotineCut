@@ -56,10 +56,8 @@ int Cli::run(int argc, char * argv[]) {
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
-    
     Solver solver(input, env, cfg);
     solver.run();
-    
 
     /*
     // ≤‚ ‘cutSearch

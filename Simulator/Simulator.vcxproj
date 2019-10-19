@@ -164,6 +164,7 @@
   <ItemGroup>
     <ClInclude Include="..\Solver\algorithm\CutSearch.h" />
     <ClInclude Include="..\Solver\algorithm\Factory.h" />
+    <ClInclude Include="..\Solver\algorithm\MyCutSearch.h" />
     <ClInclude Include="..\Solver\algorithm\Picker.h" />
     <ClInclude Include="..\Solver\algorithm\PlateSearch.h" />
     <ClInclude Include="..\Solver\algorithm\TopSearch.h" />
@@ -187,6 +188,7 @@
   <ItemGroup>
     <ClCompile Include="..\Solver\algorithm\CutSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\Factory.cpp" />
+    <ClCompile Include="..\Solver\algorithm\MyCutSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\Picker.cpp" />
     <ClCompile Include="..\Solver\algorithm\PlateSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\TopSearch.cpp" />

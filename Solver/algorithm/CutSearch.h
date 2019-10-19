@@ -6,7 +6,6 @@
 #include "../data/Auxiliary.h"
 #include "../data/Batch.h"
 #include "../data/Placement.h"
-#include "../data/Auxiliary.h"
 #include "../data/Problem.h"
 
 namespace szx {

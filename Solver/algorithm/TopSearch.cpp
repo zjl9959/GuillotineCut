@@ -1,6 +1,8 @@
 #include "TopSearch.h"
 #include "Picker.h"
 
+using namespace std;
+
 namespace szx {
 
 void TopSearch::beam_search() {
@@ -24,8 +26,8 @@ void TopSearch::beam_search() {
         if (best_obj < aux_.param.plateWidth * aux_.param.plateNum) {
             fix_sol += best_platesol;
             batch >> best_platesol;
-            //Log(Log::Debug) << "[TopSearch] fix plate:" << cur_plate
-            //    << " add item num:" << best_platesol.size() << std::endl;
+            Log(Log::Debug) << "[TopSearch] fix plate:" << cur_plate
+                << " add item num:" << best_platesol.size() << endl;
             cur_plate++;
         } else {
             break;
@@ -66,7 +68,7 @@ Length TopSearch::greedy_evaluate(ID plate_id, const Batch &source_batch, const 
             fix_sol += plate_sol;
             batch >> plate_sol;
             plate_id++;
-            //Log(Log::Debug) << "[TopSearch : greedy] optimize plate:" << plate_id << std::endl;
+            //Log(Log::Debug) << "[TopSearch : greedy] optimize plate:" << plate_id << endl;
         }
     }
     Length obj = plate_id * aux_.param.plateWidth + fix_sol.back().c1cpr;
@@ -91,7 +93,7 @@ void TopSearch::update_bestsol(const Solution &sol, Length obj) {
         return;
     if (obj < 0)
         obj = get_obj(sol);
-    std::lock_guard<std::mutex> guard(sol_mutex_);
+    lock_guard<mutex> guard(sol_mutex_);
     if (best_obj_ > obj) {
         best_obj_ = obj;
         best_sol_ = sol;
