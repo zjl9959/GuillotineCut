@@ -11,18 +11,16 @@ namespace unit_test {
 /* 辅助测试CutSearch的run接口 */
 Solution test_CutSearch(Auxiliary &aux) {
     // 该部分需要手动设置参数
-    TID plate = 1;
-    //TCoord start_pos = 2053;
-    TCoord start_pos = 0;
-    //List<TID> items = {80, 38, 39, 81};
-    List<TID> items = {0, 1, 2, 3, 4};
+    TID plate = 0;
+    TCoord start_pos = 1239;
+    List<TID> items = {22, 0, 23, 24, 1};
     // 进行测试
     std::reverse(items.begin(), items.end());
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
 
-	using CutSearch = MyCutSearch;
+	using CutSearch = CutSearch;
     CutSearch solver(plate, start_pos, aux);
     Solution sol;
     Score score = solver.run(batch, sol);

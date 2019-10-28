@@ -221,9 +221,11 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                 TLength slip_r = 0, slip_u = 0;
                 // place item in the up of current c4cp.
                 TLength last_item_w = old.getFlagBit(Placement::ROTATE) ? items_[old.item].h : items_[old.item].w;
-                if (old.c2cpu > old.c4cp && last_item_w == item.w && !old.getFlagBit(Placement::DEFECT_U) &&
+                if (old.c2cpu > old.c4cp &&
+                    last_item_w == item.w &&
+                    !old.getFlagBit(Placement::DEFECT_U) &&
                     ((c2cpu_locked && old.c4cp + item.h == old.c2cpu) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpu)) &&
-                    sliptoDefectRight(old.c3cp - item.w, old.c4cp, item.w, item.h) != old.c3cp - item.w) {
+                    sliptoDefectRight(old.c3cp - item.w, old.c4cp, item.w, item.h) == old.c3cp - item.w) {
                     TreeNode node_c1(old, itemId, rotate| Placement::BIN4| Placement::LOCKC2); // place item in L4 bin.
                     node_c1.c2cpu = node_c1.c4cp = old.c4cp + item.h;
                     if (constraintCheck(old, node_c1)) {
