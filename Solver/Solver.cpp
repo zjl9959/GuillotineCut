@@ -55,9 +55,10 @@ int Cli::run(int argc, char * argv[]) {
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
-
+    
     Solver solver(input, env, cfg);
     solver.run();
+    
 
     /*
     // ²âÊÔcutSearch
@@ -139,6 +140,7 @@ void Solver::run() {
     // Êä³ö½â
     output.save(env.solutionPath());
     #if SZX_DEBUG
+    save_solution(best_sol, "tmp/solution.csv");
     output.save(env.solutionPathWithTime());
     record();
     #endif

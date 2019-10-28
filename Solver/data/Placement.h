@@ -48,6 +48,8 @@ using Solution = List<Placement>;   //代表部分解或完全解
 /* 连接两个局部解，将右值中的节点依次添加到左值中去 */
 Solution& operator+=(Solution &lhs, Solution &rhs);
 
+void save_solution(const Solution &sol, const String &path);
+
 }
 
 #endif

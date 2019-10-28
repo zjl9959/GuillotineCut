@@ -95,9 +95,9 @@ void Simulator::run(const String &envPath) {
 
 void Simulator::debug() {
     Task task;
-    task.instSet = "A";
-    task.instId = "1";
-    task.randSeed = "1571256724";
+    task.instSet = "B";
+    task.instId = "4";
+    task.randSeed = "1572774235";
     //task.randSeed = to_string(Random::generateSeed());
     task.timeout = "180";
     //task.timeout = "3600";
@@ -113,8 +113,8 @@ void Simulator::debug() {
 void Simulator::benchmark(int repeat) {
     Task task;
     task.instSet = "B";
-    //task.timeout = "180";
-    task.timeout = "3600";
+    task.timeout = "180";
+    //task.timeout = "3600";
     //task.maxIter = "1000000000";
     task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();
@@ -123,7 +123,7 @@ void Simulator::benchmark(int repeat) {
     random_device rd;
     mt19937 rgen(rd());
     vector<int> instList;
-    for (int inst = 1; inst <= 20; ++inst) { instList.push_back(inst); }
+    for (int inst = 1; inst <= 15; ++inst) { instList.push_back(inst); }
     for (int i = 0; i < repeat; ++i) {
         //shuffle(instList.begin(), instList.end(), rgen);
         for (auto inst = instList.begin(); inst != instList.end(); ++inst) {
