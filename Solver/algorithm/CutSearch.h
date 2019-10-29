@@ -22,9 +22,9 @@ public:
             Placement(node, item_id, _flag), depth(node.depth + 1), score(_score) {}
     };
 public:
-    CutSearch(TID plate, TCoord start_pos, const Auxiliary &aux) :
+    CutSearch(TID plate, TCoord start_pos, const Auxiliary &aux, int max_iter = INT_MAX) :
         defect_x_(aux.plate_defect_x[plate]), defect_y_(aux.plate_defect_y[plate]),
-        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param) {}
+        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param), max_iter_(max_iter) {}
     Score run(Batch &batch, Solution &sol, bool opt_tail = false);
 protected:
     Score dfs(Batch &batch, Solution &sol, bool opt_tail = false);
@@ -36,9 +36,7 @@ protected:
     const TCoord cut1ThroughDefect(const TCoord x) const;
     const TCoord cut2ThroughDefect(const TCoord x1, const TCoord x2, const TCoord y) const;
 private:
-    static constexpr int timeout_ms_ = 100;
-private:
-    // [zjl][TODO]: 将以下数据替换成aux的引用，这种拷贝并不能带来效率提升
+    const int max_iter_;
     const TCoord start_pos_;
     const List<Defect> &defect_x_;
     const List<Defect> &defect_y_;

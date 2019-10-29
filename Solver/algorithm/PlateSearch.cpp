@@ -53,8 +53,7 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
         c1cpr = cut_sol.back().c1cpr;
         fix_sol += cut_sol;
         batch >> cut_sol;
-        if (timer_.isTimeOut())
-            break;
+        if (timer_.isTimeOut())break;
     }
     Area res = item_area(fix_sol);
     update_bestsol(fix_sol, res);
@@ -83,11 +82,11 @@ Score PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &sou
     Solution cut_sol;       // 储存每次调用solver算得的解
     Score best_obj = -2.0;  // 本轮最优1-cut解的目标函数值
     for (int i = 0; i < repeat_num; ++i) {
+        if (timer_.isTimeOut())break;
         Batch sub_batch;    // 从batch中挑选的子集
         Picker::Filter filter(aux_.param.plateWidth - start_pos);
         Picker::Terminator terminator(cfg_.mcin);
-        if (!picker.rand_pick(sub_batch, terminator, filter))
-            continue;
+        if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         cut_sol.clear();
         Score obj = solver.run(sub_batch, cut_sol, tail);
         if (best_obj < obj) {   // 更新best_cut_sol;

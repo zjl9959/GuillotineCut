@@ -16,15 +16,13 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
     List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解
     List<TreeNode> best_sol; Score best_obj = 0.0;      // 最优解及对应目标函数值
     
+    int cur_iter = 0;   // 当前探索节点数目
     Depth pre_depth = -1;    // 上一个节点深度
     Area used_item_area = 0; // 已使用物品面积
     const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
 
-    Timer timer(static_cast<chrono::milliseconds>(timeout_ms_));
-    int see_timeout = 100000;   // 检查是否超时间隔时间
-
     branch(TreeNode(start_pos_), batch, live_nodes, opt_tail);
-    while (live_nodes.size()) {
+    while (live_nodes.size() && cur_iter < max_iter_) {
         TreeNode node = live_nodes.back();
         live_nodes.pop_back();
         if (node.depth - pre_depth == 1) { // 向下扩展
@@ -57,13 +55,7 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
                 best_sol = cur_sol;
             }
         }
-        if (see_timeout == 0) { // 检查是否超时
-            if (timer.isTimeOut())
-                break;
-            else
-                see_timeout = 100000;
-        }
-        --see_timeout;
+        ++cur_iter;
     }
     if (!best_sol.empty()) {
         sol.clear();

@@ -21,7 +21,16 @@ void save_solution(const Solution &sol, const String &path) {
         ofs << it->item << "," << it->c1cpl << ","
             << it->c1cpr << "," << it->c2cpb << ","
             << it->c2cpu << "," << it->c3cp << ","
-            << it->c4cp << "," << it->flag << endl;
+            << it->c4cp << "," << it->flag << "("
+            << (it->getFlagBit(Placement::ROTATE) ? "" : "ROATAE;")
+            << (it->getFlagBit(Placement::DEFECT_R) ? "" : "DEFECT_R;")
+            << (it->getFlagBit(Placement::DEFECT_U) ? "" : "DEFECT_U;")
+            << (it->getFlagBit(Placement::BIN4) ? "" : "BIN4;")
+            << (it->getFlagBit(Placement::LOCKC2) ? "" : "LOCKC2;")
+            << (it->getFlagBit(Placement::NEW_PLATE) ? "" : "NEW_PLATE;")
+            << (it->getFlagBit(Placement::NEW_L1) ? "" : "NEW_L1;")
+            << (it->getFlagBit(Placement::NEW_L2) ? "" : "NEW_L2;")
+            << ")" << endl;
     }
 }
 
