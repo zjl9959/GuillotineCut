@@ -14,6 +14,5 @@ int main() {
     //sim.benchmark(1);
     //sim.parallelBenchmark(5);
 
-	system("PAUSE");
     return 0;
 }

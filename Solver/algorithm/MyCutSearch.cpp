@@ -30,17 +30,17 @@ Score szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 		live_nodes.pop_back();
 		if (node.depth - pre_depth == 1) { // 向下扩展
 			cur_sol.push_back(node);
-			batch.pop(node.item);
+			batch.remove(node.item);
 			used_item_area += aux_.item_area[node.item];
 		}
 		else if (node.depth - pre_depth < 1) { // 向上回溯
 			for (int i = cur_sol.size() - 1; i >= node.depth; --i) { 
-				batch.push(cur_sol[i].item);   // 恢复栈
+				batch.add(cur_sol[i].item);   // 恢复栈
 				used_item_area -= aux_.item_area[cur_sol[i].item]; 
 			}
 			cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end()); // 删除兄弟节点及兄弟的子节点，cur_sol[i] 在树的第 i_th 层
 			cur_sol.push_back(node);
-			batch.pop(node.item);
+			batch.remove(node.item);
 			used_item_area += aux_.item_area[node.item];
 		}
 		const size_t old_live_nodes_size = live_nodes.size();

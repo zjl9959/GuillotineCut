@@ -46,9 +46,14 @@ public:
 using Solution = List<Placement>;   //代表部分解或完全解
 
 /* 连接两个局部解，将右值中的节点依次添加到左值中去 */
-Solution& operator+=(Solution &lhs, Solution &rhs);
+Solution& operator+=(Solution &lhs, const Solution &rhs);
 
-void save_solution(const Solution &sol, const String &path);
+/* 将rhs中的节点依次从lhs中拿出来 */
+Solution& operator-=(Solution &lhs, const Solution &rhs);
+
+bool item_repeat(const Solution &sol);  // 检查解中是否有重复物品
+
+void save_solution(const Solution &sol, const String &path);    // 保存解到文件中
 
 }
 

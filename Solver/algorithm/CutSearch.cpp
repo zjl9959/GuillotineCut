@@ -27,17 +27,17 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
         live_nodes.pop_back();
         if (node.depth - pre_depth == 1) { // 向下扩展
             cur_sol.push_back(node);
-            batch.pop(node.item);
+            batch.remove(node.item);
             used_item_area += item_area_[node.item];
         } 
 		else if (node.depth - pre_depth < 1) { // 向上回溯
             for (int i = static_cast<int>(cur_sol.size()) - 1; i >= node.depth; --i) {
-                batch.push(cur_sol[i].item);    // 恢复栈
+                batch.add(cur_sol[i].item);    // 恢复栈
                 used_item_area -= item_area_[cur_sol[i].item];  // 更新使用物品面积
             }
             cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end());
             cur_sol.push_back(node); // 更新当前解
-            batch.pop(node.item);
+            batch.remove(node.item);
             used_item_area += item_area_[node.item];
         }
         const size_t old_live_nodes_size = live_nodes.size();

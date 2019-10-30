@@ -59,31 +59,30 @@ public:
         return *this;
     }
 
-    /* 从Batch中弹出一个物品 */
-    void pop(TID item) {
-		assert(stacks_[item2stack_[item]].back() == item); // [?] 增加断言或者其他判断
+    /* 从Batch中删除一个物品，输入：物品id */
+    void remove(TID item) {
+		assert(stacks_[item2stack_[item]].back() == item);
         stacks_[item2stack_[item]].pop_back();
         left_items_--;
     }
-    /* 从Batch中弹出多个物品，输入：sol（包含待弹出物品节点） */
-    Batch& operator>>(const Solution &sol) {
+    /* 从Batch中删除多个物品，输入：sol（包含待弹出物品节点） */
+    void remove(const Solution &sol) {
         for (auto it = sol.begin(); it != sol.end(); ++it) {
-            pop(it->item);
+            remove(it->item);
         }
-        return *this;
     }
 
     /* 向Batch中添加一个物品，必须是之前从Batch中弹出的物品 */
-    void push(TID item) {
-        stacks_[item2stack_[item]].push_back(item);  // [?] 增加断言
+    void add(TID item) {
+        assert(item2stack_.count(item));
+        stacks_[item2stack_[item]].push_back(item);
         left_items_++;
     }
     /* 向Batch中添加多个物品，输入：sol（包含待添加物品节点） */
-    Batch& operator<<(const Solution &sol) {
+    void add(const Solution &sol) {
         for (auto it = sol.rbegin(); it != sol.rend(); ++it) {
-            push(it->item);
+            add(it->item);
         }
-        return *this;
     }
 
     /* 获取第stack_id个栈的栈首物品 */

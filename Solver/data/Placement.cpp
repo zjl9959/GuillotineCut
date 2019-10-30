@@ -1,16 +1,38 @@
 #include "Placement.h"
 
 #include <fstream>
+#include <unordered_set>
+#include <cassert>
 
 using namespace std;
 
 namespace szx {
 
-Solution & szx::operator+=(Solution & lhs, Solution & rhs) {
+Solution & szx::operator+=(Solution & lhs, const Solution & rhs) {
     for (auto it = rhs.begin(); it != rhs.end(); ++it) {
         lhs.push_back(*it);
     }
     return lhs;
+}
+
+Solution & operator-=(Solution & lhs, const Solution & rhs) {
+    for (auto it = rhs.crbegin(); it != rhs.crend(); ++it) {
+        assert(it->item == lhs.back().item);
+        lhs.pop_back();
+    }
+    return lhs;
+}
+
+bool item_repeat(const Solution &sol) {
+    unordered_set<TID> item_set;
+    for (auto it = sol.cbegin(); it != sol.cend(); ++it) {
+        if (item_set.find(it->item) != item_set.end()) {
+            return true;
+        } else {
+            item_set.insert(it->item);
+        }
+    }
+    return false;
 }
 
 void save_solution(const Solution &sol, const String &path) {
@@ -22,14 +44,14 @@ void save_solution(const Solution &sol, const String &path) {
             << it->c1cpr << "," << it->c2cpb << ","
             << it->c2cpu << "," << it->c3cp << ","
             << it->c4cp << "," << it->flag << "("
-            << (it->getFlagBit(Placement::ROTATE) ? "" : "ROATAE;")
-            << (it->getFlagBit(Placement::DEFECT_R) ? "" : "DEFECT_R;")
-            << (it->getFlagBit(Placement::DEFECT_U) ? "" : "DEFECT_U;")
-            << (it->getFlagBit(Placement::BIN4) ? "" : "BIN4;")
-            << (it->getFlagBit(Placement::LOCKC2) ? "" : "LOCKC2;")
-            << (it->getFlagBit(Placement::NEW_PLATE) ? "" : "NEW_PLATE;")
-            << (it->getFlagBit(Placement::NEW_L1) ? "" : "NEW_L1;")
-            << (it->getFlagBit(Placement::NEW_L2) ? "" : "NEW_L2;")
+            << (it->getFlagBit(Placement::ROTATE) ? "ROATAE;" : "")
+            << (it->getFlagBit(Placement::DEFECT_R) ? "DEFECT_R;" : "")
+            << (it->getFlagBit(Placement::DEFECT_U) ? "DEFECT_U;" : "")
+            << (it->getFlagBit(Placement::BIN4) ? "BIN4;" : "")
+            << (it->getFlagBit(Placement::LOCKC2) ? "LOCKC2;" : "")
+            << (it->getFlagBit(Placement::NEW_PLATE) ? "NEW_PLATE;" : "")
+            << (it->getFlagBit(Placement::NEW_L1) ? "NEW_L1;" : "")
+            << (it->getFlagBit(Placement::NEW_L2) ? "NEW_L2;" : "")
             << ")" << endl;
     }
 }

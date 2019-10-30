@@ -17,9 +17,11 @@ void PlateSearch::beam_search(const Batch &source_batch) {
         for (int i = 0; i < cfg_.mpbn; ++i) {   // 每轮分出多个分支
             if (get_cutsol(1, c1cpr, batch, cutsol) < -1.0)
                 continue;
-            batch >> cutsol;
-            Area obj = greedy_evaluate(cfg_.mcrn, batch, cutsol);   // 评估
-            batch << cutsol;
+            batch.remove(cutsol);
+            fix_sol += cutsol;
+            Area obj = greedy_evaluate(cfg_.mcrn, batch, fix_sol);   // 评估
+            batch.add(cutsol);
+            fix_sol -= cutsol;
             if (best_obj < obj) {               // 记录最好的1-cut
                 best_cutsol = cutsol;
                 best_obj = obj;
@@ -27,7 +29,7 @@ void PlateSearch::beam_search(const Batch &source_batch) {
         }
         if (best_obj > 0) {                     // 固定最好的1-cut
             fix_sol += best_cutsol;
-            batch >> best_cutsol;
+            batch.remove(best_cutsol);
             c1cpr = best_cutsol.back().c1cpr;
             //Log(Log::Debug) << "[PlateSearch] plate:" << plate_
             //    << " c1cpr:" << c1cpr << endl;
@@ -52,14 +54,14 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
         last_c1cpr = c1cpr;
         c1cpr = cut_sol.back().c1cpr;
         fix_sol += cut_sol;
-        batch >> cut_sol;
+        batch.remove(cut_sol);
         if (timer_.isTimeOut())break;
     }
     Area res = item_area(fix_sol);
     update_bestsol(fix_sol, res);
     // 优化最后一个1-cut
-    batch << cut_sol;
-    fix_sol.erase(fix_sol.begin() + (fix_sol.size() - cut_sol.size()), fix_sol.end());
+    batch.add(cut_sol);
+    fix_sol -= cut_sol;
     if (get_cutsol(repeat_num, last_c1cpr, batch, cut_sol, true) > -1.0) {
         Area new_res = item_area(cut_sol);
         fix_sol += cut_sol;
@@ -118,6 +120,7 @@ void PlateSearch::update_bestsol(const Solution &sol, Area obj) {
 }
 
 Area PlateSearch::get_bestsol(Solution &sol) {
+    assert(!bestsol_.empty());
     sol = bestsol_;
     return bestobj_;
 }

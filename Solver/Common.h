@@ -66,6 +66,8 @@ public:
     static String json() { return String(".json"); }
 };
 
+static constexpr TID INVALID = -1;
+
 }
 
 

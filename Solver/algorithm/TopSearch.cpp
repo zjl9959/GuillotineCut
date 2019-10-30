@@ -15,17 +15,19 @@ void TopSearch::beam_search() {
         for (int i = 0; i < cfg_.mtbn; ++i) {
             if (get_platesol(cur_plate, batch, platesol) < -1.0)
                 continue;
-            batch >> platesol;
-            Length obj = greedy_evaluate(cur_plate, batch, platesol);
-            batch << platesol;
+            batch.remove(platesol);
+            fix_sol += platesol;
+            Length obj = greedy_evaluate(cur_plate, batch, fix_sol);
+            batch.add(platesol);
+            fix_sol -= platesol;
             if (best_obj > obj) {
                 best_obj = obj;
                 best_platesol = platesol;
             }
         }
-        if (best_obj < aux_.param.plateWidth * aux_.param.plateNum) {
+        if (best_obj < Problem::Output::MaxWidth) {
             fix_sol += best_platesol;
-            batch >> best_platesol;
+            batch.remove(best_platesol);
             Log(Log::Debug) << "[TopSearch] fix plate:" << cur_plate
                 << " add item num:" << best_platesol.size() << endl;
             cur_plate++;
@@ -65,10 +67,12 @@ Length TopSearch::greedy_evaluate(ID plate_id, const Batch &source_batch, const 
     ++plate_id;
     while (!timer_.isTimeOut() && batch.size() != 0) {
         if (get_platesol(plate_id, batch, plate_sol) > -1.0) {
+            //Log(Log::Debug) << "\t[TopSearch : greedy] optimize plate:" << plate_id << endl;
             fix_sol += plate_sol;
-            batch >> plate_sol;
+            batch.remove(plate_sol);
             plate_id++;
-            //Log(Log::Debug) << "[TopSearch : greedy] optimize plate:" << plate_id << endl;
+        } else {
+            return Problem::Output::MaxWidth;
         }
     }
     Length obj = plate_id * aux_.param.plateWidth + fix_sol.back().c1cpr;
@@ -97,6 +101,7 @@ void TopSearch::update_bestsol(const Solution &sol, Length obj) {
     if (best_obj_ > obj) {
         best_obj_ = obj;
         best_sol_ = sol;
+        Log(Log::Debug) << "A BETTER SOLUTION!" << endl;
     }
 }
 

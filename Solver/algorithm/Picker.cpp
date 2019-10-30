@@ -37,6 +37,8 @@ bool Picker::rand_pick(Batch &target_batch, Terminator &terminator, Filter &filt
             break;
         chosen[chosen_stack].push_back(item_id);
         item_set.push_back(item_id);
+        if (item_id == 103)
+            item_id = item_id;
         // 从source_batch中拿出一个物品
         TID substitute_item = source_.get(chosen_stack, ++pool[rand_num].second);
         if (!(Problem::InvalidItemId != substitute_item && filter(substitute_item, aux_))) {
