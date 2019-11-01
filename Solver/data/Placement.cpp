@@ -35,6 +35,24 @@ bool item_repeat(const Solution &sol) {
     return false;
 }
 
+TID nb_used_plate(const Solution &sol) {
+    TID res = 0;
+    for (auto it = sol.cbegin(); it != sol.cend(); ++it)
+        if (it->getFlagBit(Placement::NEW_PLATE))
+            ++res;
+    return res;
+}
+
+bool valid_plate_sol(const Solution &sol) {
+    auto it = sol.cbegin();
+    if (!it->getFlagBit(Placement::NEW_PLATE))  // 第一个节点一定要开一个新的原料。
+        return false;
+    for (++it; it != sol.cend(); ++it)  // 剩余的节点不能再开新的原料了。
+        if (it->getFlagBit(Placement::NEW_PLATE))
+                return false;
+    return true;
+}
+
 void save_solution(const Solution &sol, const String &path) {
     ofstream ofs(path);
     if (!ofs.is_open())return;

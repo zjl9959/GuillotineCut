@@ -71,6 +71,7 @@ Length TopSearch::greedy_evaluate(ID plate_id, const Batch &source_batch, const 
             fix_sol += plate_sol;
             batch.remove(plate_sol);
             plate_id++;
+            assert(nb_used_plate(fix_sol) == plate_id);
         } else {
             return Problem::Output::MaxWidth;
         }

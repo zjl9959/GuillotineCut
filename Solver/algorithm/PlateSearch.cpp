@@ -60,14 +60,16 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
     Area res = item_area(fix_sol);
     update_bestsol(fix_sol, res);
     // 优化最后一个1-cut
-    batch.add(cut_sol);
-    fix_sol -= cut_sol;
-    if (get_cutsol(repeat_num, last_c1cpr, batch, cut_sol, true) > -1.0) {
-        Area new_res = item_area(cut_sol);
-        fix_sol += cut_sol;
-        if (new_res > res) {
-            res = new_res;
-            update_bestsol(fix_sol, new_res);
+    if (last_c1cpr > 0) {   // 在没有贪心的走到底的前提下。
+        batch.add(cut_sol);
+        fix_sol -= cut_sol;
+        if (get_cutsol(repeat_num, last_c1cpr, batch, cut_sol, true) > -1.0) {
+            Area new_res = item_area(cut_sol);
+            fix_sol += cut_sol;
+            if (new_res > res) {
+                res = new_res;
+                update_bestsol(fix_sol, new_res);
+            }
         }
     }
     return res;
@@ -113,6 +115,7 @@ void PlateSearch::update_bestsol(const Solution &sol, Area obj) {
     if(obj == 0)
         obj = item_area(sol);
     lock_guard<mutex> guard(sol_mutex_);
+    assert(valid_plate_sol(sol));
     if (bestobj_ < obj) {
         bestobj_ = obj;
         bestsol_ = sol;
