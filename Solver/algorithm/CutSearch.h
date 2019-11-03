@@ -21,6 +21,7 @@ public:
         TreeNode(const TreeNode &node, const TID item_id, const Status _flag, const Score _score = 0.0) :
             Placement(node, item_id, _flag), depth(node.depth + 1), score(_score) {}
     };
+    // [zjl][TODO]:ÃÌº”  ≈‰∆˜£¨“‘±„  ≈‰branch°£
 public:
     CutSearch(TID plate, TCoord start_pos, const Auxiliary &aux, int max_iter = INT_MAX) :
         defect_x_(aux.plate_defect_x[plate]), defect_y_(aux.plate_defect_y[plate]),
