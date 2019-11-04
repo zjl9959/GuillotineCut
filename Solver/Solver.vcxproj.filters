@@ -85,6 +85,7 @@
     <ClInclude Include="algorithm\MyCutSearch.h">
       <Filter>algorithm\header</Filter>
     </ClInclude>
+    <ClInclude Include="data\PFSTree.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">

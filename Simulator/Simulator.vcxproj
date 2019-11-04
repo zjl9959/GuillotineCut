@@ -173,6 +173,7 @@
     <ClInclude Include="..\Solver\data\Batch.h" />
     <ClInclude Include="..\Solver\data\Configuration.h" />
     <ClInclude Include="..\Solver\data\MCTNode.h" />
+    <ClInclude Include="..\Solver\data\PFSTree.h" />
     <ClInclude Include="..\Solver\data\Placement.h" />
     <ClInclude Include="..\Solver\data\Problem.h" />
     <ClInclude Include="..\Solver\Solver.h" />

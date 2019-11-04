@@ -172,6 +172,7 @@
     <ClInclude Include="data\Batch.h" />
     <ClInclude Include="data\Configuration.h" />
     <ClInclude Include="data\MCTNode.h" />
+    <ClInclude Include="data\PFSTree.h" />
     <ClInclude Include="data\Placement.h" />
     <ClInclude Include="data\Problem.h" />
     <ClInclude Include="algorithm\MyCutSearch.h" />

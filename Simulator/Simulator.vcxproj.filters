@@ -101,6 +101,9 @@
     <ClInclude Include="..\Solver\algorithm\MyCutSearch.h">
       <Filter>Solver\algorithm\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\data\PFSTree.h">
+      <Filter>Solver\data</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
