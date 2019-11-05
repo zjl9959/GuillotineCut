@@ -9,14 +9,14 @@ namespace szx {
   输入：batch（物品栈），opt_tail（是否优化原料末尾）
   输出：sol（该1-cut的最优解），返回：1-cut对应利用率 
 */
-Score szx::MyCutSearch::run(Batch & batch, Solution & sol, bool opt_tail) {
+UsageRate szx::MyCutSearch::run(Batch & batch, Solution & sol, bool opt_tail) {
 	return dfs(batch, sol, opt_tail);
 }
 
-Score szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
+UsageRate szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 	List<TreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
 	List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解 
-	List<TreeNode> best_sol; Score best_obj = 0.0;      // 最优解及对应目标函数值
+	List<TreeNode> best_sol; UsageRate best_obj;      // 最优解及对应目标函数值
 
 	Depth pre_depth = -1;    // 上一个节点深度
 	Area used_item_area = 0; // 已使用物品面积
@@ -47,12 +47,12 @@ Score szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 		branch(node, batch, cur_sol, live_nodes, opt_tail);
 		pre_depth = node.depth;
 		if (old_live_nodes_size == live_nodes.size()) { // 不能继续分支，找到一个完整解
-			Score cur_obj;
+            UsageRate cur_obj;
 			if (opt_tail) {
-				cur_obj = (double)used_item_area / (double)((aux_.param.plateWidth - start_pos_) * aux_.param.plateHeight);
+				cur_obj = UsageRate((double)used_item_area / (double)((aux_.param.plateWidth - start_pos_) * aux_.param.plateHeight));
 			}
 			else {
-				cur_obj = (double)used_item_area / (double)((cur_sol.back().c1cpr - start_pos_) * aux_.param.plateHeight);
+				cur_obj = UsageRate((double)used_item_area / (double)((cur_sol.back().c1cpr - start_pos_) * aux_.param.plateHeight));
 			}
 			if (best_obj < cur_obj) {
 				best_obj = cur_obj;
@@ -74,7 +74,7 @@ Score szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 		for (int i = 0; i < best_sol.size(); ++i) { sol.push_back(best_sol[i]); }
 		return best_obj;
 	}
-	return -2.0;
+	return UsageRate();
 }
 
 /*

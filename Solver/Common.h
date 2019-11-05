@@ -12,6 +12,9 @@
 #include <map>
 #include <unordered_map>
 #include <string>
+#include <sstream>
+#include <algorithm>
+#include <cassert>
 
 namespace szx {
 
@@ -37,8 +40,6 @@ using Duration = int;
 using Iteration = int;
 // the depth of tree node (no lager than item numbers[800])
 using Depth = short;
-// the score of the tree node
-using Score = double;
 
 template<typename T>
 using List = std::vector<T>;
@@ -54,8 +55,6 @@ using HashMap = std::unordered_map<Key, Val>;
 
 using String = std::string;
 
-using ScorePair = std::pair<int, Score>;
-
 using AreaPair = std::pair<int, Area>;
 
 using LengthPair = std::pair<int, TLength>;
@@ -64,6 +63,35 @@ class FileExtension {
 public:
     static String protobuf() { return String(".pb"); }
     static String json() { return String(".json"); }
+};
+
+class UsageRate {
+    // [TODO]: test this class.
+protected:
+    static constexpr int base = 1000;    // 将浮点数转化为小数时保留的小数位数。
+    static constexpr int invalid_value = INT_MAX;
+    int usage_rate_int; // 使用整数来保存浮点数。
+public:
+    UsageRate() : usage_rate_int(invalid_value) {}
+    explicit UsageRate(double rate) : usage_rate_int(static_cast<int>(rate*base)) { assert(rate < 1.0); }
+    
+    UsageRate& operator= (const UsageRate &other) {
+        this->usage_rate_int = other.usage_rate_int;
+        return *this;
+    }
+
+    bool valid() const { return usage_rate_int != invalid_value; }
+    
+    virtual bool operator< (const UsageRate &rhs) const {
+        return this->usage_rate_int < rhs.usage_rate_int;
+    }
+
+    virtual String str() const {
+        std::ostringstream os;
+        os << usage_rate_int / base << "."
+            << usage_rate_int % base << "%";
+        return os.str();
+    }
 };
 
 static constexpr TID INVALID = -1;

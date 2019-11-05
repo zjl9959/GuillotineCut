@@ -26,12 +26,11 @@ public:
 
 protected:
 	Area greedy_evaluate(int repeat_num, const Batch &source_batch, const Solution &sol);
-    Score get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail = false);
+    UsageRate get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail = false);
 private:
     Area item_area(const Solution &sol);
     void update_bestsol(const Solution &sol, Area obj = 0);
 private:
-	static constexpr ScorePair InvalidPair = std::make_pair(-1, 0.0);
     TID plate_;              // 优化的原料id
     Configuration &cfg_;
     Random &rand_;

@@ -15,7 +15,7 @@ void PlateSearch::beam_search(const Batch &source_batch) {
     while (!timer_.isTimeOut()) {               // 每次固定一个1-cut，直到原料末尾
         Area best_obj = 0;
         for (int i = 0; i < cfg_.mpbn; ++i) {   // 每轮分出多个分支
-            if (get_cutsol(1, c1cpr, batch, cutsol) < -1.0)
+            if (!get_cutsol(1, c1cpr, batch, cutsol).valid())
                 continue;
             batch.remove(cutsol);
             fix_sol += cutsol;
@@ -50,7 +50,7 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
     Solution fix_sol(sol);              // fix_sol被贪心的构造，每次固定一个1-cut
     Solution cut_sol;                   // 储存每次贪心前解时1-cut的解
     // 贪心构造
-    while (get_cutsol(repeat_num, c1cpr, batch, cut_sol) > -1.0) {
+    while (get_cutsol(repeat_num, c1cpr, batch, cut_sol).valid()) {
         last_c1cpr = c1cpr;
         c1cpr = cut_sol.back().c1cpr;
         fix_sol += cut_sol;
@@ -63,7 +63,7 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
     if (last_c1cpr > 0) {   // 在没有贪心的走到底的前提下。
         batch.add(cut_sol);
         fix_sol -= cut_sol;
-        if (get_cutsol(repeat_num, last_c1cpr, batch, cut_sol, true) > -1.0) {
+        if (get_cutsol(repeat_num, last_c1cpr, batch, cut_sol, true).valid()) {
             Area new_res = item_area(cut_sol);
             fix_sol += cut_sol;
             if (new_res > res) {
@@ -79,12 +79,12 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
    输入：repeat_num（重复调用CutSearch次数），start_pos（1-cut开始位置），source_batch（物品栈），tail（优化原料尾部）
    输出：sol（得到的最优1-cut解），返回：对应最优解的目标函数值/-2.0
 */
-Score PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail) {
+UsageRate PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail) {
     // 多次调用CutSearch，选一个最好的解
     CutSearch solver(plate_, start_pos, aux_);
     Picker picker(source_batch, rand_, aux_);
     Solution cut_sol;       // 储存每次调用solver算得的解
-    Score best_obj = -2.0;  // 本轮最优1-cut解的目标函数值
+    UsageRate best_obj;  // 本轮最优1-cut解的目标函数值
     for (int i = 0; i < repeat_num; ++i) {
         if (timer_.isTimeOut())break;
         Batch sub_batch;    // 从batch中挑选的子集
@@ -92,7 +92,7 @@ Score PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &sou
         Picker::Terminator terminator(cfg_.mcin);
         if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         cut_sol.clear();
-        Score obj = solver.run(sub_batch, cut_sol, tail);
+        UsageRate obj = solver.run(sub_batch, cut_sol, tail);
         if (best_obj < obj) {   // 更新best_cut_sol;
             best_obj = obj;
             sol = cut_sol;

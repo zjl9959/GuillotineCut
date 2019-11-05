@@ -13,7 +13,7 @@ void TopSearch::beam_search() {
     while (!timer_.isTimeOut()) {
         Length best_obj = Problem::Output::MaxWidth;
         for (int i = 0; i < cfg_.mtbn; ++i) {
-            if (get_platesol(cur_plate, batch, platesol) < -1.0)
+            if (get_platesol(cur_plate, batch, platesol) < 0)
                 continue;
             batch.remove(platesol);
             fix_sol += platesol;
@@ -42,16 +42,16 @@ void TopSearch::beam_search() {
    输入：plate_id（原料id），source_batch（物品栈）
    输出：sol（原料上的解）；返回：sol的目标函数值（原料利用率）
 */
-Score TopSearch::get_platesol(ID plate_id, const Batch &source_batch, Solution &sol) {
+Area TopSearch::get_platesol(ID plate_id, const Batch &source_batch, Solution &sol) {
     Picker picker(source_batch, rand_, aux_);
     Batch batch;
     Picker::Terminator terminator(0, static_cast<Area>(aux_.param.plateHeight * aux_.param.plateWidth * 1.2));
     if (picker.rand_pick(batch, terminator)) {
         PlateSearch solver(plate_id, cfg_, rand_, timer_, aux_);
         solver.beam_search(batch);
-        return solver.get_bestsol(sol);  // [?] bug
+        return solver.get_bestsol(sol);
     }
-    return -2.0;
+    return -1;
 }
 
 /* 
@@ -66,7 +66,7 @@ Length TopSearch::greedy_evaluate(ID plate_id, const Batch &source_batch, const 
     Solution plate_sol;
     ++plate_id;
     while (!timer_.isTimeOut() && batch.size() != 0) {
-        if (get_platesol(plate_id, batch, plate_sol) > -1.0) {
+        if (get_platesol(plate_id, batch, plate_sol) > 0) {
             //Log(Log::Debug) << "\t[TopSearch : greedy] optimize plate:" << plate_id << endl;
             fix_sol += plate_sol;
             batch.remove(plate_sol);

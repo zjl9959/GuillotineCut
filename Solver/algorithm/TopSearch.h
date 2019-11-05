@@ -17,7 +17,7 @@ public:
     /* 获取算得的最优解 */
     Length get_bestsol(Solution &sol);
 protected:
-    Score get_platesol(ID plate_id, const Batch &source_batch, Solution &sol);
+    Area get_platesol(ID plate_id, const Batch &source_batch, Solution &sol);
     Length greedy_evaluate(ID plate_id, const Batch &source_batch, const Solution &sol);
 private:
     Length get_obj(const Solution &sol);

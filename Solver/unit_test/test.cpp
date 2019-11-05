@@ -23,8 +23,8 @@ Solution test_CutSearch(Auxiliary &aux) {
 	using CutSearch = CutSearch;
     CutSearch solver(plate, start_pos, aux);
     Solution sol;
-    Score score = solver.run(batch, sol);
-	std::cout << score << std::endl;
+    UsageRate score = solver.run(batch, sol);
+	std::cout << score.str() << std::endl;
     return sol;
 }
 

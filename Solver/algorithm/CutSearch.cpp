@@ -7,14 +7,14 @@ namespace szx {
 /* 优化1-cut
    输入：batch（物品栈），opt_tail（是否优化原料末尾）
    输出：sol（该1-cut的最优解），返回：1-cut对应利用率 */
-Score CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
+UsageRate CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
     return dfs(batch, sol, opt_tail);
 }
 
-Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
+UsageRate CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
     List<TreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
     List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解
-    List<TreeNode> best_sol; Score best_obj = 0.0;      // 最优解及对应目标函数值
+    List<TreeNode> best_sol; UsageRate best_obj;      // 最优解及对应目标函数值
     
     int cur_iter = 0;   // 当前探索节点数目
     Depth pre_depth = -1;    // 上一个节点深度
@@ -45,11 +45,11 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
         pre_depth = node.depth;
         if (old_live_nodes_size == live_nodes.size()) { // 找到一个完整解
             TLength cur_width = cur_sol.back().c1cpr - start_pos_;
-            Score cur_obj = 0.0;
+            UsageRate cur_obj;
             if (opt_tail)
-                cur_obj = (double)used_item_area / (double)tail_area;
+                cur_obj = UsageRate((double)used_item_area / (double)tail_area);
             else
-                cur_obj = (double)used_item_area / (double)(cur_width*param_.plateHeight);
+                cur_obj = UsageRate((double)used_item_area / (double)(cur_width*param_.plateHeight));
             if (best_obj < cur_obj) {
                 best_obj = cur_obj;
                 best_sol = cur_sol;
@@ -64,12 +64,12 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
             sol.push_back(*it);
         return best_obj;
     }
-    return -2.0;
+    return UsageRate();
 }
 
-Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
+UsageRate CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
     // [zjl][TODO]: add pfs implement.
-    return -2.0;
+    return UsageRate();
 }
 
 /*
@@ -77,6 +77,7 @@ Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
   输入：old（分支起点），batch（物品栈），opt_tail（优化尾部）
   输出：branch_nodes（用栈保存的搜索树）
 */
+// [zjl][TODO]: 将TreeNode改为更通用的Placement, 然后直接new Placement出来。
 void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
     const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: 当前L2上界不能移动
     TID itemId = Problem::InvalidItemId;

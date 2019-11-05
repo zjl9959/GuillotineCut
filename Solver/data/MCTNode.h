@@ -68,8 +68,8 @@ protected:
     }
 private:
     Status state;
-    Score partial_usage_rate;
-    Score best_objective;
+    UsageRate partial_usage_rate;
+    UsageRate best_objective;
     size_t expand_count;
     Solution partial_solution;
 
