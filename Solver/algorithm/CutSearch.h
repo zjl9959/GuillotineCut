@@ -22,9 +22,10 @@ public:
             Placement(node, item_id, _flag), depth(node.depth + 1), score(_score) {}
     };
 public:
-    CutSearch(TID plate, TCoord start_pos, const Auxiliary &aux, int max_iter = INT_MAX) :
+    CutSearch(TID plate, TCoord start_pos, Auxiliary &aux, int max_iter = INT_MAX) :
         defect_x_(aux.plate_defect_x[plate]), defect_y_(aux.plate_defect_y[plate]),
-        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param), max_iter_(max_iter) {}
+        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), 
+		statistics_aux_(aux.statistics_list), param_(aux.param), max_iter_(max_iter) {}
     Score run(Batch &batch, Solution &sol, bool opt_tail = false);
 protected:
     Score dfs(Batch &batch, Solution &sol, bool opt_tail = false);
@@ -43,6 +44,7 @@ private:
     const List<Rect> &items_;
     const List<Area> &item_area_;
     const Problem::Input::Param &param_;
+	StatisticsList &statistics_aux_;
 };
 
 }

@@ -3,11 +3,10 @@
 #define GUILLOTINECUT_PLATESEARCH_H
 
 #include <mutex>
-
-#include "CutSearch.h"
-#include "MyCutSearch.h"
 #include "../data/Configuration.h"
 #include "../data/Auxiliary.h"
+#include "CutSearch.h"
+#include "MyCutSearch.h"
 
 namespace szx{
 
@@ -15,7 +14,7 @@ class PlateSearch {
 	using CutSearch = CutSearch;
 
 public:
-    PlateSearch(TID plate, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
+    PlateSearch(TID plate, Configuration &cfg, Random &rand, Timer &timer, Auxiliary &aux) :
 		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux), bestobj_(0) {};
 
     /* 束搜索，输入：物品栈 */
@@ -36,7 +35,7 @@ private:
     Configuration &cfg_;
     Random &rand_;
     Timer &timer_;
-    Auxiliary aux_;
+    Auxiliary &aux_;
     
     std::mutex sol_mutex_;  // 更新最优解时需先获得该锁
     Solution bestsol_;      // 最优解

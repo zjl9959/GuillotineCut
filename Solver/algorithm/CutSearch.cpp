@@ -1,3 +1,4 @@
+#include <ctime>
 #include "CutSearch.h"
 
 using namespace std;
@@ -12,6 +13,7 @@ Score CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
 }
 
 Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
+	clock_t start = clock();
     List<TreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
     List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解
     List<TreeNode> best_sol; Score best_obj = 0.0;      // 最优解及对应目标函数值
@@ -22,6 +24,7 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
     const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
 
     branch(TreeNode(start_pos_), batch, live_nodes, opt_tail);
+
     while (live_nodes.size() && cur_iter < max_iter_) {
         TreeNode node = live_nodes.back();
         live_nodes.pop_back();
@@ -57,14 +60,13 @@ Score CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
         }
         ++cur_iter;
     }
-    if (!best_sol.empty()) {
-        sol.clear();
-        sol.reserve(best_sol.size());
-        for (auto it = best_sol.begin(); it != best_sol.end(); ++it)
-            sol.push_back(*it);
-        return best_obj;
-    }
-    return -2.0;
+    if (best_sol.empty()) { return -2.0; }
+	sol.clear();
+	sol.reserve(best_sol.size());
+	for (auto it = best_sol.begin(); it != best_sol.end(); ++it) { sol.push_back(*it); }
+	// record statistics info
+	statistics_aux_.add(cur_iter, (clock() - start) / static_cast<double>(CLOCKS_PER_SEC), best_obj);
+	return best_obj;
 }
 
 Score CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
@@ -471,7 +473,7 @@ const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
 const TCoord CutSearch::cut2ThroughDefect(const TCoord x1, const TCoord x2, const TCoord y) const {
     TCoord res = y;
     for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
-        if (it->y > res)break;
+        if (it->y >= res) break;
 		// (it->y <= res && it->y + it->h > res && it->x + it->w > x1 && it->x < x2)
         if (!(it->y + it->h <= res || it->x + it->w <= x1 || it->x >= x2)) {    // 2-cut through defect.
             res = it->y + it->h;

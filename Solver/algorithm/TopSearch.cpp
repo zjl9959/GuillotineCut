@@ -28,8 +28,8 @@ void TopSearch::beam_search() {
         if (best_obj < Problem::Output::MaxWidth) {
             fix_sol += best_platesol;
             batch.remove(best_platesol);
-            Log(Log::Debug) << "[TopSearch] fix plate:" << cur_plate
-                << " add item num:" << best_platesol.size() << endl;
+            //Log(Log::Debug) << "[TopSearch] fix plate:" << cur_plate 
+			//	<< " add item num:" << best_platesol.size() << endl;
             cur_plate++;
         } else {
             break;
@@ -49,7 +49,7 @@ Score TopSearch::get_platesol(ID plate_id, const Batch &source_batch, Solution &
     if (picker.rand_pick(batch, terminator)) {
         PlateSearch solver(plate_id, cfg_, rand_, timer_, aux_);
         solver.beam_search(batch);
-        return solver.get_bestsol(sol);  // [?] bug
+        return solver.get_bestsol(sol);
     }
     return -2.0;
 }
@@ -102,7 +102,7 @@ void TopSearch::update_bestsol(const Solution &sol, Length obj) {
     if (best_obj_ > obj) {
         best_obj_ = obj;
         best_sol_ = sol;
-        Log(Log::Debug) << "A BETTER SOLUTION!" << endl;
+        //Log(Log::Debug) << "A BETTER SOLUTION!" << endl;
     }
 }
 

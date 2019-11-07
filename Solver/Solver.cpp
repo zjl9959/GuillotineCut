@@ -56,9 +56,9 @@ int Cli::run(int argc, char * argv[]) {
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
     
+	// 调用topSearch求解
     Solver solver(input, env, cfg);
     solver.run();
-    
 
     /*
     // 测试cutSearch
@@ -140,9 +140,10 @@ void Solver::run() {
     // 输出解
     output.save(env.solutionPath());
     #if SZX_DEBUG
-    save_solution(best_sol, "tmp/solution.csv");
+    save_solution(best_sol, "tmp/" + env.friendlyInstName() + ".solution.csv");
     output.save(env.solutionPathWithTime());
     record();
+	aux.statistics_list.record("tmp/" + env.friendlyInstName() + ".statistics.csv");
     #endif
 }
 

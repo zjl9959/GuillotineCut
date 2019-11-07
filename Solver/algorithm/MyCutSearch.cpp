@@ -1,3 +1,4 @@
+#include <ctime>
 #include "MyCutSearch.h"
 
 using namespace std;
@@ -14,18 +15,17 @@ Score szx::MyCutSearch::run(Batch & batch, Solution & sol, bool opt_tail) {
 }
 
 Score szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
+	clock_t start = clock();
 	List<TreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
 	List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解 
 	List<TreeNode> best_sol; Score best_obj = 0.0;      // 最优解及对应目标函数值
 
+	int cur_iter = 0;        // 当前探索节点数目
 	Depth pre_depth = -1;    // 上一个节点深度
 	Area used_item_area = 0; // 已使用物品面积
 	
-	Timer timer(static_cast<Timer::Millisecond>(timeout_ms_));
-	int see_timeout = 100000; // 检查是否超时间隔时间
-
 	branch(TreeNode(start_pos_), batch, cur_sol, live_nodes, opt_tail);
-	while (live_nodes.size()) {
+	while (live_nodes.size() && cur_iter < max_iter_) {
 		TreeNode node = live_nodes.back();
 		live_nodes.pop_back();
 		if (node.depth - pre_depth == 1) { // 向下扩展
@@ -59,22 +59,16 @@ Score szx::MyCutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 				best_sol = cur_sol;
 			}
 		}
-		if (see_timeout == 0) { // 检查是否超时
-			if (timer.isTimeOut())
-				break;
-			else
-				see_timeout = 100000;
-		}
-		--see_timeout;
+		++cur_iter;
 	}
 
-	if (!best_sol.empty()) {
-		sol.clear();
-		sol.reserve(best_sol.size());
-		for (int i = 0; i < best_sol.size(); ++i) { sol.push_back(best_sol[i]); }
-		return best_obj;
-	}
-	return -2.0;
+	if (best_sol.empty()) { return -2.0; }
+	sol.clear();
+	sol.reserve(best_sol.size());
+	for (int i = 0; i < best_sol.size(); ++i) { sol.push_back(best_sol[i]); }
+	// record statistics info
+	statistics_aux_.add(cur_iter, (clock() - start) / static_cast<double>(CLOCKS_PER_SEC), best_obj);
+	return best_obj;
 }
 
 /*
@@ -422,45 +416,37 @@ void MyCutSearch::branch(const TreeNode & old, const Batch & batch, const List<T
 }
 
 const bool MyCutSearch::constraintCheck(const TreeNode & old, const List<TreeNode> &cur_sol, TreeNode & node) {
+	// 如果1-cut、2-cut被移动，需要重新检查最小浪费和瑕疵约束
 	bool moved_cut1 = false, moved_cut2 = false;
-	// [?] 必要性？ if c2cpu less than c4cp, move it up.
+	
+	// if c2cpu less than c4cp, move it up.
 	if (node.c2cpu < node.c4cp) {
 		node.c2cpu = node.c4cp;
 		moved_cut2 = true;
 	}
 #pragma region minWasteChecker
 	// check if item right side and c1cpr interval less than minWasteWidth.
-	if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < aux_.param.minWasteWidth) {
+	// check if new c1cpr and old c1cpr interval less than minWasteWidth.
+	if ((node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < aux_.param.minWasteWidth)
+		|| (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < aux_.param.minWasteWidth)
+		) {
 		node.c1cpr += aux_.param.minWasteWidth; // move c1cpr right to staisfy constraint.
 		moved_cut1 = true;
 	}
-	// check if new c1cpr and old c1cpr interval less than minWasteWidth.
-	if (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < aux_.param.minWasteWidth) {
-		node.c1cpr += aux_.param.minWasteWidth;
-		moved_cut1 = true;
-	}
+
 	// check if item up side and c2cpu interval less than minWasteHeight.
-	if (node.c4cp != node.c2cpu && node.c2cpu - node.c4cp < aux_.param.minWasteHeight) {
+	// check if new c2cpu and old c2cpu interval less than minWasteHeight.
+	if ((node.c4cp != node.c2cpu && node.c2cpu - node.c4cp < aux_.param.minWasteHeight)
+		|| (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < aux_.param.minWasteHeight)
+		) {
 		if (node.getFlagBit(Placement::LOCKC2)) { // c2cpu cant's move in this case.
 			return false;
 		}
 		else {
 			node.c2cpu += aux_.param.minWasteHeight; // move c2cpu up to satisfy constraint.
-			if (node.getFlagBit(Placement::DEFECT_U))
-				node.c4cp = node.c2cpu;
 			moved_cut2 = true;
-		}
-	}
-	// check if new c2cpu and old c2cpu interval less than minWasteHeight
-	if (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < aux_.param.minWasteHeight) {
-		if (node.getFlagBit(Placement::LOCKC2)) {
-			return false;
-		}
-		else {
-			node.c2cpu += aux_.param.minWasteHeight;
 			if (node.getFlagBit(Placement::DEFECT_U))
-				node.c4cp = node.c2cpu;
-			moved_cut2 = true;
+				node.c4cp = node.c2cpu;  // 物品在上，废料在下，防止在物品上方产生废料
 		}
 	}
 #pragma endregion minWasteChecker
@@ -468,21 +454,7 @@ const bool MyCutSearch::constraintCheck(const TreeNode & old, const List<TreeNod
 #pragma region defectChecker
 	auto & defect_x = aux_.plate_defect_x[plate_id_];
 	auto & defect_y = aux_.plate_defect_y[plate_id_];
-#pragma region c3cpChecker
-	for (auto it = defect_x.begin(); it != defect_x.end(); ++it) {
-		if (node.c3cp <= it->x) {           // defect in c3cp right.
-			break;
-		}
-		if (!(node.c3cp >= it->x + it->w  // defect in c3cp left.
-			|| node.c2cpb >= it->y + it->h  // defect in item bottom.
-			|| node.c2cpu <= it->y)         // defect in item up.
-			) {
-			return false;
-		}
-	}
-#pragma endregion c3cpChecker
 
-	// [TODO] [opt]
 #pragma region cut1ThroughDefectChecker
 	if (moved_cut1 || old.c1cpr != node.c1cpr) {
 		for (auto it = defect_x.begin(); it != defect_x.end(); ++it) {
@@ -500,51 +472,45 @@ const bool MyCutSearch::constraintCheck(const TreeNode & old, const List<TreeNod
 				}
 			}
 		}
-		if (moved_cut1) {
-			if (defectConflictArea(node.c1cpl, node.c2cpb, node.c1cpr - node.c1cpl, 0)) {
-				return false;
+	}
+	// search back
+	if (moved_cut1) {
+		if (defectConflictArea(node.c1cpl, node.c2cpb, node.c1cpr - node.c1cpl, 0)) {
+			return false;
+		}
+		for (auto r_iter = cur_sol.rbegin(); r_iter != cur_sol.rend(); ++r_iter) {
+			if (r_iter->getFlagBit(Placement::NEW_L1) || r_iter->getFlagBit(Placement::NEW_PLATE)) {
+				break;
 			}
-			for (auto r_iter = cur_sol.rbegin(); r_iter != cur_sol.rend(); ++r_iter) {
-				if (r_iter->getFlagBit(Placement::NEW_L1) || r_iter->getFlagBit(Placement::NEW_PLATE)) {
-					break;
-				}
-				if (r_iter->getFlagBit(Placement::NEW_L2)) {
-					if (defectConflictArea(node.c1cpl, r_iter->c2cpb, node.c1cpr - node.c1cpl, 0)) {
-						return false;
-					}
+			if (r_iter->getFlagBit(Placement::NEW_L2)) {
+				if (defectConflictArea(node.c1cpl, r_iter->c2cpb, node.c1cpr - node.c1cpl, 0)) {
+					return false;
 				}
 			}
 		}
 	}
 #pragma endregion cut1ThroughDefectChecker
 
-	// [TODO] [opt]
 #pragma region cut2ThroughDefectChecker
 	if (moved_cut2 || old.c2cpu != node.c2cpu || old.c1cpr != node.c1cpr) {
 		for (auto it = defect_y.begin(); it != defect_y.end(); ++it) {
-			if (it->y < node.c2cpu) {
-				if (it->y + it->h > node.c2cpu && node.c1cpl < it->x + it->w && node.c1cpr > it->x) { // c2cpu cut through defect.
-					if (node.getFlagBit(Placement::LOCKC2) || // can't move c2cpu to satisfy the constraint.
-						it->y + it->h - node.c2cpu < aux_.param.minWasteHeight) {
-						return false;
-					}
-					else {
-						if (it->y + it->h - node.c2cpu < aux_.param.minWasteHeight && !moved_cut2)
-							node.c2cpu += aux_.param.minWasteHeight;
-						else
-							node.c2cpu = it->y + it->h; // move c2cpu -> defect up side to satisfy the constraint.
-						if (node.getFlagBit(Placement::DEFECT_U))
-							node.c4cp = node.c2cpu;
-						moved_cut2 = true;
-					}
+			if (it->y >= node.c2cpu) break;
+			if (it->y + it->h > node.c2cpu && node.c1cpl < it->x + it->w && node.c1cpr > it->x) { // c2cpu cut through defect.
+				if (node.getFlagBit(Placement::LOCKC2)) { // can't move c2cpu to satisfy the constraint.
+					return false;
 				}
+				if (it->y + it->h - node.c2cpu < aux_.param.minWasteHeight && !moved_cut2)
+					node.c2cpu += aux_.param.minWasteHeight;
+				else
+					node.c2cpu = it->y + it->h; // move c2cpu -> defect up side to satisfy the constraint.
+				if (node.getFlagBit(Placement::DEFECT_U))
+					node.c4cp = node.c2cpu;
+				moved_cut2 = true;
 			}
-			else { // the leftover defects is in the upper of c2cpu.
-				break;
-			}
+			
 		}
 	}
-	// search back the current solution to check if item(placed in defect upper) conflict with defect after slip up.
+	// search back
 	if (moved_cut2) {
 		// check if current consider node conflict with defect after move.
 		if (node.getFlagBit(Placement::DEFECT_U)) {
@@ -619,14 +585,20 @@ const TCoord MyCutSearch::sliptoDefectRight(const TCoord x, const TCoord y, cons
 		if (it->x >= slip + w) {
 			break; // the defects is sorted by x position, so in this case just break.
 		}
+		// 瑕疵与物品区域直接冲突
 		if (!( slip - it->x >= it->w  // defect in item left.
 			|| it->y - y >= h         // defect in item up.
 			|| y - it->y >= it->h)    // defect in item bottom.
 			) { 
 			slip = it->x + it->w; 
-			if (slip != x && slip - x < aux_.param.minWasteWidth) {
-				slip = x + aux_.param.minWasteWidth;
-			}
+		}
+		// 瑕疵与物品区域不直接冲突，但被 slip+w 切过
+		if (slip + w > it->x && slip + w < it->x + it->w) {
+			slip = it->x + it->w - w;
+		}
+		// minWasteWidth 约束检查
+		if (slip != x && slip - x < aux_.param.minWasteWidth) {
+			slip = x + aux_.param.minWasteWidth;
 		}
 	}
 	return slip;
@@ -639,14 +611,16 @@ const TCoord MyCutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const T
 		if (it->y >= slip + h) {
 			break; // the defects is sorted by y position, so in this case just break.
 		}
+		// 瑕疵与物品区域直接冲突
 		if (!( it->x - x >= w         // defect in item right.
 			|| x - it->x >= it->w     // defect in item left.
 			|| slip - it->y >= it->h) // defect in item bottom.
 			) { 
 			slip = it->y + it->h;
-			if (slip != y && slip - y < aux_.param.minWasteHeight) {
-				slip = y + aux_.param.minWasteHeight;
-			}
+		}
+		// minWasteHeight 约束检查
+		if (slip != y && slip - y < aux_.param.minWasteHeight) {
+			slip = y + aux_.param.minWasteHeight;
 		}
 	}
 	return slip;

@@ -9,7 +9,7 @@ namespace szx {
 
 class TopSearch {
 public:
-    TopSearch(Random &rand, Timer &timer, Configuration &cfg, const Auxiliary &aux) :
+    TopSearch(Random &rand, Timer &timer, Configuration &cfg, Auxiliary &aux) :
         rand_(rand), timer_(timer), cfg_(cfg), aux_(aux), best_obj_(Problem::Output::MaxWidth) {};
 
     /* 调用束搜索算法进行优化 */
@@ -26,7 +26,7 @@ private:
     Random &rand_;              // 随机种子发生器
     Timer &timer_;              // 计时器
     Configuration &cfg_;        // 配置参数
-    const Auxiliary &aux_;      // 辅助数据
+    Auxiliary &aux_;            // 辅助数据
 
     std::mutex sol_mutex_;      // 更新最优解时需先获得该锁
     Solution best_sol_;         // 最优解

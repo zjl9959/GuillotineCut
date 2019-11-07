@@ -31,8 +31,8 @@ public:
 
 
 public:
-	MyCutSearch(TID plate, TCoord start_pos, const Auxiliary &aux) :
-		plate_id_(plate), start_pos_(start_pos), aux_(aux) {}
+	MyCutSearch(TID plate, TCoord start_pos, Auxiliary &aux, int max_iter = INT_MAX) :
+		plate_id_(plate), start_pos_(start_pos), aux_(aux), statistics_aux_(aux.statistics_list), max_iter_(max_iter) {}
 	Score run(Batch &batch, Solution &sol, bool opt_tail = false);
 protected:
 	Score dfs(Batch &batch, Solution &sol, bool opt_tail = false);
@@ -43,10 +43,11 @@ protected:
 	const bool defectConflictArea(const TCoord x, const TCoord y, const TLength w, const TLength h) const;
 
 private:
+	const int max_iter_;
 	const TID plate_id_;
 	const TCoord start_pos_;
-	const Auxiliary& aux_;
-	static constexpr int timeout_ms_ = 100;
+	const Auxiliary &aux_;
+	StatisticsList &statistics_aux_;
 };
 
 }

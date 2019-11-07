@@ -3,6 +3,7 @@
 #define GUILLOTINE_CUT_CONFIGURE_H
 
 #include <sstream>
+#include "../Common.h"
 
 namespace szx {
 
