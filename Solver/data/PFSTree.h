@@ -14,10 +14,10 @@ class PfsTree {
     // [TODO]: test this class.
 public:
     struct Node : public Placement {
-        Depth depth;
-        TID nb_child;
-        Area area;
-        Node *parent;
+        Depth depth;    // 节点深度
+        TID nb_child;   // 子节点数量
+        Area area;  // 当前使用物品的面积
+        Node *parent;   // 父节点地址
 
         Node(TCoord C1cpl) : Placement(C1cpl), depth(0), nb_child(0), area(0), parent(nullptr) {}
         Node(Node &_parent, Status _flag, TID _item, Area _item_area) : Placement(_parent, _item, _flag),
@@ -25,14 +25,23 @@ public:
         
         ~Node() { parent = nullptr; }
     };
-
-    static constexpr size_t max_nb_node = (1 << 30) / sizeof(Node); // 限制搜索树的最大节点数目。
-    static constexpr double memory_adjust_rate = 0.70;   // 当节点数过多时，新节点数目占现节点数目的百分比。
 private:
-    class Score : public UsageRate {
-        // TODO: add implement.
+    class Score : public UsageRate {    /* score由usage_rate（前半部分）和depth（后半部分）组成 */
+    public:
+        explicit Score(double rate, Depth depth) :
+            UsageRate(static_cast<int>(rate*usage_rate_base)*offset + depth) {}
+        String str() const override {
+            std::ostringstream os;
+            os << usage_rate_int / (usage_rate_base * offset) << "."
+                << (usage_rate_int / (offset)) % usage_rate_base << "% "
+                << usage_rate_int % offset;
+            return os.str();
+        }
+    private:
+        static constexpr int usage_rate_base = 10;  // 10^利用率保留的小数位数
+        static constexpr int offset = 1000;  // 10^为depth的最大位数
     };
-    struct Score2Node { // 保存每个节点的地址和对应分数，用于快速定位下一个带扩展节点。
+    struct Score2Node { // 保存每个节点的地址和对应分数，用于快速定位下一个待扩展节点。
         Score score;
         Node *node;
         Score2Node(Score _score, Node *_node) : score(_score), node(_node) {}
@@ -43,7 +52,8 @@ private:
         }
     };
 public:
-    PfsTree(TCoord start_pos) : nb_node_(0), start_pos_(start_pos) {}
+    PfsTree(TCoord start_pos, TLength plate_height) : nb_node_(0),
+        start_pos_(start_pos), plate_height_(plate_height) {}
     ~PfsTree() {
         for(auto it = score_queue_.begin(); it != score_queue_.end(); ++it) {
             delete_node_recursive(it->node);
@@ -84,7 +94,11 @@ public:
 private:
     /* 计算当前节点的分数。*/
     Score get_score(const Node *node) const {
-        // TODO ：如何计算分数？
+        Area used_area =
+            (node->c1cpl - start_pos_)*plate_height_ +
+            node->c2cpb*(node->c1cpr - node->c1cpl) +
+            (node->c3cp - node->c1cpl)*(node->c2cpu - node->c2cpb);
+        return Score(static_cast<double>(node->area) / static_cast<double>(used_area), node->depth);
     }
 
     /* 节点数目超过最大限制时调用该函数删除部分较差的节点。*/
@@ -106,9 +120,13 @@ private:
             --nb_node_;
         }
     }
+public:
+    static constexpr size_t max_nb_node = (1 << 30) / sizeof(Node); // 限制搜索树的最大节点数目。
+    static constexpr double memory_adjust_rate = 0.70;   // 当节点数过多时，新节点数目占现节点数目的百分比。
 private:
     size_t nb_node_;    // 当前已扩展的节点数目。
     TCoord start_pos_;   // 1-cut的开始位置。
+    TLength plate_height_;  // 原料高度，用于估计利用率。
     std::set<Score2Node, Score2NodeCompare> score_queue_;   // 待扩展节点按照优度排列。
 };
 

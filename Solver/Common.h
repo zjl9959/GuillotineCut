@@ -68,11 +68,12 @@ public:
 class UsageRate {
     // [TODO]: test this class.
 protected:
-    static constexpr int base = 1000;    // 将浮点数转化为小数时保留的小数位数。
-    static constexpr int invalid_value = INT_MAX;
+    static constexpr int base = 1000;    // 将浮点数转化为小数时所乘以的倍数。
+    static constexpr int invalid_value = -1;
     int usage_rate_int; // 使用整数来保存浮点数。
 public:
     UsageRate() : usage_rate_int(invalid_value) {}
+    explicit UsageRate(int rate) : usage_rate_int(rate) {}
     explicit UsageRate(double rate) : usage_rate_int(static_cast<int>(rate*base)) { assert(rate < 1.0); }
     
     UsageRate& operator= (const UsageRate &other) {
@@ -82,7 +83,7 @@ public:
 
     bool valid() const { return usage_rate_int != invalid_value; }
     
-    virtual bool operator< (const UsageRate &rhs) const {
+    bool operator< (const UsageRate &rhs) const {
         return this->usage_rate_int < rhs.usage_rate_int;
     }
 
