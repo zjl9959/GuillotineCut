@@ -1,4 +1,5 @@
 #include "CutSearch.h"
+#include "../data/PFSTree.h"
 
 using namespace std;
 
@@ -8,67 +9,7 @@ namespace szx {
    输入：batch（物品栈），opt_tail（是否优化原料末尾）
    输出：sol（该1-cut的最优解），返回：1-cut对应利用率 */
 UsageRate CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
-    return dfs(batch, sol, opt_tail);
-}
-
-UsageRate CutSearch::dfs(Batch &batch, Solution &sol, bool opt_tail) {
-    List<TreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
-    List<TreeNode> cur_sol; cur_sol.reserve(20);        // 当前解
-    List<TreeNode> best_sol; UsageRate best_obj;      // 最优解及对应目标函数值
-    
-    int cur_iter = 0;   // 当前探索节点数目
-    Depth pre_depth = -1;    // 上一个节点深度
-    Area used_item_area = 0; // 已使用物品面积
-    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
-
-    branch(TreeNode(start_pos_), batch, live_nodes, opt_tail);
-    while (live_nodes.size() && cur_iter < max_iter_) {
-        TreeNode node = live_nodes.back();
-        live_nodes.pop_back();
-        if (node.depth - pre_depth == 1) { // 向下扩展
-            cur_sol.push_back(node);
-            batch.remove(node.item);
-            used_item_area += item_area_[node.item];
-        } 
-		else if (node.depth - pre_depth < 1) { // 向上回溯
-            for (int i = static_cast<int>(cur_sol.size()) - 1; i >= node.depth; --i) {
-                batch.add(cur_sol[i].item);    // 恢复栈
-                used_item_area -= item_area_[cur_sol[i].item];  // 更新使用物品面积
-            }
-            cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end());
-            cur_sol.push_back(node); // 更新当前解
-            batch.remove(node.item);
-            used_item_area += item_area_[node.item];
-        }
-        const size_t old_live_nodes_size = live_nodes.size();
-        branch(node, batch, live_nodes, opt_tail);
-        pre_depth = node.depth;
-        if (old_live_nodes_size == live_nodes.size()) { // 找到一个完整解
-            TLength cur_width = cur_sol.back().c1cpr - start_pos_;
-            UsageRate cur_obj;
-            if (opt_tail)
-                cur_obj = UsageRate((double)used_item_area / (double)tail_area);
-            else
-                cur_obj = UsageRate((double)used_item_area / (double)(cur_width*param_.plateHeight));
-            if (best_obj < cur_obj) {
-                best_obj = cur_obj;
-                best_sol = cur_sol;
-            }
-        }
-        ++cur_iter;
-    }
-    if (!best_sol.empty()) {
-        sol.clear();
-        sol.reserve(best_sol.size());
-        for (auto it = best_sol.begin(); it != best_sol.end(); ++it)
-            sol.push_back(*it);
-        return best_obj;
-    }
-    return UsageRate();
-}
-
-UsageRate CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
-    // [zjl][TODO]: add pfs implement.
+    // TODO: add code.
     return UsageRate();
 }
 
@@ -78,7 +19,7 @@ UsageRate CutSearch::pfs(Batch &batch, Solution &sol, bool opt_tail) {
   输出：branch_nodes（用栈保存的搜索树）
 */
 // [zjl][TODO]: 将TreeNode改为更通用的Placement, 然后直接new Placement出来。
-void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &branch_nodes, bool opt_tail) {
+void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement*> &branch_nodes, bool opt_tail) {
     const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: 当前L2上界不能移动
     TID itemId = Problem::InvalidItemId;
     // case A, 开一个新的L1桶.
@@ -99,14 +40,14 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
 				/* 不冲突直接放置，或者放在瑕疵右侧 */
                 {
-                    TreeNode node_a1(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2);
-                    node_a1.c3cp = node_a1.c1cpr = slip_r + item.w; 
-                    node_a1.c4cp = node_a1.c2cpu = item.h;
+                    Placement *node_a1 = new Placement(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2);
+                    node_a1->c3cp = node_a1->c1cpr = slip_r + item.w; 
+                    node_a1->c4cp = node_a1->c2cpu = item.h;
                     if (slip_r > old.c1cpr)
-                        node_a1.setFlagBit(Placement::DEFECT_R); // 放在瑕疵右侧
-                    if (constraintCheck(old, node_a1)) {
+                        node_a1->setFlagBit(Placement::DEFECT_R); // 放在瑕疵右侧
+                    if (constraintCheck(old, *node_a1)) {
                         if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
-                            node_a1.setFlagBit(Placement::NEW_PLATE);
+                            node_a1->setFlagBit(Placement::NEW_PLATE);
                         branch_nodes.push_back(node_a1);
                     }
                 }
@@ -114,13 +55,13 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                 if (slip_r > old.c1cpr) { // 已知和瑕疵冲突
                     slip_u = sliptoDefectUp(old.c1cpr, 0, item.w);
                     if (slip_u != -1) {
-                        TreeNode node_a2(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2); // place in defect up.
-                        node_a2.c3cp = node_a2.c1cpr = old.c1cpr + item.w;
-                        node_a2.c4cp = node_a2.c2cpu = slip_u + item.h;
-                        node_a2.setFlagBit(Placement::DEFECT_U);
-                        if (constraintCheck(old, node_a2)) {
+                        Placement *node_a2 = new Placement(old, itemId, rotate | Placement::NEW_L1 | Placement::NEW_L2); // place in defect up.
+                        node_a2->c3cp = node_a2->c1cpr = old.c1cpr + item.w;
+                        node_a2->c4cp = node_a2->c2cpu = slip_u + item.h;
+                        node_a2->setFlagBit(Placement::DEFECT_U);
+                        if (constraintCheck(old, *node_a2)) {
                             if (old.item == Problem::InvalidItemId && old.c1cpr == 0)
-                                node_a2.setFlagBit(Placement::NEW_PLATE);
+                                node_a2->setFlagBit(Placement::NEW_PLATE);
                             branch_nodes.push_back(node_a2);
                         }
                     }
@@ -143,12 +84,12 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                 // place in the right of old.c1cpr.
                 slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                 {
-                    TreeNode node_b1(old, itemId, rotate);
-                    node_b1.c3cp = node_b1.c1cpr = slip_r + item.w;
-                    node_b1.c4cp = item.h;
+                    Placement *node_b1 = new Placement(old, itemId, rotate);
+                    node_b1->c3cp = node_b1->c1cpr = slip_r + item.w;
+                    node_b1->c4cp = item.h;
                     if (slip_r > old.c1cpr)
-                        node_b1.setFlagBit(Placement::DEFECT_R);
-                    if (constraintCheck(old, node_b1)) {
+                        node_b1->setFlagBit(Placement::DEFECT_R);
+                    if (constraintCheck(old, *node_b1)) {
                         branch_nodes.push_back(node_b1);
                     }
                 }
@@ -156,11 +97,11 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                     slip_u = sliptoDefectUp(old.c1cpr, old.c2cpu - item.h > param_.minWasteHeight ?
                         old.c2cpu - item.h : 0, item.w);    // [zjl][TODO]:consider more.
                     if (slip_u != -1) {
-                        TreeNode node_b2(old, itemId, rotate);
-                        node_b2.c3cp = node_b2.c1cpr = old.c1cpr + item.w;
-                        node_b2.c4cp = slip_u + item.h;
-                        node_b2.setFlagBit(Placement::DEFECT_U);
-                        if (constraintCheck(old, node_b2)) {
+                        Placement *node_b2 = new Placement(old, itemId, rotate);
+                        node_b2->c3cp = node_b2->c1cpr = old.c1cpr + item.w;
+                        node_b2->c4cp = slip_u + item.h;
+                        node_b2->setFlagBit(Placement::DEFECT_U);
+                        if (constraintCheck(old, *node_b2)) {
                             branch_nodes.push_back(node_b2);
                         }
                     }
@@ -168,31 +109,31 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                 // place in the upper of old.c2cpu.
                 slip_r = sliptoDefectRight(old.c1cpl, old.c2cpu, item.w, item.h);
                 {
-                    TreeNode node_b3(old, itemId, rotate);
-                    node_b3.c2cpb = old.c2cpu;
-                    node_b3.c4cp = node_b3.c2cpu = old.c2cpu + item.h;
-                    node_b3.c3cp = slip_r + item.w;
-                    if (node_b3.c1cpr < node_b3.c3cp)
-                        node_b3.c1cpr = node_b3.c3cp;
-                    node_b3.setFlagBit(Placement::NEW_L2);
+                    Placement *node_b3 = new Placement(old, itemId, rotate);
+                    node_b3->c2cpb = old.c2cpu;
+                    node_b3->c4cp = node_b3->c2cpu = old.c2cpu + item.h;
+                    node_b3->c3cp = slip_r + item.w;
+                    if (node_b3->c1cpr < node_b3->c3cp)
+                        node_b3->c1cpr = node_b3->c3cp;
+                    node_b3->setFlagBit(Placement::NEW_L2);
                     if (slip_r > old.c1cpl)
-                        node_b3.setFlagBit(Placement::DEFECT_R);
-                    if (constraintCheck(old, node_b3)) {
+                        node_b3->setFlagBit(Placement::DEFECT_R);
+                    if (constraintCheck(old, *node_b3)) {
                         branch_nodes.push_back(node_b3);
                     }
                 }
                 if (slip_r > old.c1cpl) {
                     slip_u = sliptoDefectUp(old.c1cpl, old.c2cpu, item.w);
                     if (slip_u != -1) {
-                        TreeNode node_b4(old, itemId, rotate);
-                        node_b4.c2cpb = old.c2cpu;
-                        node_b4.c4cp = node_b4.c2cpu = slip_u + item.h;
-                        node_b4.c3cp = old.c1cpl + item.w;
-                        if (node_b4.c1cpr < node_b4.c3cp)
-                            node_b4.c1cpr = node_b4.c3cp;
-                        node_b4.setFlagBit(Placement::NEW_L2);
-                        node_b4.setFlagBit(Placement::DEFECT_U);
-                        if (constraintCheck(old, node_b4)) {
+                        Placement *node_b4 = new Placement(old, itemId, rotate);
+                        node_b4->c2cpb = old.c2cpu;
+                        node_b4->c4cp = node_b4->c2cpu = slip_u + item.h;
+                        node_b4->c3cp = old.c1cpl + item.w;
+                        if (node_b4->c1cpr < node_b4->c3cp)
+                            node_b4->c1cpr = node_b4->c3cp;
+                        node_b4->setFlagBit(Placement::NEW_L2);
+                        node_b4->setFlagBit(Placement::DEFECT_U);
+                        if (constraintCheck(old, *node_b4)) {
                             branch_nodes.push_back(node_b4);
                         }
                     }
@@ -219,9 +160,9 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                     !old.getFlagBit(Placement::DEFECT_U) &&
                     ((c2cpu_locked && old.c4cp + item.h == old.c2cpu) || (!c2cpu_locked && old.c4cp + item.h >= old.c2cpu)) &&
                     sliptoDefectRight(old.c3cp - item.w, old.c4cp, item.w, item.h) == old.c3cp - item.w) {
-                    TreeNode node_c1(old, itemId, rotate| Placement::BIN4| Placement::LOCKC2); // place item in L4 bin.
-                    node_c1.c2cpu = node_c1.c4cp = old.c4cp + item.h;
-                    if (constraintCheck(old, node_c1)) {
+                    Placement *node_c1 = new Placement(old, itemId, rotate| Placement::BIN4| Placement::LOCKC2); // place item in L4 bin.
+                    node_c1->c2cpu = node_c1->c4cp = old.c4cp + item.h;
+                    if (constraintCheck(old, *node_c1)) {
                         branch_nodes.push_back(node_c1);
                     }
                     continue;
@@ -230,16 +171,16 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                     slip_r = sliptoDefectRight(old.c3cp, old.c2cpb, item.w, item.h);
                     // when c2cpu is locked, old.c2cpb + item.h <= old.c2cpu constraint must meet.
                     if (!c2cpu_locked || (c2cpu_locked && old.c2cpb + item.h <= old.c2cpu)) {
-                        TreeNode node_c2(old, itemId, rotate);
-                        node_c2.c3cp = slip_r + item.w;
-                        if (node_c2.c1cpr < node_c2.c3cp)
-                            node_c2.c1cpr = node_c2.c3cp;
-                        node_c2.c4cp = old.c2cpb + item.h;
+                        Placement *node_c2 = new Placement(old, itemId, rotate);
+                        node_c2->c3cp = slip_r + item.w;
+                        if (node_c2->c1cpr < node_c2->c3cp)
+                            node_c2->c1cpr = node_c2->c3cp;
+                        node_c2->c4cp = old.c2cpb + item.h;
                         if (slip_r > old.c3cp)
-                            node_c2.setFlagBit(Placement::DEFECT_R);
+                            node_c2->setFlagBit(Placement::DEFECT_R);
                         if (c2cpu_locked)
-                            node_c2.setFlagBit(Placement::LOCKC2);
-                        if (constraintCheck(old, node_c2)) {
+                            node_c2->setFlagBit(Placement::LOCKC2);
+                        if (constraintCheck(old, *node_c2)) {
                             branch_nodes.push_back(node_c2);
                         }
                     }
@@ -248,14 +189,14 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                             old.c2cpu - item.h : old.c2cpb, item.w);
                         if (slip_u != -1) {
                             if (!c2cpu_locked || (c2cpu_locked && slip_u + item.h <= old.c2cpu)) {
-                                TreeNode node_c3(old, itemId, rotate | Placement::DEFECT_U);
-                                node_c3.c3cp = old.c3cp + item.w;
-                                if (node_c3.c1cpr < node_c3.c3cp)
-                                    node_c3.c1cpr = node_c3.c3cp;
-                                node_c3.c4cp = item.h + slip_u;
+                                Placement *node_c3 = new Placement(old, itemId, rotate | Placement::DEFECT_U);
+                                node_c3->c3cp = old.c3cp + item.w;
+                                if (node_c3->c1cpr < node_c3->c3cp)
+                                    node_c3->c1cpr = node_c3->c3cp;
+                                node_c3->c4cp = item.h + slip_u;
                                 if (c2cpu_locked)
-                                    node_c3.setFlagBit(Placement::LOCKC2);
-                                if (constraintCheck(old, node_c3)) {
+                                    node_c3->setFlagBit(Placement::LOCKC2);
+                                if (constraintCheck(old, *node_c3)) {
                                     branch_nodes.push_back(node_c3);
                                 }
                             }
@@ -268,15 +209,15 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                     // creat a new L2 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpl, old.c2cpu, item.w, item.h);
                     {
-                        TreeNode node_c4(old, itemId, rotate| Placement::NEW_L2);
-                        node_c4.c3cp = slip_r + item.w;
-                        if (node_c4.c1cpr < node_c4.c3cp)
-                            node_c4.c1cpr = node_c4.c3cp;
-                        node_c4.c2cpb = old.c2cpu;
-                        node_c4.c4cp = node_c4.c2cpu = old.c2cpu + item.h;
+                        Placement *node_c4 = new Placement(old, itemId, rotate| Placement::NEW_L2);
+                        node_c4->c3cp = slip_r + item.w;
+                        if (node_c4->c1cpr < node_c4->c3cp)
+                            node_c4->c1cpr = node_c4->c3cp;
+                        node_c4->c2cpb = old.c2cpu;
+                        node_c4->c4cp = node_c4->c2cpu = old.c2cpu + item.h;
                         if (slip_r > old.c1cpl)
-                            node_c4.setFlagBit(Placement::DEFECT_R);
-                        if (constraintCheck(old, node_c4)) {
+                            node_c4->setFlagBit(Placement::DEFECT_R);
+                        if (constraintCheck(old, *node_c4)) {
                             branch_nodes.push_back(node_c4);
                             flag = true;
                         }
@@ -284,13 +225,13 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                     if (slip_r > old.c1cpl) {
                         slip_u = sliptoDefectUp(old.c1cpl, old.c2cpu, item.w);
                         if (slip_u != -1) {
-                            TreeNode node_c5(old, itemId, rotate | Placement::NEW_L2 | Placement::DEFECT_U);
-                            node_c5.c3cp = old.c1cpl + item.w;
-                            if (node_c5.c1cpr < node_c5.c3cp)
-                                node_c5.c1cpr = node_c5.c3cp;
-                            node_c5.c2cpb = old.c2cpu;
-                            node_c5.c4cp = node_c5.c2cpu = slip_u + item.h;
-                            if (constraintCheck(old, node_c5)) {
+                            Placement *node_c5 = new Placement(old, itemId, rotate | Placement::NEW_L2 | Placement::DEFECT_U);
+                            node_c5->c3cp = old.c1cpl + item.w;
+                            if (node_c5->c1cpr < node_c5->c3cp)
+                                node_c5->c1cpr = node_c5->c3cp;
+                            node_c5->c2cpb = old.c2cpu;
+                            node_c5->c4cp = node_c5->c2cpu = slip_u + item.h;
+                            if (constraintCheck(old, *node_c5)) {
                                 branch_nodes.push_back(node_c5);
                                 flag = true;
                             }
@@ -300,26 +241,26 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                     {
-                        TreeNode node_c6(old, itemId, rotate| Placement::NEW_L1| Placement::NEW_L2);
-                        node_c6.c1cpl = old.c1cpr;
-                        node_c6.c3cp = node_c6.c1cpr = item.w + slip_r;
-                        node_c6.c2cpb = 0;
-                        node_c6.c4cp = node_c6.c2cpu = item.h;
+                        Placement *node_c6 = new Placement(old, itemId, rotate| Placement::NEW_L1| Placement::NEW_L2);
+                        node_c6->c1cpl = old.c1cpr;
+                        node_c6->c3cp = node_c6->c1cpr = item.w + slip_r;
+                        node_c6->c2cpb = 0;
+                        node_c6->c4cp = node_c6->c2cpu = item.h;
                         if (slip_r > old.c1cpr)
-                            node_c6.setFlagBit(Placement::DEFECT_R);
-                        if (constraintCheck(old, node_c6)) {
+                            node_c6->setFlagBit(Placement::DEFECT_R);
+                        if (constraintCheck(old, *node_c6)) {
                             branch_nodes.push_back(node_c6);
                         }
                     }
                     if (slip_r > old.c1cpr) {
                         slip_u = sliptoDefectUp(old.c1cpr, 0, item.w);
                         if (slip_u != -1) {
-                            TreeNode node_c7(old, itemId, rotate | Placement::DEFECT_U | Placement::NEW_L1 | Placement::NEW_L2);
-                            node_c7.c1cpl = old.c1cpr;
-                            node_c7.c3cp = node_c7.c1cpr = old.c1cpr + item.w;
-                            node_c7.c2cpb = 0;
-                            node_c7.c4cp = node_c7.c2cpu = slip_u + item.h;
-                            if (constraintCheck(old, node_c7)) {
+                            Placement *node_c7 = new Placement(old, itemId, rotate | Placement::DEFECT_U | Placement::NEW_L1 | Placement::NEW_L2);
+                            node_c7->c1cpl = old.c1cpr;
+                            node_c7->c3cp = node_c7->c1cpr = old.c1cpr + item.w;
+                            node_c7->c2cpb = 0;
+                            node_c7->c4cp = node_c7->c2cpu = slip_u + item.h;
+                            if (constraintCheck(old, *node_c7)) {
                                 branch_nodes.push_back(node_c7);
                             }
                         }
@@ -334,7 +275,7 @@ void CutSearch::branch(const TreeNode &old, const Batch &batch, List<TreeNode> &
    检查新的分支节点是否满足约束。如果不满足，则修复。
    input: old branch node, current partial solution, new branch node.
 */
-const bool CutSearch::constraintCheck(const TreeNode &old, TreeNode &node) {
+const bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
     // if c2cpu less than c4cp, move it up.
     if (node.c2cpu < node.c4cp) { node.c2cpu = node.c4cp; }
 

@@ -9,6 +9,7 @@ namespace unit_test {
 
 szx::Solution test_CutSearch(szx::Auxiliary &aux);
 szx::Solution test_PlateSearch(szx::Timer &timer, szx::Random &rand, szx::Configuration &cfg, szx::Auxiliary &aux);
+bool test_PFSTree();
 
 }
 

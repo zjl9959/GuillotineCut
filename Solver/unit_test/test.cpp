@@ -3,6 +3,7 @@
 #include "../data/Problem.h"
 #include "../algorithm/Factory.h"
 #include "../algorithm/TopSearch.h"
+#include "../data/PFSTree.h"
 
 using namespace szx;
 
@@ -43,6 +44,16 @@ Solution test_PlateSearch(Timer &timer, Random &rand, Configuration &cfg, Auxili
     Solution sol;
     solver.get_bestsol(sol);
     return sol;
+}
+
+/* 测试PFSTree的构造/析构函数，添加节点，获取节点，获取路径函数是否正确 */
+bool test_PFSTree() {
+    bool res = true;
+    PfsTree tree(0, 3200);
+    using PNode = PfsTree::Node;
+    PNode *root = new PNode(0);
+    // TODO
+    return res;
 }
 
 }
