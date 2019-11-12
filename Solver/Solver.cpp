@@ -130,6 +130,7 @@ void Environment::calibrate() {
 
 #pragma region Solver
 void Solver::run() {
+    //unit_test::test_copy_speed_of_placement(100000, 10000);
     aux = createAuxiliary(input);
     // 调用topSearch进行求解
     TopSearch solver(rand, timer, cfg, aux);

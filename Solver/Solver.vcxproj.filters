@@ -86,6 +86,7 @@
       <Filter>algorithm\header</Filter>
     </ClInclude>
     <ClInclude Include="data\PFSTree.h" />
+    <ClInclude Include="data\DFSTree.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">

@@ -171,6 +171,7 @@
     <ClInclude Include="data\Auxiliary.h" />
     <ClInclude Include="data\Batch.h" />
     <ClInclude Include="data\Configuration.h" />
+    <ClInclude Include="data\DFSTree.h" />
     <ClInclude Include="data\MCTNode.h" />
     <ClInclude Include="data\PFSTree.h" />
     <ClInclude Include="data\Placement.h" />

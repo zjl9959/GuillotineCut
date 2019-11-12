@@ -17,7 +17,9 @@ public:
         start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param), max_iter_(max_iter) {}
     UsageRate run(Batch &batch, Solution &sol, bool opt_tail = false);
 protected:
-    void branch(const Placement &old, const Batch &batch, List<Placement*> &branch_nodes, bool opt_tail = false);
+    UsageRate dfs(Batch &batch, Solution &sol, bool opt_tail = false);
+    UsageRate pfs(Batch &batch, Solution &sol, bool opt_tail = false);
+    void branch(const Placement &old, const Batch &batch, List<Placement> &branch_nodes, bool opt_tail = false);
     const bool constraintCheck(const Placement &old, Placement &node);
     const TCoord sliptoDefectRight(const TCoord x, const TCoord y, const TLength w, const TLength h) const;
     const TCoord sliptoDefectUp(const TCoord x, const TCoord y, const TLength w) const;
