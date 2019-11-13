@@ -4,13 +4,12 @@
 
 #include "Placement.h"
 
-#include <unordered_set>
+#include <map>
 #include <cassert>
 
 namespace szx {
 
 class PfsTree {
-    // [TODO]: test this class.
 public:
     struct Node {
         Depth depth;    // 节点深度
@@ -46,38 +45,50 @@ public:
     PfsTree(TCoord start_pos, TLength plate_height, const List<Area> &item_area) :
         start_pos_(start_pos), item_area_(item_area), plate_height_(plate_height) {}
     ~PfsTree() {
-        for(auto it = leaf_nodes_.begin(); it != leaf_nodes_.end(); ++it) {
+        /* 删除剩余的待扩展节点 */
+        for(auto it = live_nodes_.begin(); it != live_nodes_.end(); ++it) {
             delete_node_recursive(it->second);
+        }
+        /* 删除已经被完全扩展的叶子节点 */
+        for (auto it = leaf_nodes_.begin(); it != leaf_nodes_.end(); ++it) {
+            delete_node_recursive(*it);
         }
         assert(0 == nb_node_);
     }
 
     /* 判断树中是否有未被扩展的节点。 */
     bool empty() const {
-        return leaf_nodes_.empty();
+        return live_nodes_.empty();
     }
 
     /* 获取下一个待扩展节点。*/
     Node* get() {
-        Node *pnode = leaf_nodes_.begin()->second;
-        leaf_nodes_.erase(leaf_nodes_.begin());
+        Node *pnode = live_nodes_.begin()->second;
+        live_nodes_.erase(live_nodes_.begin());
         return pnode;
     }
 
     /* 添加新节点。*/
     void add(Node *parent, Placement &place) {
         Node *node = new Node(parent, place, item_area_[place.item]);
-        leaf_nodes_.insert(std::make_pair(get_score(node), node));
+        live_nodes_.insert(std::make_pair(get_score(node), node));
         ++nb_node_;
         ++(node->parent->nb_child);
         if (nb_node_ > max_nb_node) {
             adjust_memory();
         }
+        memory_check_.push_back(node);
     }
     void add(Placement &place) {
         Node *node = new Node(place, item_area_[place.item]);
-        leaf_nodes_.insert(std::make_pair(get_score(node), node));
+        live_nodes_.insert(std::make_pair(get_score(node), node));
         ++nb_node_;
+        memory_check_.push_back(node);
+    }
+
+    /* 添加已被完全扩展的叶子节点 */
+    void add_leaf_node(Node *node) {
+        leaf_nodes_.push_back(node);
     }
 
     /* 在搜索过程中更新batch
@@ -136,8 +147,8 @@ private:
     /* 节点数目超过最大限制时调用该函数删除部分较差的节点。*/
     void adjust_memory() {
         size_t new_nb_node = static_cast<double>(nb_node_) * memory_adjust_rate;
-        auto it = leaf_nodes_.rbegin();
-        while (it != leaf_nodes_.rend() && nb_node_ > new_nb_node) {
+        auto it = live_nodes_.rbegin();
+        while (it != live_nodes_.rend() && nb_node_ > new_nb_node) {
             delete_node_recursive(it->second);
         }
     }
@@ -146,6 +157,7 @@ private:
     void delete_node_recursive(Node *node) {
         while (node != nullptr && node->nb_child == 0) {
             Node *parent = node->parent;
+            if (parent == nullptr)break;
             --(parent->nb_child);
             delete node;
             node = parent;
@@ -160,7 +172,9 @@ private:
     const TCoord start_pos_;   // 1-cut的开始位置。
     const TLength plate_height_;    // 原料高度。
     size_t nb_node_ = 0;    // 当前已扩展的节点数目。
-    std::map<Score, Node*> leaf_nodes_;  // 按照Score优度排列的待扩展节点。
+    std::multimap<Score, Node*> live_nodes_;  // 按照Score优度排列的待扩展节点。
+    List<Node*> leaf_nodes_;    // 已经被完全扩展的节点。
+    List<Node*> memory_check_;
 };
 
 }

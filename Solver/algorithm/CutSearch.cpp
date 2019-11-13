@@ -9,7 +9,7 @@ namespace szx {
    输入：batch（物品栈），opt_tail（是否优化原料末尾）
    输出：sol（该1-cut的最优解），返回：1-cut对应利用率 */
 UsageRate CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
-    return dfs(batch, sol, opt_tail);
+    return pfs(batch, sol, opt_tail);
 }
 
 #pragma region DFSAlgorithm
@@ -90,7 +90,7 @@ UsageRate CutSearch::pfs(Batch & batch, Solution & sol, bool opt_tail) {
     PfsTree tree(start_pos_, param_.plateHeight, item_area_);
     branch(Placement(start_pos_), batch, branch_nodes, opt_tail);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-        tree.add(nullptr, *it);
+        tree.add(*it);
     }
     while (!tree.empty() && cur_iter < max_iter_) {
         PfsTree::Node *node = tree.get();
@@ -109,6 +109,7 @@ UsageRate CutSearch::pfs(Batch & batch, Solution & sol, bool opt_tail) {
                 best_sol_reverse.clear();
                 tree.get_tree_path(node, best_sol_reverse);
             }
+            tree.add_leaf_node(node);
         } else {
             for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
                 tree.add(node, *it);
