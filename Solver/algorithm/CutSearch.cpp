@@ -80,7 +80,46 @@ UsageRate CutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 #pragma region PFSAlgorithm
 /* 优度优先搜索 */
 UsageRate CutSearch::pfs(Batch & batch, Solution & sol, bool opt_tail) {
-    return UsageRate();
+    int cur_iter = 0;   // 当前扩展节点次数。
+    UsageRate best_obj; // 已知最优的目标函数值。
+    PfsTree::Node *last_node = nullptr;
+    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
+    Solution best_sol_reverse;  // 当前最优解。
+    List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
+    branch_nodes.reserve(100);
+    PfsTree tree(start_pos_, param_.plateHeight, item_area_);
+    branch(Placement(start_pos_), batch, branch_nodes, opt_tail);
+    for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
+        tree.add(nullptr, *it);
+    }
+    while (!tree.empty() && cur_iter < max_iter_) {
+        PfsTree::Node *node = tree.get();
+        tree.update_batch(last_node, node, batch);
+        branch_nodes.clear();
+        branch(node->place, batch, branch_nodes, opt_tail);
+        if (branch_nodes.empty()) { // 到达叶子节点。
+            TLength cur_width = node->place.c1cpr - start_pos_;
+            UsageRate cur_obj;
+            if (opt_tail)
+                cur_obj = UsageRate((double)node->area / (double)tail_area);
+            else
+                cur_obj = UsageRate((double)node->area / (double)(cur_width*param_.plateHeight));
+            if (best_obj < cur_obj) {
+                best_obj = cur_obj;
+                best_sol_reverse.clear();
+                tree.get_tree_path(node, best_sol_reverse);
+            }
+        } else {
+            for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
+                tree.add(node, *it);
+            }
+        }
+        last_node = node;
+        ++cur_iter;
+    }
+    for (auto it = best_sol_reverse.rbegin(); it != best_sol_reverse.rend(); ++it)
+        sol.push_back(*it);
+    return best_obj;
 }
 #pragma endregion
 

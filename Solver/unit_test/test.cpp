@@ -51,13 +51,6 @@ Solution test_PlateSearch(Timer &timer, Random &rand, Configuration &cfg, Auxili
     return sol;
 }
 
-/* 测试PFSTree的构造/析构函数，添加节点，获取节点，获取路径函数是否正确 */
-bool test_PFSTree() {
-    bool res = true;
-    // TODO
-    return res;
-}
-
 /* 测试Placement结构体和指针在构造和复制时的速度差别 */
 void test_copy_speed_of_placement(int repeat, int nb_element) {
     cout << "test copy speed of placement and placement*" << endl;

@@ -11,7 +11,7 @@ namespace szx {
 
 class PfsTree {
     // [TODO]: test this class.
-private:
+public:
     struct Node {
         Depth depth;    // 节点深度
         TID nb_child;   // 子节点数量
@@ -19,11 +19,14 @@ private:
         Node *parent;   // 父节点地址
         Placement place;   // 放置位置
 
-        Node() : depth(0), nb_child(0), area(0), parent(nullptr) {}
-        Node(Node *_parent, Placement _place, Area _item_area) : depth(_parent->depth + 1),
+        /* 用于创建第一层节点 */
+        Node(Placement &_place, Area _item_area) : depth(0),
+            nb_child(0), area(_item_area), parent(nullptr), place(_place) {}
+        /* 用于创建后续节点 */
+        Node(Node *_parent, Placement &_place, Area _item_area) : depth(_parent->depth + 1),
             nb_child(0), area(_parent->area + _item_area), parent(_parent), place(_place) {}
     };
-
+private:
     class Score : public UsageRate {    /* score由usage_rate（前半部分）和depth（后半部分）组成 */
     public:
         explicit Score(double rate, Depth depth) :
@@ -40,7 +43,8 @@ private:
         static constexpr int offset = 1000;  // 10^为depth的最大位数
     };
 public:
-    PfsTree(TCoord start_pos, Auxiliary aux) : start_pos_(start_pos), aux_(aux) {}
+    PfsTree(TCoord start_pos, TLength plate_height, const List<Area> &item_area) :
+        start_pos_(start_pos), item_area_(item_area), plate_height_(plate_height) {}
     ~PfsTree() {
         for(auto it = leaf_nodes_.begin(); it != leaf_nodes_.end(); ++it) {
             delete_node_recursive(it->second);
@@ -54,7 +58,7 @@ public:
     }
 
     /* 获取下一个待扩展节点。*/
-    const Node* get() {
+    Node* get() {
         Node *pnode = leaf_nodes_.begin()->second;
         leaf_nodes_.erase(leaf_nodes_.begin());
         return pnode;
@@ -62,12 +66,52 @@ public:
 
     /* 添加新节点。*/
     void add(Node *parent, Placement &place) {
-        Node *node = new Node(parent, place, aux_.item_area[place.item]);
+        Node *node = new Node(parent, place, item_area_[place.item]);
         leaf_nodes_.insert(std::make_pair(get_score(node), node));
         ++nb_node_;
         ++(node->parent->nb_child);
         if (nb_node_ > max_nb_node) {
             adjust_memory();
+        }
+    }
+    void add(Placement &place) {
+        Node *node = new Node(place, item_area_[place.item]);
+        leaf_nodes_.insert(std::make_pair(get_score(node), node));
+        ++nb_node_;
+    }
+
+    /* 在搜索过程中更新batch
+       输入：last_node（上一次扩展的节点），cur_node（当前待扩展的节点），batch（物品栈）
+    */
+    void update_batch(Node *last_node, Node *cur_node, Batch &batch) {
+        List<TID> item_cache;   // 缓存待从batch中拿出的物品。
+        item_cache.reserve(10);
+        // 保证last_node和cur_node的深度相同。
+        if (last_node == nullptr) {
+            batch.remove(cur_node->place.item);
+            return;
+        } else if (last_node->depth > cur_node->depth) {
+            while (last_node->depth != cur_node->depth) {
+                batch.add(last_node->place.item);
+                last_node = last_node->parent;
+            }
+        } else if (last_node->depth < cur_node->depth) {
+            while (cur_node->depth != last_node->depth) {
+                item_cache.push_back(cur_node->place.item);
+                cur_node = cur_node->parent;
+            }
+        }
+        // 向上回溯直到last_node和cur_node的公共父节点。
+        while (last_node != cur_node) {
+            assert(last_node != nullptr && cur_node != nullptr);
+            batch.add(last_node->place.item);
+            item_cache.push_back(cur_node->place.item);
+            last_node = last_node->parent;
+            cur_node = cur_node->parent;
+        }
+        // 将item_cache中的物品拿出batch。
+        for (auto it = item_cache.rbegin(); it != item_cache.rend(); ++it) {
+            batch.remove(*it);
         }
     }
 
@@ -77,13 +121,12 @@ public:
             sol.push_back(node->place);
             node = node->parent;
         }
-        std::reverse(sol.begin(), sol.end());
     }
 private:
     /* 计算当前节点的分数。*/
     Score get_score(const Node *node) const {
         Area used_area =
-            (node->place.c1cpl - start_pos_)*aux_.param.plateHeight +
+            (node->place.c1cpl - start_pos_)*plate_height_ +
             node->place.c2cpb*(node->place.c1cpr - node->place.c1cpl) +
             (node->place.c3cp - node->place.c1cpl)*(node->place.c2cpu - node->place.c2cpb);
         assert(used_area > 0);
@@ -113,9 +156,10 @@ private:
     static constexpr size_t max_nb_node = (1 << 30) / sizeof(Node); // 限制搜索树的最大节点数目。
     static constexpr double memory_adjust_rate = 0.70;   // 当节点数过多时，新节点数目占现节点数目的百分比。
 
-    Auxiliary &aux_;    // 辅助信息。
+    const List<Area> &item_area_; // 每个物品的面积大小
+    const TCoord start_pos_;   // 1-cut的开始位置。
+    const TLength plate_height_;    // 原料高度。
     size_t nb_node_ = 0;    // 当前已扩展的节点数目。
-    TCoord start_pos_;   // 1-cut的开始位置。
     std::map<Score, Node*> leaf_nodes_;  // 按照Score优度排列的待扩展节点。
 };
 
