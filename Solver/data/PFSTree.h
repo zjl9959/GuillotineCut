@@ -41,6 +41,11 @@ private:
         static constexpr int usage_rate_base = 10;  // 10^利用率保留的小数位数
         static constexpr int offset = 1000;  // 10^为depth的最大位数
     };
+    struct ScoreCmp {
+        bool operator() (const Score &lhs, const Score &rhs) const {
+            return rhs < lhs;
+        }
+    };
 public:
     PfsTree(TCoord start_pos, TLength plate_height, const List<Area> &item_area) :
         start_pos_(start_pos), item_area_(item_area), plate_height_(plate_height) {}
@@ -53,7 +58,8 @@ public:
         for (auto it = leaf_nodes_.begin(); it != leaf_nodes_.end(); ++it) {
             delete_node_recursive(*it);
         }
-        assert(0 == nb_node_);
+        if (nb_node_ > 0)
+            throw "memory leak!";
     }
 
     /* 判断树中是否有未被扩展的节点。 */
@@ -144,11 +150,13 @@ private:
 
     /* 节点数目超过最大限制时调用该函数删除部分较差的节点。*/
     void adjust_memory() {
+        /*
         size_t new_nb_node = static_cast<double>(nb_node_) * memory_adjust_rate;
         auto it = live_nodes_.rbegin();
         while (it != live_nodes_.rend() && nb_node_ > new_nb_node) {
             delete_node_recursive(it->second);
         }
+        */
     }
 
     /* 从node节点开始，沿路径依次删除叶子节点。 */
@@ -170,7 +178,7 @@ private:
     const TCoord start_pos_;   // 1-cut的开始位置。
     const TLength plate_height_;    // 原料高度。
     size_t nb_node_ = 0;    // 当前已扩展的节点数目。
-    std::multimap<Score, Node*> live_nodes_;  // 按照Score优度排列的待扩展节点。
+    std::multimap<Score, Node*, ScoreCmp> live_nodes_;  // 按照Score优度排列的待扩展节点。
     List<Node*> leaf_nodes_;    // 已经被完全扩展的节点。
 };
 
