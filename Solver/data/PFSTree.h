@@ -77,13 +77,11 @@ public:
         if (nb_node_ > max_nb_node) {
             adjust_memory();
         }
-        memory_check_.push_back(node);
     }
     void add(Placement &place) {
         Node *node = new Node(place, item_area_[place.item]);
         live_nodes_.insert(std::make_pair(get_score(node), node));
         ++nb_node_;
-        memory_check_.push_back(node);
     }
 
     /* 添加已被完全扩展的叶子节点 */
@@ -157,11 +155,11 @@ private:
     void delete_node_recursive(Node *node) {
         while (node != nullptr && node->nb_child == 0) {
             Node *parent = node->parent;
+            delete node;
+            --nb_node_;
             if (parent == nullptr)break;
             --(parent->nb_child);
-            delete node;
             node = parent;
-            --nb_node_;
         }
     }
 private:
@@ -174,7 +172,6 @@ private:
     size_t nb_node_ = 0;    // 当前已扩展的节点数目。
     std::multimap<Score, Node*> live_nodes_;  // 按照Score优度排列的待扩展节点。
     List<Node*> leaf_nodes_;    // 已经被完全扩展的节点。
-    List<Node*> memory_check_;
 };
 
 }
