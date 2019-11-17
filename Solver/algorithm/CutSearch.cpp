@@ -422,7 +422,7 @@ const bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
     
 #pragma region defectChecker
     node.c1cpr = cut1ThroughDefect(node.c1cpr);
-    node.c2cpu = cut2ThroughDefect(node.c1cpl, node.c1cpr, node.c2cpu);
+    node.c2cpu = cut2ThroughDefect(node.c2cpu);
 #pragma endregion defectChecker
 
 #pragma region sideChecker
@@ -520,12 +520,11 @@ const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
 }
 
 // check if 2-cut through defect, return new 2-cut y coord.
-const TCoord CutSearch::cut2ThroughDefect(const TCoord x1, const TCoord x2, const TCoord y) const {
+const TCoord CutSearch::cut2ThroughDefect(const TCoord y) const {
     TCoord res = y;
     for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
-        if (it->y > res)break;
-		// (it->y <= res && it->y + it->h > res && it->x + it->w > x1 && it->x < x2)
-        if (!(it->y + it->h <= res || it->x + it->w <= x1 || it->x >= x2)) {    // 2-cut through defect.
+        if (it->y >= res)break;
+        if (it->y + it->h > res) {    // 2-cut through defect.
             res = it->y + it->h;
             if (res - y < param_.minWasteHeight)
                 res = y + param_.minWasteHeight;
