@@ -25,12 +25,12 @@ Solution test_CutSearch(Auxiliary &aux) {
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
-
-	using CutSearch = CutSearch;
-    CutSearch solver(plate, start_pos, aux);
+    CutSearch::Setting set;
+    CutSearch solver(plate, start_pos, aux, set);
+    solver.run(batch);
+	std::cout << solver.best_obj().str() << std::endl;
     Solution sol;
-    UsageRate score = solver.run(batch, sol, CutSearch::Setting());
-	std::cout << score.str() << std::endl;
+    solver.get_best_sol(sol);
     return sol;
 }
 

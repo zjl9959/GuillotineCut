@@ -5,17 +5,29 @@ using namespace std;
 
 namespace szx {
 
-/* 优化1-cut
-   输入：batch（物品栈），opt_tail（是否优化原料末尾）
-   输出：sol（该1-cut的最优解），返回：1-cut对应利用率 */
-UsageRate CutSearch::run(Batch &batch, Solution &sol, Setting set) {
-    return pfs(batch, sol, set);
+/* 
+* 优化1-cut
+* 输入：batch（物品栈），opt_tail（是否优化原料末尾）
+* 输出：sol（该1-cut的最优解），返回：1-cut对应利用率
+*/
+void CutSearch::run(Batch &batch) {
+    pfs(batch);
 }
 
 #pragma region BeamSearch
-UsageRate CutSearch::beam_search(Batch &batch, Solution &sol, Setting set) {
-    Solution fix_sol;
-    return UsageRate();
+/* 束搜索 */
+void CutSearch::beam_search(Batch &batch) {
+    UsageRate best_obj;
+    Solution fix_sol;   // 已经被固定下来的解。
+    Placement resume_point(start_pos_); // 每次分支的恢复点。
+    List<Placement> branch_nodes;   // 缓存分支节点。
+    // 初始分支
+    branch(resume_point, batch, branch_nodes);
+
+    // 分支
+    // 排序
+    // 固定解
+    // 检查更新
 }
 #pragma endregion
 
@@ -28,21 +40,21 @@ struct DFSTreeNode {
 };
 
 /* 深度优先搜索 */
-UsageRate CutSearch::dfs(Batch &batch, Solution &sol, Setting set) {
-    List<DFSTreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
-    Solution cur_sol; cur_sol.reserve(20);        // 当前解
-    UsageRate best_obj;      // 最优解及对应目标函数值
-    List<Placement> branch_nodes;  branch_nodes.reserve(100); // 储存指向分支出来的新Placement的指针
-
+void CutSearch::dfs(Batch &batch) {
     int cur_iter = 0;   // 当前探索节点数目
     Depth pre_depth = -1;    // 上一个节点深度
     Area used_item_area = 0; // 已使用物品面积
     const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
-    branch(Placement(start_pos_), batch, branch_nodes, set.opt_tail);
+    UsageRate cur_obj;  // 当前解利用率
+    Solution cur_sol;   // 当前解
+    List<DFSTreeNode> live_nodes; // 待分支的树节点
+    List<Placement> branch_nodes; // 储存指向分支出来的新Placement的指针
+    // 第一次分支作特殊处理
+    branch(Placement(start_pos_), batch, branch_nodes);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
         live_nodes.push_back(DFSTreeNode(0, *it));
     }
-    while (live_nodes.size() && cur_iter < set.max_iter) {
+    while (live_nodes.size() && cur_iter < set_.max_iter) {
         DFSTreeNode node = live_nodes.back();
         live_nodes.pop_back();
         if (node.depth - pre_depth == 1) { // 向下扩展
@@ -61,68 +73,68 @@ UsageRate CutSearch::dfs(Batch &batch, Solution &sol, Setting set) {
         }
         // 分支并更新live_nodes。
         branch_nodes.clear();
-        branch(node.place, batch, branch_nodes, set.opt_tail);
+        branch(node.place, batch, branch_nodes);
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
             live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
         }
         // 计算当前解的目标函数值。
-        UsageRate cur_obj;
-        if (set.opt_tail) {
+        if (set_.opt_tail) {
             cur_obj = UsageRate((double)used_item_area / (double)tail_area);
         } else {
             cur_obj = UsageRate((double)used_item_area / (double)(
                 (cur_sol.back().c1cpr - start_pos_)*param_.plateHeight));
         }
         // 检查更新最优解。
-        if (best_obj < cur_obj) {
-            best_obj = cur_obj;
-            sol = cur_sol;
+        if (best_obj_ < cur_obj) {
+            best_obj_ = cur_obj;
+            best_sol_ = cur_sol;
         }
         // 更新辅助变量。
         pre_depth = node.depth;
         ++cur_iter;
     }
-    return best_obj;
 }
 #pragma endregion
 
 #pragma region PFSAlgorithm
 /* 优度优先搜索 */
-UsageRate CutSearch::pfs(Batch &batch, Solution &sol, Setting set) {
+void CutSearch::pfs(Batch &batch) {
     int cur_iter = 0;   // 当前扩展节点次数。
-    UsageRate best_obj; // 已知最优的目标函数值。
+    UsageRate cur_obj;  // 当前解利用率。
     PfsTree::Node *last_node = nullptr;
     const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
-    Solution best_sol_reverse;  // 当前最优解。
+    Solution temp_best_sol; // 缓存临时最优解。
     List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
     branch_nodes.reserve(100);
     PfsTree tree(start_pos_, param_.plateHeight, item_area_);
-    branch(Placement(start_pos_), batch, branch_nodes, set.opt_tail);
+    branch(Placement(start_pos_), batch, branch_nodes);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
         tree.add(*it);
     }
-    while (!tree.empty() && cur_iter < set.max_iter) {
+    while (!tree.empty() && cur_iter < set_.max_iter) {
         PfsTree::Node *node = tree.get();
         tree.update_batch(last_node, node, batch);
         // 分支并更新tree。
         branch_nodes.clear();
-        branch(node->place, batch, branch_nodes, set.opt_tail);
+        branch(node->place, batch, branch_nodes);
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
             tree.add(node, *it);
         }
         // 计算目标函数值。
-        UsageRate cur_obj;
-        if (set.opt_tail) {
+        if (set_.opt_tail) {
             cur_obj = UsageRate((double)node->area / (double)tail_area);
         } else {
             cur_obj = UsageRate((double)node->area / (double)(
                 (node->place.c1cpr - start_pos_)*param_.plateHeight));
         }
         // 更新目标函数值。
-        if (best_obj < cur_obj) {
-            best_obj = cur_obj;
-            best_sol_reverse.clear();
-            tree.get_tree_path(node, best_sol_reverse);
+        if (best_obj_ < cur_obj) {
+            best_obj_ = cur_obj;
+            temp_best_sol.clear();
+            tree.get_tree_path(node, temp_best_sol);
+            best_sol_.clear();
+            for (auto it = temp_best_sol.rbegin(); it != temp_best_sol.rend(); ++it)
+                best_sol_.push_back(*it);
         }
         // 更新辅助信息。
         if(branch_nodes.empty())    // 树种需要记录叶子节点，以便删除树。
@@ -130,18 +142,27 @@ UsageRate CutSearch::pfs(Batch &batch, Solution &sol, Setting set) {
         last_node = node;
         ++cur_iter;
     }
-    for (auto it = best_sol_reverse.rbegin(); it != best_sol_reverse.rend(); ++it)
-        sol.push_back(*it);
-    return best_obj;
 }
 #pragma endregion
 
-/*
-  分支函数：
-  输入：old（分支起点），batch（物品栈），opt_tail（优化尾部）
-  输出：branch_nodes（用栈保存的搜索树）
+/* 
+* 贪心构造解
+* 停止条件：set.opt_tail = false时当前1-cut放不下停止； set.opt_tail = true时当前原料放不下停止。
+* 注意：由于函数会改变引用的batch，该函数不便使用多线程。
 */
-void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement> &branch_nodes, bool opt_tail) {
+UsageRate CutSearch::greedy(Batch &batch, Solution &fix_sol) {
+    UsageRate cur_obj;
+    List<Placement> branch_nodes;
+
+    return cur_obj;
+}
+
+/*
+* 分支函数：
+* 输入：old（分支起点），batch（物品栈），opt_tail（优化尾部）
+* 输出：branch_nodes（用栈保存的搜索树）
+*/
+void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement> &branch_nodes) {
     const bool c2cpu_locked = old.getFlagBit(Placement::LOCKC2); // status: 当前L2上界不能移动
     TID itemId = Problem::InvalidItemId;
     // case A, 开一个新的L1桶.
@@ -359,7 +380,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                             }
                         }
                     }
-                    if (!opt_tail || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
+                    if (!set_.opt_tail || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                     {
@@ -394,8 +415,8 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
 }
 
 /* 
-   检查新的分支节点是否满足约束。如果不满足，则修复。
-   input: old branch node, current partial solution, new branch node.
+* 检查新的分支节点是否满足约束。如果不满足，则修复。
+* input: old branch node, current partial solution, new branch node.
 */
 const bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
     // if c2cpu less than c4cp, move it up.

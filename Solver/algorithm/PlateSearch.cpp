@@ -82,7 +82,7 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
 */
 UsageRate PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, Setting set) {
     // 多次调用CutSearch，选一个最好的解
-    CutSearch solver(plate_, start_pos, aux_);
+    CutSearch solver(plate_, start_pos, aux_, set);
     Picker picker(source_batch, rand_, aux_);
     Solution cut_sol;       // 储存每次调用solver算得的解
     UsageRate best_obj;  // 本轮最优1-cut解的目标函数值
@@ -93,10 +93,10 @@ UsageRate PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch 
         Picker::Terminator terminator(cfg_.mcin);
         if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         cut_sol.clear();
-        UsageRate obj = solver.run(sub_batch, cut_sol, set);
-        if (best_obj < obj) {   // 更新best_cut_sol;
-            best_obj = obj;
-            sol = cut_sol;
+        solver.run(sub_batch);
+        if (best_obj < solver.best_obj()) {   // 更新best_cut_sol;
+            best_obj = solver.best_obj();
+            solver.get_best_sol(sol);
         }
     }
     return best_obj;
