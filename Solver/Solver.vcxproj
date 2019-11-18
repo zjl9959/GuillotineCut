@@ -172,11 +172,9 @@
     <ClInclude Include="data\Batch.h" />
     <ClInclude Include="data\Configuration.h" />
     <ClInclude Include="data\DFSTree.h" />
-    <ClInclude Include="data\MCTNode.h" />
     <ClInclude Include="data\PFSTree.h" />
     <ClInclude Include="data\Placement.h" />
     <ClInclude Include="data\Problem.h" />
-    <ClInclude Include="algorithm\MyCutSearch.h" />
     <ClInclude Include="Solver.h" />
     <ClInclude Include="unit_test\test.h" />
     <ClInclude Include="utility\Config.h" />
@@ -194,7 +192,6 @@
     <ClCompile Include="data\Placement.cpp" />
     <ClCompile Include="data\Problem.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="algorithm\MyCutSearch.cpp" />
     <ClCompile Include="Solver.cpp" />
     <ClCompile Include="unit_test\test.cpp" />
     <ClCompile Include="utility\CsvReader.cpp" />

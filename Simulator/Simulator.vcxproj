@@ -164,7 +164,6 @@
   <ItemGroup>
     <ClInclude Include="..\Solver\algorithm\CutSearch.h" />
     <ClInclude Include="..\Solver\algorithm\Factory.h" />
-    <ClInclude Include="..\Solver\algorithm\MyCutSearch.h" />
     <ClInclude Include="..\Solver\algorithm\Picker.h" />
     <ClInclude Include="..\Solver\algorithm\PlateSearch.h" />
     <ClInclude Include="..\Solver\algorithm\TopSearch.h" />
@@ -172,7 +171,6 @@
     <ClInclude Include="..\Solver\data\Auxiliary.h" />
     <ClInclude Include="..\Solver\data\Batch.h" />
     <ClInclude Include="..\Solver\data\Configuration.h" />
-    <ClInclude Include="..\Solver\data\MCTNode.h" />
     <ClInclude Include="..\Solver\data\PFSTree.h" />
     <ClInclude Include="..\Solver\data\Placement.h" />
     <ClInclude Include="..\Solver\data\Problem.h" />
@@ -189,7 +187,6 @@
   <ItemGroup>
     <ClCompile Include="..\Solver\algorithm\CutSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\Factory.cpp" />
-    <ClCompile Include="..\Solver\algorithm\MyCutSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\Picker.cpp" />
     <ClCompile Include="..\Solver\algorithm\PlateSearch.cpp" />
     <ClCompile Include="..\Solver\algorithm\TopSearch.cpp" />

@@ -61,9 +61,6 @@
     <ClInclude Include="data\Configuration.h">
       <Filter>data</Filter>
     </ClInclude>
-    <ClInclude Include="data\MCTNode.h">
-      <Filter>data</Filter>
-    </ClInclude>
     <ClInclude Include="algorithm\CutSearch.h">
       <Filter>algorithm\header</Filter>
     </ClInclude>
@@ -81,9 +78,6 @@
     </ClInclude>
     <ClInclude Include="unit_test\test.h">
       <Filter>unit_test</Filter>
-    </ClInclude>
-    <ClInclude Include="algorithm\MyCutSearch.h">
-      <Filter>algorithm\header</Filter>
     </ClInclude>
     <ClInclude Include="data\PFSTree.h" />
     <ClInclude Include="data\DFSTree.h" />
@@ -124,9 +118,6 @@
     </ClCompile>
     <ClCompile Include="unit_test\test.cpp">
       <Filter>unit_test</Filter>
-    </ClCompile>
-    <ClCompile Include="algorithm\MyCutSearch.cpp">
-      <Filter>algorithm\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

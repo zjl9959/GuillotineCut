@@ -77,9 +77,6 @@
     <ClInclude Include="..\Solver\Solver.h">
       <Filter>Solver\solver</Filter>
     </ClInclude>
-    <ClInclude Include="..\Solver\data\MCTNode.h">
-      <Filter>Solver\data</Filter>
-    </ClInclude>
     <ClInclude Include="..\Solver\algorithm\CutSearch.h">
       <Filter>Solver\algorithm\header</Filter>
     </ClInclude>
@@ -97,9 +94,6 @@
     </ClInclude>
     <ClInclude Include="..\Solver\unit_test\test.h">
       <Filter>Solver\unit_test</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\algorithm\MyCutSearch.h">
-      <Filter>Solver\algorithm\header</Filter>
     </ClInclude>
     <ClInclude Include="..\Solver\data\PFSTree.h">
       <Filter>Solver\data</Filter>
@@ -144,9 +138,6 @@
     </ClCompile>
     <ClCompile Include="..\Solver\unit_test\test.cpp">
       <Filter>Solver\unit_test</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\algorithm\MyCutSearch.cpp">
-      <Filter>Solver\algorithm\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

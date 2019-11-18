@@ -58,8 +58,9 @@ public:
         for (auto it = leaf_nodes_.begin(); it != leaf_nodes_.end(); ++it) {
             delete_node_recursive(*it);
         }
-        if (nb_node_ > 0)
-            throw "memory leak!";
+        if (nb_node_ > 0) {
+            std::cout << "PfsTree not delete node number:" << nb_node_ << std::endl;
+        }
     }
 
     /* 判断树中是否有未被扩展的节点。 */

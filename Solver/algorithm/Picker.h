@@ -41,7 +41,7 @@ public:
     /* 根据source随机挑选最多max_num个物品。
     输入：terminator（停止条件判断器），filter（物品筛选器）
     输出：target_batch（挑选出来的物品所形成的栈），true：挑选成功，false：挑选失败 */
-    bool rand_pick(Batch &target_batch, Terminator &terminator = Terminator(), Filter &filter = Filter());
+    bool rand_pick(Batch &target_batch, Terminator terminator = Terminator(), Filter filter = Filter());
 private:
     const Batch &source_;
     Random &rand_;

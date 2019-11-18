@@ -4,7 +4,7 @@ using namespace std;
 
 namespace szx {
 
-bool Picker::rand_pick(Batch &target_batch, Terminator &terminator, Filter &filter) {
+bool Picker::rand_pick(Batch &target_batch, Terminator terminator, Filter filter) {
     /* 实现原理
       pool:         chosen:       source_bacth:
        B              A            A  B  C  D  E

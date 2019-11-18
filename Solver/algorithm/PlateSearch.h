@@ -5,15 +5,12 @@
 #include <mutex>
 
 #include "CutSearch.h"
-#include "MyCutSearch.h"
 #include "../data/Configuration.h"
 #include "../data/Auxiliary.h"
 
 namespace szx{
 
 class PlateSearch {
-	using CutSearch = CutSearch;
-
 public:
     PlateSearch(TID plate, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
 		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux), bestobj_(0) {};
@@ -26,7 +23,7 @@ public:
 
 protected:
 	Area greedy_evaluate(int repeat_num, const Batch &source_batch, const Solution &sol);
-    UsageRate get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, bool tail = false);
+    UsageRate get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, CutSearch::Setting set);
 private:
     Area item_area(const Solution &sol);
     void update_bestsol(const Solution &sol, Area obj = 0);

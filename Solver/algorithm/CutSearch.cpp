@@ -8,9 +8,16 @@ namespace szx {
 /* 优化1-cut
    输入：batch（物品栈），opt_tail（是否优化原料末尾）
    输出：sol（该1-cut的最优解），返回：1-cut对应利用率 */
-UsageRate CutSearch::run(Batch &batch, Solution &sol, bool opt_tail) {
-    return pfs(batch, sol, opt_tail);
+UsageRate CutSearch::run(Batch &batch, Solution &sol, Setting set) {
+    return pfs(batch, sol, set);
 }
+
+#pragma region BeamSearch
+UsageRate CutSearch::beam_search(Batch &batch, Solution &sol, Setting set) {
+    Solution fix_sol;
+    return UsageRate();
+}
+#pragma endregion
 
 #pragma region DFSAlgorithm
 struct DFSTreeNode {
@@ -21,7 +28,7 @@ struct DFSTreeNode {
 };
 
 /* 深度优先搜索 */
-UsageRate CutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
+UsageRate CutSearch::dfs(Batch &batch, Solution &sol, Setting set) {
     List<DFSTreeNode> live_nodes; live_nodes.reserve(100); // 待分支的树节点
     Solution cur_sol; cur_sol.reserve(20);        // 当前解
     UsageRate best_obj;      // 最优解及对应目标函数值
@@ -31,11 +38,11 @@ UsageRate CutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
     Depth pre_depth = -1;    // 上一个节点深度
     Area used_item_area = 0; // 已使用物品面积
     const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
-    branch(Placement(start_pos_), batch, branch_nodes, opt_tail);
+    branch(Placement(start_pos_), batch, branch_nodes, set.opt_tail);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
         live_nodes.push_back(DFSTreeNode(0, *it));
     }
-    while (live_nodes.size() && cur_iter < max_iter_) {
+    while (live_nodes.size() && cur_iter < set.max_iter) {
         DFSTreeNode node = live_nodes.back();
         live_nodes.pop_back();
         if (node.depth - pre_depth == 1) { // 向下扩展
@@ -52,25 +59,27 @@ UsageRate CutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
             batch.remove(node.place.item);
             used_item_area += item_area_[node.place.item];
         }
+        // 分支并更新live_nodes。
         branch_nodes.clear();
-        branch(node.place, batch, branch_nodes, opt_tail);
-        pre_depth = node.depth;
-        if (branch_nodes.empty()) { // 找到一个完整解
-            TLength cur_width = cur_sol.back().c1cpr - start_pos_;
-            UsageRate cur_obj;
-            if (opt_tail)
-                cur_obj = UsageRate((double)used_item_area / (double)tail_area);
-            else
-                cur_obj = UsageRate((double)used_item_area / (double)(cur_width*param_.plateHeight));
-            if (best_obj < cur_obj) {
-                best_obj = cur_obj;
-                sol = cur_sol;
-            }
-        } else {
-            for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-                live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
-            }
+        branch(node.place, batch, branch_nodes, set.opt_tail);
+        for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
+            live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
         }
+        // 计算当前解的目标函数值。
+        UsageRate cur_obj;
+        if (set.opt_tail) {
+            cur_obj = UsageRate((double)used_item_area / (double)tail_area);
+        } else {
+            cur_obj = UsageRate((double)used_item_area / (double)(
+                (cur_sol.back().c1cpr - start_pos_)*param_.plateHeight));
+        }
+        // 检查更新最优解。
+        if (best_obj < cur_obj) {
+            best_obj = cur_obj;
+            sol = cur_sol;
+        }
+        // 更新辅助变量。
+        pre_depth = node.depth;
         ++cur_iter;
     }
     return best_obj;
@@ -79,7 +88,7 @@ UsageRate CutSearch::dfs(Batch & batch, Solution & sol, bool opt_tail) {
 
 #pragma region PFSAlgorithm
 /* 优度优先搜索 */
-UsageRate CutSearch::pfs(Batch & batch, Solution & sol, bool opt_tail) {
+UsageRate CutSearch::pfs(Batch &batch, Solution &sol, Setting set) {
     int cur_iter = 0;   // 当前扩展节点次数。
     UsageRate best_obj; // 已知最优的目标函数值。
     PfsTree::Node *last_node = nullptr;
@@ -88,33 +97,36 @@ UsageRate CutSearch::pfs(Batch & batch, Solution & sol, bool opt_tail) {
     List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
     branch_nodes.reserve(100);
     PfsTree tree(start_pos_, param_.plateHeight, item_area_);
-    branch(Placement(start_pos_), batch, branch_nodes, opt_tail);
+    branch(Placement(start_pos_), batch, branch_nodes, set.opt_tail);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
         tree.add(*it);
     }
-    while (!tree.empty() && cur_iter < max_iter_) {
+    while (!tree.empty() && cur_iter < set.max_iter) {
         PfsTree::Node *node = tree.get();
         tree.update_batch(last_node, node, batch);
+        // 分支并更新tree。
         branch_nodes.clear();
-        branch(node->place, batch, branch_nodes, opt_tail);
-        if (branch_nodes.empty()) { // 到达叶子节点。
-            TLength cur_width = node->place.c1cpr - start_pos_;
-            UsageRate cur_obj;
-            if (opt_tail)
-                cur_obj = UsageRate((double)node->area / (double)tail_area);
-            else
-                cur_obj = UsageRate((double)node->area / (double)(cur_width*param_.plateHeight));
-            if (best_obj < cur_obj) {
-                best_obj = cur_obj;
-                best_sol_reverse.clear();
-                tree.get_tree_path(node, best_sol_reverse);
-            }
-            tree.add_leaf_node(node);
-        } else {
-            for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-                tree.add(node, *it);
-            }
+        branch(node->place, batch, branch_nodes, set.opt_tail);
+        for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
+            tree.add(node, *it);
         }
+        // 计算目标函数值。
+        UsageRate cur_obj;
+        if (set.opt_tail) {
+            cur_obj = UsageRate((double)node->area / (double)tail_area);
+        } else {
+            cur_obj = UsageRate((double)node->area / (double)(
+                (node->place.c1cpr - start_pos_)*param_.plateHeight));
+        }
+        // 更新目标函数值。
+        if (best_obj < cur_obj) {
+            best_obj = cur_obj;
+            best_sol_reverse.clear();
+            tree.get_tree_path(node, best_sol_reverse);
+        }
+        // 更新辅助信息。
+        if(branch_nodes.empty())    // 树种需要记录叶子节点，以便删除树。
+            tree.add_leaf_node(node);
         last_node = node;
         ++cur_iter;
     }
