@@ -11,23 +11,54 @@ namespace szx {
 * 输出：sol（该1-cut的最优解），返回：1-cut对应利用率
 */
 void CutSearch::run(Batch &batch) {
-    pfs(batch);
+    beam_search(batch);
 }
 
 #pragma region BeamSearch
 /* 束搜索 */
 void CutSearch::beam_search(Batch &batch) {
-    UsageRate best_obj;
+    Area used_item_area = 0;    // 固定物品的面积和。
     Solution fix_sol;   // 已经被固定下来的解。
     Placement resume_point(start_pos_); // 每次分支的恢复点。
     List<Placement> branch_nodes;   // 缓存分支节点。
     // 初始分支
     branch(resume_point, batch, branch_nodes);
-
-    // 分支
-    // 排序
-    // 固定解
-    // 检查更新
+    using ScorePair = pair<double, size_t>;
+    while (!branch_nodes.empty()) {
+        // 限制beam_search宽度不超过set_.max_branch。
+        List<ScorePair> score_pair;
+        for (size_t i = 0; i < branch_nodes.size(); ++i) {
+            double score = static_cast<double>(used_item_area + item_area_[branch_nodes[i].item]) / envelope_area(branch_nodes[i]);
+            score_pair.push_back(make_pair(score, i));
+        }
+        sort(score_pair.begin(), score_pair.end(), [](const ScorePair &lhs, const ScorePair &rhs) {return lhs.first > rhs.first; });
+        // 贪心的估计并更新
+        UsageRate best_score;
+        Placement best_place;
+        for (size_t i = 0; i < min(set_.max_branch, branch_nodes.size()); ++i) {
+            Placement &place = branch_nodes[score_pair[i].second];
+            fix_sol.push_back(place);
+            used_item_area += item_area_[place.item];
+            batch.remove(place.item);
+            UsageRate score = greedy(used_item_area, batch, fix_sol);
+            if (score.valid() && best_score < score) {
+                best_score = score;
+                best_place = place;
+            }
+            fix_sol.pop_back();
+            used_item_area -= item_area_[place.item];
+            batch.add(place.item);
+        }
+        if (best_score.valid()) {
+            fix_sol.push_back(best_place);
+            used_item_area += item_area_[best_place.item];
+            batch.remove(best_place.item);
+            branch_nodes.clear();
+            branch(best_place, batch, branch_nodes);
+        } else {
+            break;
+        }
+    }
 }
 #pragma endregion
 
@@ -41,10 +72,9 @@ struct DFSTreeNode {
 
 /* 深度优先搜索 */
 void CutSearch::dfs(Batch &batch) {
-    int cur_iter = 0;   // 当前探索节点数目
+    size_t cur_iter = 0;   // 当前探索节点数目
     Depth pre_depth = -1;    // 上一个节点深度
     Area used_item_area = 0; // 已使用物品面积
-    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
     UsageRate cur_obj;  // 当前解利用率
     Solution cur_sol;   // 当前解
     List<DFSTreeNode> live_nodes; // 待分支的树节点
@@ -79,7 +109,7 @@ void CutSearch::dfs(Batch &batch) {
         }
         // 计算当前解的目标函数值。
         if (set_.opt_tail) {
-            cur_obj = UsageRate((double)used_item_area / (double)tail_area);
+            cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)used_item_area / (double)(
                 (cur_sol.back().c1cpr - start_pos_)*param_.plateHeight));
@@ -99,10 +129,9 @@ void CutSearch::dfs(Batch &batch) {
 #pragma region PFSAlgorithm
 /* 优度优先搜索 */
 void CutSearch::pfs(Batch &batch) {
-    int cur_iter = 0;   // 当前扩展节点次数。
+    size_t cur_iter = 0;   // 当前扩展节点次数。
     UsageRate cur_obj;  // 当前解利用率。
     PfsTree::Node *last_node = nullptr;
-    const Area tail_area = (param_.plateWidth - start_pos_)*param_.plateHeight; // 剩余面积
     Solution temp_best_sol; // 缓存临时最优解。
     List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
     branch_nodes.reserve(100);
@@ -124,7 +153,7 @@ void CutSearch::pfs(Batch &batch) {
         }
         // 计算目标函数值。
         if (set_.opt_tail) {
-            cur_obj = UsageRate((double)node->area / (double)tail_area);
+            cur_obj = UsageRate((double)node->area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)node->area / (double)(
                 (node->place.c1cpr - start_pos_)*param_.plateHeight));
@@ -149,19 +178,51 @@ void CutSearch::pfs(Batch &batch) {
 
 /* 
 * 贪心构造解
-* 停止条件：set.opt_tail = false时当前1-cut放不下停止； set.opt_tail = true时当前原料放不下停止。
+* 输入：used_item_area(固定部分物品占用面积), batch(可以物品栈), fix_sol(固定部分解)
+* 输出：贪心走到底（到达1-cut尾部或原料尾部）时所得解的利用率。
 * 注意：由于函数在运行时会改变引用的batch和fix_sol，该函数不便使用多线程。
 */
 UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &fix_sol) {
     assert(!fix_sol.empty());
-    Placement cur_node = fix_sol.back();    // 下一次分支的起点
-    Solution greedy_sol;    // 储存贪心构造的解
+    UsageRate cur_obj;  // fix_sol + greedy_sol的目标函数值。
+    Placement cur_node = fix_sol.back();    // 下一次分支的起点。
+    Solution greedy_sol;    // 储存贪心构造的解。
     List<Placement> branch_nodes;
     branch(cur_node, batch, branch_nodes);
     while (!branch_nodes.empty()) {
-
+        // 挑选并记录最好的解。
+        UsageRate best_node_score;
+        for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
+            UsageRate this_node_score(static_cast<double>(used_item_area + item_area_[it->item]) /
+                static_cast<double>(envelope_area(*it)));
+            if (best_node_score < this_node_score) {
+                best_node_score = this_node_score;
+                cur_node = *it;
+            }
+        }
+        greedy_sol.push_back(cur_node);
+        used_item_area += item_area_[cur_node.item];
+        // 计算目标函数值并检查更新最优解。
+        if (set_.opt_tail) {
+            cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
+        } else {
+            cur_obj = UsageRate((double)used_item_area / (double)(
+                (cur_node.c1cpr - start_pos_)*param_.plateHeight));
+        }
+        if (best_obj_ < cur_obj) {
+            best_obj_ = cur_obj;
+            best_sol_ = fix_sol;
+            best_sol_ += greedy_sol;
+        }
+        // 更新batch并再次分支。
+        batch.remove(cur_node.item);
+        branch_nodes.clear();
+        branch(cur_node, batch, branch_nodes);
     }
-    return UsageRate();
+    // 恢复batch中的物品。
+    for (auto it = greedy_sol.rbegin(); it != greedy_sol.rend(); ++it)
+        batch.add(it->item);
+    return cur_obj;
 }
 
 /*

@@ -14,15 +14,17 @@ class CutSearch {
 public:
     struct Setting {
         bool opt_tail;  // 是否优化原料尾部。
-        int max_iter;   // 最大扩展节点数目。
-        int max_branch;  // 最大分支宽度。
-        Setting(bool _opt_tail = false, int _max_iter = 10000, int _max_branch = 10) :
+        size_t max_iter;   // 最大扩展节点数目。
+        size_t max_branch;  // 最大分支宽度。
+        Setting(bool _opt_tail = false, int _max_iter = 10000, int _max_branch = 100) :
             opt_tail(_opt_tail), max_iter(_max_iter), max_branch(_max_branch) {}
     };
 public:
     CutSearch(TID plate, TCoord start_pos, const Auxiliary &aux, const Setting &set) :
         defect_x_(aux.plate_defect_x[plate]), defect_y_(aux.plate_defect_y[plate]),
-        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param), set_(set) {}
+        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param),
+        set_(set), tail_area_((aux.param.plateWidth - start_pos)*aux.param.plateHeight) {}
+    
     void run(Batch &batch);
     UsageRate best_obj() const { return best_obj_; }
     void get_best_sol(Solution &sol) const { sol = best_sol_; }
@@ -39,8 +41,7 @@ private:
     TCoord cut2ThroughDefect(TCoord y) const;
     Area envelope_area(const Placement &place) const;
 private:
-    UsageRate best_obj_;                    // 最优解对应利用率。
-    Solution best_sol_;                     // 最优解的值。
+    const Area tail_area_;                   // 剩余面积
     const TCoord start_pos_;                // 1-cut开始位置。
     const Setting set_;                     // 设置参数。
     const List<Defect> &defect_x_;          // 瑕疵按照x坐标从小到大排列。
@@ -48,6 +49,8 @@ private:
     const List<Rect> &items_;               // 每个物品的长宽信息。
     const List<Area> &item_area_;           // 每个物品的面积信息。
     const Problem::Input::Param &param_;    // 全局参数。
+    UsageRate best_obj_;                    // 最优解对应利用率。
+    Solution best_sol_;                     // 最优解的值。
 };
 
 }
