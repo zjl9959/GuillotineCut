@@ -45,7 +45,7 @@ void TopSearch::beam_search() {
 Area TopSearch::get_platesol(ID plate_id, const Batch &source_batch, Solution &sol) {
     Picker picker(source_batch, rand_, aux_);
     Batch batch;
-    Picker::Terminator terminator(0, static_cast<Area>(aux_.param.plateHeight * aux_.param.plateWidth * 1.2));
+    Picker::Terminator terminator(0, static_cast<Area>(aux_.param.plateHeight * aux_.param.plateWidth * 2.5));
     if (picker.rand_pick(batch, terminator)) {
         PlateSearch solver(plate_id, cfg_, rand_, timer_, aux_);
         solver.beam_search(batch);
