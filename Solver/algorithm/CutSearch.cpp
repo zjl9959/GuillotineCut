@@ -106,10 +106,11 @@ void CutSearch::pfs(Batch &batch) {
     Solution temp_best_sol; // 缓存临时最优解。
     List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
     branch_nodes.reserve(100);
-    PfsTree tree(start_pos_, param_.plateHeight, item_area_);
+    PfsTree tree(item_area_);
     branch(Placement(start_pos_), batch, branch_nodes);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-        tree.add(*it);
+        tree.add(*it, static_cast<double>(item_area_[it->item]) /
+            static_cast<double>(envelope_area(*it)));
     }
     while (!tree.empty() && cur_iter < set_.max_iter) {
         PfsTree::Node *node = tree.get();
@@ -118,7 +119,8 @@ void CutSearch::pfs(Batch &batch) {
         branch_nodes.clear();
         branch(node->place, batch, branch_nodes);
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-            tree.add(node, *it);
+            tree.add(node, *it, static_cast<double>(node->area + item_area_[it->item]) /
+                static_cast<double>(envelope_area(*it)));
         }
         // 计算目标函数值。
         if (set_.opt_tail) {
@@ -148,13 +150,18 @@ void CutSearch::pfs(Batch &batch) {
 /* 
 * 贪心构造解
 * 停止条件：set.opt_tail = false时当前1-cut放不下停止； set.opt_tail = true时当前原料放不下停止。
-* 注意：由于函数会改变引用的batch，该函数不便使用多线程。
+* 注意：由于函数在运行时会改变引用的batch和fix_sol，该函数不便使用多线程。
 */
-UsageRate CutSearch::greedy(Batch &batch, Solution &fix_sol) {
-    UsageRate cur_obj;
+UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &fix_sol) {
+    assert(!fix_sol.empty());
+    Placement cur_node = fix_sol.back();    // 下一次分支的起点
+    Solution greedy_sol;    // 储存贪心构造的解
     List<Placement> branch_nodes;
+    branch(cur_node, batch, branch_nodes);
+    while (!branch_nodes.empty()) {
 
-    return cur_obj;
+    }
+    return UsageRate();
 }
 
 /*
@@ -418,7 +425,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
 * 检查新的分支节点是否满足约束。如果不满足，则修复。
 * input: old branch node, current partial solution, new branch node.
 */
-const bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
+bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
     // if c2cpu less than c4cp, move it up.
     if (node.c2cpu < node.c4cp) { node.c2cpu = node.c4cp; }
 
@@ -500,7 +507,7 @@ const bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
 }
 
 // if item or 1-cut conflict with defect, move item/1-cut to the defect right side.
-const TCoord CutSearch::sliptoDefectRight(const TCoord x, const TCoord y, const TLength w, const TLength h) const {
+TCoord CutSearch::sliptoDefectRight(TCoord x, TCoord y, TLength w, TLength h) const {
     TCoord slip = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= slip + w) {
@@ -523,7 +530,7 @@ const TCoord CutSearch::sliptoDefectRight(const TCoord x, const TCoord y, const 
 }
 
 // if area(x, y, w, plateHeight-y) has just one defect, slip item to defect up, or return -1.
-const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLength w) const {
+TCoord CutSearch::sliptoDefectUp(TCoord x, TCoord y, TLength w) const {
     TCoord res = -1;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= x + w) { // 瑕疵在右侧
@@ -541,7 +548,7 @@ const TCoord CutSearch::sliptoDefectUp(const TCoord x, const TCoord y, const TLe
 }
 
 // check if 1-cut through defect, return new 1-cut x coord. [not consider minwasteWidth constraint]
-const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
+TCoord CutSearch::cut1ThroughDefect(TCoord x) const {
     TCoord res = x;
     for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
         if (it->x >= res) break;
@@ -553,7 +560,7 @@ const TCoord CutSearch::cut1ThroughDefect(const TCoord x) const {
 }
 
 // check if 2-cut through defect, return new 2-cut y coord.
-const TCoord CutSearch::cut2ThroughDefect(const TCoord y) const {
+TCoord CutSearch::cut2ThroughDefect(TCoord y) const {
     TCoord res = y;
     for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
         if (it->y >= res)break;
@@ -564,6 +571,13 @@ const TCoord CutSearch::cut2ThroughDefect(const TCoord y) const {
         }
     }
     return res;
+}
+
+/* 获取当前放置物品和该1-cut形成的包络面积。 */
+inline Area CutSearch::envelope_area(const Placement &place) const {
+    return (place.c1cpl - start_pos_)*param_.plateHeight +
+        place.c2cpb*(place.c1cpr - place.c1cpl) +
+        (place.c3cp - place.c1cpl)*(place.c2cpu - place.c2cpb);
 }
 
 }

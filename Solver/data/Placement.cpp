@@ -8,14 +8,14 @@ using namespace std;
 
 namespace szx {
 
-Solution & szx::operator+=(Solution & lhs, const Solution & rhs) {
+Solution& operator+=(Solution & lhs, const Solution & rhs) {
     for (auto it = rhs.begin(); it != rhs.end(); ++it) {
         lhs.push_back(*it);
     }
     return lhs;
 }
 
-Solution & operator-=(Solution & lhs, const Solution & rhs) {
+Solution& operator-=(Solution & lhs, const Solution & rhs) {
     for (auto it = rhs.crbegin(); it != rhs.crend(); ++it) {
         assert(it->item == lhs.back().item);
         lhs.pop_back();

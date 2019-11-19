@@ -26,29 +26,26 @@ public:
             nb_child(0), area(_parent->area + _item_area), parent(_parent), place(_place) {}
     };
 private:
-    class Score : public UsageRate {    /* score由usage_rate（前半部分）和depth（后半部分）组成 */
+    class Score {
     public:
-        explicit Score(double rate, Depth depth) :
-            UsageRate(static_cast<int>(rate*usage_rate_base)*offset + depth) {}
-        String str() const override {
-            std::ostringstream os;
-            os << usage_rate_int / (usage_rate_base * offset) << "."
-                << (usage_rate_int / (offset)) % usage_rate_base << "% "
-                << usage_rate_int % offset;
-            return os.str();
+        explicit Score(double rate, Depth depth) : rate_(rate), depth_(depth) {}
+        
+        bool operator< (const Score &rhs) const {
+            return abs(this->rate_ - rhs.rate_) < tolerance_ ?
+                this->depth_ > rhs.depth_ : this->rate_ > rhs.rate_;
         }
     private:
-        static constexpr int usage_rate_base = 10;  // 10^利用率保留的小数位数
-        static constexpr int offset = 1000;  // 10^为depth的最大位数
+        static constexpr double tolerance_ = 0.01;  // 分数值在一定差别内视为相等。
+        double rate_;   // 利用率值（加权后）。
+        Depth depth_;   // 当前节点扩展深度。
     };
     struct ScoreCmp {
-        bool operator() (const Score &lhs, const Score &rhs) const {
-            return rhs < lhs;
+        bool operator() (const Score &lhs, const Score &rhs) {
+            return lhs < rhs;
         }
     };
 public:
-    PfsTree(TCoord start_pos, TLength plate_height, const List<Area> &item_area) :
-        start_pos_(start_pos), item_area_(item_area), plate_height_(plate_height) {}
+    PfsTree(const List<Area> &item_area) : item_area_(item_area) {}
     ~PfsTree() {
         /* 删除剩余的待扩展节点 */
         for(auto it = live_nodes_.begin(); it != live_nodes_.end(); ++it) {
@@ -76,18 +73,18 @@ public:
     }
 
     /* 添加新节点。*/
-    void add(Node *parent, Placement &place) {
+    void add(Node *parent, Placement &place, double score) {
         Node *node = new Node(parent, place, item_area_[place.item]);
-        live_nodes_.insert(std::make_pair(get_score(node), node));
+        live_nodes_.insert(std::make_pair(Score(score, node->depth + 1), node));
         ++nb_node_;
         ++(node->parent->nb_child);
         if (nb_node_ > max_nb_node) {
             adjust_memory();
         }
     }
-    void add(Placement &place) {
+    void add(Placement &place, double score) {
         Node *node = new Node(place, item_area_[place.item]);
-        live_nodes_.insert(std::make_pair(get_score(node), node));
+        live_nodes_.insert(std::make_pair(Score(score, node->depth + 1), node));
         ++nb_node_;
     }
 
@@ -96,8 +93,9 @@ public:
         leaf_nodes_.push_back(node);
     }
 
-    /* 在搜索过程中更新batch
-       输入：last_node（上一次扩展的节点），cur_node（当前待扩展的节点），batch（物品栈）
+    /* 
+    * 在搜索过程中更新batch
+    * 输入：last_node（上一次扩展的节点），cur_node（当前待扩展的节点），batch（物品栈）
     */
     void update_batch(Node *last_node, Node *cur_node, Batch &batch) {
         List<TID> item_cache;   // 缓存待从batch中拿出的物品。
@@ -139,25 +137,10 @@ public:
         }
     }
 private:
-    /* 计算当前节点的分数。*/
-    Score get_score(const Node *node) const {
-        Area used_area =
-            (node->place.c1cpl - start_pos_)*plate_height_ +
-            node->place.c2cpb*(node->place.c1cpr - node->place.c1cpl) +
-            (node->place.c3cp - node->place.c1cpl)*(node->place.c2cpu - node->place.c2cpb);
-        assert(used_area > 0);
-        return Score(static_cast<double>(node->area) / static_cast<double>(used_area), node->depth);
-    }
-
     /* 节点数目超过最大限制时调用该函数删除部分较差的节点。*/
     void adjust_memory() {
-        /*
-        size_t new_nb_node = static_cast<double>(nb_node_) * memory_adjust_rate;
-        auto it = live_nodes_.rbegin();
-        while (it != live_nodes_.rend() && nb_node_ > new_nb_node) {
-            delete_node_recursive(it->second);
-        }
-        */
+        // [zjl][TODO]: add implement.
+        throw "not implement.";
     }
 
     /* 从node节点开始，沿路径依次删除叶子节点。 */
@@ -176,8 +159,6 @@ private:
     static constexpr double memory_adjust_rate = 0.70;   // 当节点数过多时，新节点数目占现节点数目的百分比。
 
     const List<Area> &item_area_; // 每个物品的面积大小
-    const TCoord start_pos_;   // 1-cut的开始位置。
-    const TLength plate_height_;    // 原料高度。
     size_t nb_node_ = 0;    // 当前已扩展的节点数目。
     std::multimap<Score, Node*, ScoreCmp> live_nodes_;  // 按照Score优度排列的待扩展节点。
     List<Node*> leaf_nodes_;    // 已经被完全扩展的节点。

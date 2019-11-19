@@ -7,6 +7,7 @@
 
 namespace szx {
 
+#pragma region Placement
 struct Placement { /* 一个物品的放置位置信息 */
 public:
     TID item;        // 放置物品ID
@@ -58,6 +59,30 @@ TID nb_used_plate(const Solution &sol);    // 计算当前解使用了多少块原料
 bool valid_plate_sol(const Solution &sol);  // 检测plate solution是否合法
 
 void save_solution(const Solution &sol, const String &path);    // 保存解到文件中
+#pragma endregion
+
+#pragma region UsageRate
+class UsageRate {
+public:
+    UsageRate() : value_(invalid_value) {}
+    explicit UsageRate(double rate) : value_(rate) {}
+
+    bool valid() const { return abs(value_ - invalid_value) > 0.001; }
+
+    bool operator<(const UsageRate &rhs) { return this->value_ < rhs.value_; }
+
+    double value() { return value_; }
+
+    String str() const {
+        std::ostringstream os;
+        os << value_ << "%";
+        return os.str();
+    }
+private:
+    static constexpr double invalid_value = -1.0;
+    double value_;
+};
+#pragma endregion
 
 }
 

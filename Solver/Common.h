@@ -65,36 +65,6 @@ public:
     static String json() { return String(".json"); }
 };
 
-class UsageRate {
-    // [TODO]: test this class.
-protected:
-    static constexpr int base = 1000;    // 将浮点数转化为小数时所乘以的倍数。
-    static constexpr int invalid_value = -1;
-    int usage_rate_int; // 使用整数来保存浮点数。
-public:
-    UsageRate() : usage_rate_int(invalid_value) {}
-    explicit UsageRate(int rate) : usage_rate_int(rate) {}
-    explicit UsageRate(double rate) : usage_rate_int(static_cast<int>(rate*base)) { assert(rate < 1.0); }
-    
-    UsageRate& operator= (const UsageRate &other) {
-        this->usage_rate_int = other.usage_rate_int;
-        return *this;
-    }
-
-    bool valid() const { return usage_rate_int != invalid_value; }
-    
-    bool operator< (const UsageRate &rhs) const {
-        return this->usage_rate_int < rhs.usage_rate_int;
-    }
-
-    virtual String str() const {
-        std::ostringstream os;
-        os << usage_rate_int / base << "."
-            << usage_rate_int % base << "%";
-        return os.str();
-    }
-};
-
 static constexpr TID INVALID = -1;
 
 }

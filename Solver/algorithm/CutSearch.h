@@ -26,17 +26,18 @@ public:
     void run(Batch &batch);
     UsageRate best_obj() const { return best_obj_; }
     void get_best_sol(Solution &sol) const { sol = best_sol_; }
-protected:
+private:
     void beam_search(Batch &batch);
     void dfs(Batch &batch);
     void pfs(Batch &batch);
-    UsageRate greedy(Batch &batch, Solution &fix_sol);
+    UsageRate greedy(Area used_item_area, Batch &batch, const Solution &fix_sol);
     void branch(const Placement &old, const Batch &batch, List<Placement> &branch_nodes);
-    const bool constraintCheck(const Placement &old, Placement &node);
-    const TCoord sliptoDefectRight(const TCoord x, const TCoord y, const TLength w, const TLength h) const;
-    const TCoord sliptoDefectUp(const TCoord x, const TCoord y, const TLength w) const;
-    const TCoord cut1ThroughDefect(const TCoord x) const;
-    const TCoord cut2ThroughDefect(const TCoord y) const;
+    bool constraintCheck(const Placement &old, Placement &node);
+    TCoord sliptoDefectRight(TCoord x, TCoord y, TLength w, TLength h) const;
+    TCoord sliptoDefectUp(TCoord x, TCoord y, TLength w) const;
+    TCoord cut1ThroughDefect(TCoord x) const;
+    TCoord cut2ThroughDefect(TCoord y) const;
+    Area envelope_area(const Placement &place) const;
 private:
     UsageRate best_obj_;                    // 最优解对应利用率。
     Solution best_sol_;                     // 最优解的值。
