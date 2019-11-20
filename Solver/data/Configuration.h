@@ -12,7 +12,7 @@ struct Configuration {
     int mcin; // CutSearch最大优化物品数目
     int mcrn; // CutSearch最大重复优化次数
 
-    Configuration(int MTBN = 8, int MPBN = 8, int MCIN = 8, int MCRN = 8) :
+    Configuration(int MTBN = 32, int MPBN = 32, int MCIN = 16, int MCRN = 8) :
         mtbn(MTBN), mpbn(MPBN), mcin(MCIN), mcrn(MCRN) {}
 
     String toBriefStr() const {
