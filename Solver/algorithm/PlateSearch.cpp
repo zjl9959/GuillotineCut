@@ -7,6 +7,7 @@ using Setting = szx::CutSearch::Setting;
 
 namespace szx{
 
+#pragma region interface
 /* 束搜索，输入：物品栈 */
 void PlateSearch::beam_search(const Batch &source_batch) {
     Solution fix_sol;                           // 已经固定的解
@@ -32,13 +33,29 @@ void PlateSearch::beam_search(const Batch &source_batch) {
             fix_sol += best_cutsol;
             batch.remove(best_cutsol);
             c1cpr = best_cutsol.back().c1cpr;
-            //Log(Log::Debug) << "[PlateSearch] plate:" << plate_
-            //    << " c1cpr:" << c1cpr << endl;
         } else {
             break;
         }
     }
 }
+
+void PlateSearch::get_best_sol(Solution & sol) const {
+    if (!sol_cache_.empty())
+        sol = sol_cache_.begin()->second;
+}
+
+void PlateSearch::get_good_sols(List<Solution>& sols) const {
+    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
+        sols.push_back(it->second);
+    }
+}
+
+void PlateSearch::good_objs(List<Area>& objs) const {
+    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
+        objs.push_back(it->first);
+    }
+}
+#pragma endregion
 
 /* 评估某一个部分解的好坏
    输入：repeat_num（贪心向前看时重复调用CutSearch数目），batch（物品栈），sol（待评估的解）
@@ -83,15 +100,15 @@ Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, con
 UsageRate PlateSearch::get_cutsol(int repeat_num, TCoord start_pos, const Batch &source_batch, Solution &sol, Setting set) {
     // 多次调用CutSearch，选一个最好的解
     CutSearch solver(plate_, start_pos, aux_, set);
-    Picker picker(source_batch, rand_, aux_);
+    //Picker picker(source_batch, rand_, aux_);
     Solution cut_sol;       // 储存每次调用solver算得的解
     UsageRate best_obj;  // 本轮最优1-cut解的目标函数值
     for (int i = 0; i < repeat_num; ++i) {
         if (timer_.isTimeOut())break;
-        Batch sub_batch;    // 从batch中挑选的子集
-        Picker::Filter filter(aux_.param.plateWidth - start_pos);
-        Picker::Terminator terminator(cfg_.mcin);
-        if (!picker.rand_pick(sub_batch, terminator, filter))continue;
+        Batch sub_batch(source_batch);    // 从batch中挑选的子集
+        //Picker::Filter filter(aux_.param.plateWidth - start_pos);
+        //Picker::Terminator terminator(cfg_.mcin);
+        //if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         cut_sol.clear();
         solver.run(sub_batch);
         if (best_obj < solver.best_obj()) {   // 更新best_cut_sol;
@@ -117,16 +134,13 @@ void PlateSearch::update_bestsol(const Solution &sol, Area obj) {
         obj = item_area(sol);
     lock_guard<mutex> guard(sol_mutex_);
     assert(valid_plate_sol(sol));
-    if (bestobj_ < obj) {
-        bestobj_ = obj;
-        bestsol_ = sol;
+    if (sol_cache_.size() < nb_sol_cache_) {
+        sol_cache_.insert(make_pair(obj, sol));
+    } else if (sol_cache_.rend()->first < obj) {
+        sol_cache_.insert(make_pair(obj, sol));
+        if(sol_cache_.size() > nb_sol_cache_)
+            sol_cache_.erase(prev(sol_cache_.end()));
     }
-}
-
-Area PlateSearch::get_bestsol(Solution &sol) {
-    assert(!bestsol_.empty());
-    sol = bestsol_;
-    return bestobj_;
 }
 
 }

@@ -136,7 +136,7 @@ void Solver::run() {
     TopSearch solver(rand, timer, cfg, aux);
     Solution best_sol;
     solver.beam_search();
-    solver.get_bestsol(best_sol);
+    solver.get_best_sol(best_sol);
     output = createOutput(best_sol, aux);
     // Êä³ö½â
     output.save(env.solutionPath());

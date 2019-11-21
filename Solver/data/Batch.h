@@ -118,8 +118,6 @@ private:
     TID left_items_;                 // 剩余物品数目
     List<List<TID>> stacks_;         // 存放物品的栈
     HashMap<TID, int> item2stack_;   // 物品TID到栈TID的映射
-    // [zjl][opt]将item2stack_改成引用，由外部函数提供。
-    // [zjl][opt]在类中添加init_item_map函数用于专门初始化item2stack。
 };
 
 }

@@ -186,6 +186,17 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
     assert(!fix_sol.empty());
     UsageRate cur_obj;  // fix_sol + greedy_sol的目标函数值。
     Placement cur_node = fix_sol.back();    // 下一次分支的起点。
+    // 检查当前解是否需要更新。
+    if (set_.opt_tail) {
+        cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
+    } else {
+        cur_obj = UsageRate((double)used_item_area / (double)(
+            (cur_node.c1cpr - start_pos_)*param_.plateHeight));
+    }
+    if (best_obj_ < cur_obj) {
+        best_obj_ = cur_obj;
+        best_sol_ = fix_sol;
+    }
     Solution greedy_sol;    // 储存贪心构造的解。
     List<Placement> branch_nodes;
     branch(cur_node, batch, branch_nodes);

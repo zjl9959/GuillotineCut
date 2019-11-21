@@ -44,10 +44,10 @@ Solution test_PlateSearch(Timer &timer, Random &rand, Configuration &cfg, Auxili
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
-    PlateSearch solver(plate, cfg, rand, timer, aux);
+    PlateSearch solver(plate, 1, cfg, rand, timer, aux);
     solver.beam_search(batch);
     Solution sol;
-    solver.get_bestsol(sol);
+    solver.get_best_sol(sol);
     return sol;
 }
 
