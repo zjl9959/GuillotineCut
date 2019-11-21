@@ -14,6 +14,27 @@ void CutSearch::run(Batch &batch) {
     beam_search(batch);
 }
 
+UsageRate CutSearch::best_obj() const {
+    return sol_cache_.empty() ? UsageRate() : sol_cache_.begin()->first;
+}
+
+void CutSearch::get_best_sol(Solution &sol) const {
+    if (!sol_cache_.empty())
+        sol = sol_cache_.begin()->second;
+}
+
+void CutSearch::get_good_sols(List<Solution> &sols) const {
+    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
+        sols.push_back(it->second);
+    }
+}
+
+void CutSearch::get_good_objs(List<UsageRate> &objs) const {
+    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
+        objs.push_back(it->first);
+    }
+}
+
 #pragma region BeamSearch
 /* 束搜索 */
 void CutSearch::beam_search(Batch &batch) {
@@ -114,11 +135,7 @@ void CutSearch::dfs(Batch &batch) {
             cur_obj = UsageRate((double)used_item_area / (double)(
                 (cur_sol.back().c1cpr - start_pos_)*param_.plateHeight));
         }
-        // 检查更新最优解。
-        if (best_obj_ < cur_obj) {
-            best_obj_ = cur_obj;
-            best_sol_ = cur_sol;
-        }
+        update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
         // 更新辅助变量。
         pre_depth = node.depth;
         ++cur_iter;
@@ -130,9 +147,9 @@ void CutSearch::dfs(Batch &batch) {
 /* 优度优先搜索 */
 void CutSearch::pfs(Batch &batch) {
     size_t cur_iter = 0;   // 当前扩展节点次数。
-    UsageRate cur_obj;  // 当前解利用率。
     PfsTree::Node *last_node = nullptr;
-    Solution temp_best_sol; // 缓存临时最优解。
+    UsageRate cur_obj;     // 当前解利用率。
+    Solution cur_sol;      // 缓存当前解
     List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
     branch_nodes.reserve(100);
     PfsTree tree(item_area_);
@@ -159,14 +176,8 @@ void CutSearch::pfs(Batch &batch) {
                 (node->place.c1cpr - start_pos_)*param_.plateHeight));
         }
         // 更新目标函数值。
-        if (best_obj_ < cur_obj) {
-            best_obj_ = cur_obj;
-            temp_best_sol.clear();
-            tree.get_tree_path(node, temp_best_sol);
-            best_sol_.clear();
-            for (auto it = temp_best_sol.rbegin(); it != temp_best_sol.rend(); ++it)
-                best_sol_.push_back(*it);
-        }
+        tree.get_tree_path(node, cur_sol);
+        update_sol_cache(cur_obj, cur_sol);
         // 更新辅助信息。
         if(branch_nodes.empty())    // 树种需要记录叶子节点，以便删除树。
             tree.add_leaf_node(node);
@@ -193,11 +204,8 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
         cur_obj = UsageRate((double)used_item_area / (double)(
             (cur_node.c1cpr - start_pos_)*param_.plateHeight));
     }
-    if (best_obj_ < cur_obj) {
-        best_obj_ = cur_obj;
-        best_sol_ = fix_sol;
-    }
-    Solution greedy_sol;    // 储存贪心构造的解。
+    update_sol_cache(cur_obj, fix_sol);
+    Solution greedy_sol(fix_sol);    // 储存贪心构造的解。
     List<Placement> branch_nodes;
     branch(cur_node, batch, branch_nodes);
     while (!branch_nodes.empty()) {
@@ -220,18 +228,15 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
             cur_obj = UsageRate((double)used_item_area / (double)(
                 (cur_node.c1cpr - start_pos_)*param_.plateHeight));
         }
-        if (best_obj_ < cur_obj) {
-            best_obj_ = cur_obj;
-            best_sol_ = fix_sol;
-            best_sol_ += greedy_sol;
-        }
+        update_sol_cache(cur_obj, greedy_sol);
         // 更新batch并再次分支。
         batch.remove(cur_node.item);
         branch_nodes.clear();
         branch(cur_node, batch, branch_nodes);
     }
     // 恢复batch中的物品。
-    for (auto it = greedy_sol.rbegin(); it != greedy_sol.rend(); ++it)
+    size_t count = 0, max_count = greedy_sol.size() - fix_sol.size();
+    for (auto it = greedy_sol.rbegin(); it != greedy_sol.rend() && count < max_count; ++it, ++count)
         batch.add(it->item);
     return cur_obj;
 }
@@ -650,6 +655,21 @@ inline Area CutSearch::envelope_area(const Placement &place) const {
     return (place.c1cpl - start_pos_)*param_.plateHeight +
         place.c2cpb*(place.c1cpr - place.c1cpl) +
         (place.c3cp - place.c1cpl)*(place.c2cpu - place.c2cpb);
+}
+
+/*
+* 更新sol_cache，自动删除多余的较差的解。
+* 输入：obj(当前解的利用率)，sol（当前解的值）。
+*/
+void CutSearch::update_sol_cache(UsageRate obj, const Solution &sol) {
+    lock_guard<mutex> guard(sol_mutex_);
+    if (sol_cache_.size() < nb_sol_cache_) {
+        sol_cache_.insert(make_pair(obj, sol));
+    } else if (sol_cache_.rbegin()->first < obj) {
+        sol_cache_.insert(make_pair(obj, sol));
+        if (sol_cache_.size() > nb_sol_cache_)
+            sol_cache_.erase(prev(sol_cache_.end()));
+    }
 }
 
 }

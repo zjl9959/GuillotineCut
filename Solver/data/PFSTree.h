@@ -131,10 +131,12 @@ public:
 
     /* 获取当前解到树根的路径 */
     void get_tree_path(Node *node, Solution &sol) const {
+        sol.clear();
         while (node != nullptr) {
             sol.push_back(node->place);
             node = node->parent;
         }
+        std::reverse(sol.begin(), sol.end());
     }
 private:
     /* 节点数目超过最大限制时调用该函数删除部分较差的节点。*/

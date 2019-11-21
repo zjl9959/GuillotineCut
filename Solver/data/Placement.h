@@ -63,13 +63,12 @@ void save_solution(const Solution &sol, const String &path);    // ±£´æ½âµ½ÎÄ¼þÖ
 
 #pragma region UsageRate
 class UsageRate {
+    friend bool operator< (const UsageRate &lhs, const UsageRate &rhs) { return lhs.value_ < rhs.value_; }
 public:
     UsageRate() : value_(invalid_value) {}
     explicit UsageRate(double rate) : value_(rate) {}
 
     bool valid() const { return abs(value_ - invalid_value) > 0.001; }
-
-    bool operator<(const UsageRate &rhs) { return this->value_ < rhs.value_; }
 
     double value() { return value_; }
 
@@ -82,6 +81,7 @@ private:
     static constexpr double invalid_value = -1.0;
     double value_;
 };
+
 #pragma endregion
 
 }

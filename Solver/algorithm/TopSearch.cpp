@@ -15,7 +15,6 @@ void TopSearch::beam_search() {
     List<Solution> branch_sols;         // 缓存分支出来的解
     while (!timer_.isTimeOut()) {
         Length best_obj = Problem::Output::MaxWidth;
-        branch_sols.clear();
         branch(cur_plate, batch, branch_sols, cfg_.mtbn);
         for (auto &psol : branch_sols) {
             batch.remove(psol);
@@ -61,6 +60,7 @@ void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &s
     }
     sols.resize(index);
     #else
+    sols.clear();
     PlateSearch solver(plate_id, nb_branch, cfg_, rand_, timer_, aux_);
     solver.beam_search(source_batch);
     solver.get_good_sols(sols);
