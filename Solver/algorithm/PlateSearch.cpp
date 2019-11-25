@@ -6,7 +6,7 @@ using namespace std;
 
 namespace szx{
 
-//#define PLATE_BRANCH_USE_PICKER   // 该宏用于控制分支时是否挑选物品。
+#define PLATE_BRANCH_USE_PICKER   // 该宏用于控制分支时是否挑选物品。
 
 #pragma region interface
 /*
@@ -24,7 +24,7 @@ void PlateSearch::beam_search(const Batch &source_batch) {
         for (auto &sol : branch_sols) {   // 每轮分出多个分支
             batch.remove(sol);
             fix_sol += sol;
-            Area obj = greedy_evaluate(cfg_.mcrn, batch, fix_sol);   // 评估
+            Area obj = greedy_evaluate(batch, fix_sol);   // 评估
             batch.add(sol);
             fix_sol -= sol;
             if (best_obj < obj) {               // 记录最好的1-cut
@@ -97,7 +97,7 @@ void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solut
 * 输入：repeat_num（贪心向前看时重复调用CutSearch数目），batch（物品栈），sol（待评估的解）。
 * 输出：返回值（该块原料上放置的物品面积和）。
 */
-Area PlateSearch::greedy_evaluate(int repeat_num, const Batch &source_batch, const Solution &fix_sol) {
+Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix_sol) {
     if (fix_sol.empty()) return -1;
     TCoord c1cpr = fix_sol.back().c1cpr;        // 当前1-cut推进情况。
     TCoord last_c1cpr = 0;                      // 记录上一轮的c1cpr值，用于优化原料尾部。

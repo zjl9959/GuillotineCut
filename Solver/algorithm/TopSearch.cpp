@@ -5,7 +5,7 @@ using namespace std;
 
 namespace szx {
 
-//#define TOP_BRANCH_USE_PICKER // 该宏用于控制分支时是否挑选物品。
+#define TOP_BRANCH_USE_PICKER // 该宏用于控制分支时是否挑选物品。
 
 void TopSearch::beam_search() {
     Solution fix_sol;                   // 已经固定的解
@@ -31,10 +31,12 @@ void TopSearch::beam_search() {
             fix_sol += best_platesol;
             batch.remove(best_platesol);
             cur_plate++;
+            cout << "\r                 \r已完成：" << (1.0 - static_cast<double>(batch.size()) / aux_.items.size()) * 100.0 << "%";
         } else {
             break;
         }
     }
+    cout << endl;
 }
 
 /*
