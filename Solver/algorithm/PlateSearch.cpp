@@ -75,7 +75,7 @@ void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solut
         if (timer_.isTimeOut())break;
         Batch sub_batch(source_batch);    // 从batch中挑选的子集
         Picker::Filter filter(aux_.param.plateWidth - start_pos);
-        Picker::Terminator terminator(cfg_.mcin);
+        Picker::Terminator terminator(cfg_.mppn);
         if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         solver.run(sub_batch);
         if (solver.best_obj().valid()) {
@@ -126,8 +126,8 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
         cur_sol -= last_cut_sol;
         branch(last_c1cpr, batch, branch_sols, true, 1);
         if (!branch_sols.empty()) {
-            Area new_res = item_area(branch_sols[0]);
             cur_sol += branch_sols[0];
+            Area new_res = item_area(cur_sol);
             if (new_res > res) {
                 res = new_res;
                 update_sol_cache(cur_sol, new_res);

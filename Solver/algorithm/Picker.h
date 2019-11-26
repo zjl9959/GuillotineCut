@@ -13,14 +13,12 @@ class Picker {  /* 使用不同的策略挑选物品 */
 public:
     class Filter { /* 针对某一个物品的筛选 */
     public:
-        Filter(TLength max_width = 0, TLength max_height = 0, TLength min_width = 0, TLength min_height = 0) :
-            max_width_(max_width), max_height_(max_height), min_width_(min_width), min_height_(min_height) {};
+        Filter(TLength max_width = 32767, TLength max_height = 32767) :
+            max_width_(max_width), max_height_(max_height) {};
         bool operator()(TID item, const Auxiliary &aux);
     private:
         TLength max_width_;
         TLength max_height_;
-        TLength min_width_;
-        TLength min_height_;
     };
     class Terminator { /* 判断选择器是否满足停止条件 */
     public:

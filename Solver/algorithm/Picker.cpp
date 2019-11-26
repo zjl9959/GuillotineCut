@@ -56,17 +56,9 @@ bool Picker::rand_pick(Batch &target_batch, Terminator terminator, Filter filter
 }
 
 bool Picker::Filter::operator()(TID item, const Auxiliary &aux) {
-    if (item == Problem::InvalidItemId)
-        return false;
-    if(min_width_ && aux.items[item].w < min_width_)
-        return false;
-    if (max_width_ && aux.items[item].w > max_width_)
-        return false;
-    if (min_height_ && aux.items[item].h < min_height_)
-        return false;
-    if (max_height_ && aux.items[item].h > max_height_)
-        return false;
-    return true;
+    return (item != Problem::InvalidItemId) && (    // item的id有效。
+        (aux.items[item].w < max_width_ && aux.items[item].h < max_height_) ||  // 不旋转item时不超尺寸。
+        (aux.items[item].h < max_width_ && aux.items[item].w < max_height_));   // 旋转item时不超尺寸。
 }
 
 bool Picker::Terminator::operator()(TID item, const Auxiliary &aux) {
