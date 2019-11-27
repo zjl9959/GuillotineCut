@@ -8,9 +8,8 @@
 #define GUILLOTINE_CUT_PROBLEM_H
 
 
-#include "../utility/Config.h"
-
-#include "../Common.h"
+#include "Solver/utility/Config.h"
+#include "Solver/utility/Common.h"
 
 
 namespace szx {

@@ -2,9 +2,9 @@
 #ifndef GUILLOTINE_CUT_BATCH_H
 #define GUILLOTINE_CUT_BATCH_H
 
-#include "../Common.h"
-#include "Problem.h"
-#include "../data/Placement.h"
+#include "Solver/utility/Common.h"
+#include "Solver/data/header/Placement.h"
+
 #include <cassert> 
 
 namespace szx {

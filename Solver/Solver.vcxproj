@@ -106,7 +106,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)Lib\gurobi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\ROADEF\GuillotineCut;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -148,7 +148,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir)Lib\gurobi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\ROADEF\GuillotineCut;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,20 +162,20 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="algorithm\CutSearch.h" />
-    <ClInclude Include="algorithm\Factory.h" />
-    <ClInclude Include="algorithm\Picker.h" />
-    <ClInclude Include="algorithm\PlateSearch.h" />
-    <ClInclude Include="algorithm\TopSearch.h" />
-    <ClInclude Include="Common.h" />
-    <ClInclude Include="data\Auxiliary.h" />
-    <ClInclude Include="data\Batch.h" />
-    <ClInclude Include="data\Configuration.h" />
+    <ClInclude Include="algorithm\header\CutSearch.h" />
+    <ClInclude Include="data\header\Factory.h" />
+    <ClInclude Include="algorithm\header\Picker.h" />
+    <ClInclude Include="algorithm\header\PlateSearch.h" />
+    <ClInclude Include="algorithm\header\TopSearch.h" />
+    <ClInclude Include="data\header\Global.h" />
+    <ClInclude Include="utility\Common.h" />
+    <ClInclude Include="data\header\Batch.h" />
+    <ClInclude Include="data\header\Environment.h" />
     <ClInclude Include="data\DFSTree.h" />
-    <ClInclude Include="data\PFSTree.h" />
-    <ClInclude Include="data\Placement.h" />
-    <ClInclude Include="data\Problem.h" />
-    <ClInclude Include="Solver.h" />
+    <ClInclude Include="data\header\PFSTree.h" />
+    <ClInclude Include="data\header\Placement.h" />
+    <ClInclude Include="data\header\Problem.h" />
+    <ClInclude Include="algorithm\header\Solver.h" />
     <ClInclude Include="unit_test\test.h" />
     <ClInclude Include="utility\Config.h" />
     <ClInclude Include="utility\CsvReader.h" />
@@ -184,15 +184,17 @@
     <ClInclude Include="utility\Utility.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="algorithm\CutSearch.cpp" />
-    <ClCompile Include="algorithm\Factory.cpp" />
-    <ClCompile Include="algorithm\Picker.cpp" />
-    <ClCompile Include="algorithm\PlateSearch.cpp" />
-    <ClCompile Include="algorithm\TopSearch.cpp" />
-    <ClCompile Include="data\Placement.cpp" />
-    <ClCompile Include="data\Problem.cpp" />
+    <ClCompile Include="algorithm\source\CutSearch.cpp" />
+    <ClCompile Include="data\source\Environment.cpp" />
+    <ClCompile Include="algorithm\source\Picker.cpp" />
+    <ClCompile Include="algorithm\source\PlateSearch.cpp" />
+    <ClCompile Include="algorithm\source\TopSearch.cpp" />
+    <ClCompile Include="data\source\Global.cpp" />
+    <ClCompile Include="data\source\PFSTree.cpp" />
+    <ClCompile Include="data\source\Placement.cpp" />
+    <ClCompile Include="data\source\Problem.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Solver.cpp" />
+    <ClCompile Include="algorithm\source\Solver.cpp" />
     <ClCompile Include="unit_test\test.cpp" />
     <ClCompile Include="utility\CsvReader.cpp" />
     <ClCompile Include="utility\Utility.cpp" />

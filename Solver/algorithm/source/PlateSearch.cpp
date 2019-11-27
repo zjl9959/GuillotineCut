@@ -1,6 +1,8 @@
-#include "PlateSearch.h"
-#include "Picker.h"
-#include "../utility/ThreadPool.h"
+#include "Solver/algorithm/header/PlateSearch.h"
+
+#include "Solver/algorithm/header/CutSearch.h"
+#include "Solver/algorithm/header/Picker.h"
+#include "Solver/data/header/Global.h"
 
 using namespace std;
 
@@ -18,9 +20,9 @@ void PlateSearch::beam_search(const Batch &source_batch) {
     Batch batch(source_batch);
     Solution best_cutsol;               // 每一轮的最优1-cut和缓存1-cut
     List<Solution> branch_sols;                 // 缓存每轮分支的解。
-    while (!timer_.isTimeOut()) {               // 每次固定一个1-cut，直到原料末尾
+    while (!gv::timer.isTimeOut()) {               // 每次固定一个1-cut，直到原料末尾
         Area best_obj = 0;
-        branch(c1cpr, batch, branch_sols, false, cfg_.mpbn);
+        branch(c1cpr, batch, branch_sols, false, gv::cfg.mpbn);
         for (auto &sol : branch_sols) {   // 每轮分出多个分支
             batch.remove(sol);
             fix_sol += sol;
@@ -68,14 +70,14 @@ void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solut
     CutSearch::Setting set(opt_tail);
     #ifdef PLATE_BRANCH_USE_PICKER
     sols.resize(nb_branch);
-    CutSearch solver(plate_, start_pos, 1, aux_, set);
-    Picker picker(source_batch, rand_, aux_);
+    CutSearch solver(plate_, start_pos, 1, set);
+    Picker picker(source_batch);
     size_t index = 0;
     for (size_t i = 0; i < nb_branch; ++i) {
-        if (timer_.isTimeOut())break;
+        if (gv::timer.isTimeOut())break;
         Batch sub_batch(source_batch);    // 从batch中挑选的子集
-        Picker::Filter filter(aux_.param.plateWidth - start_pos);
-        Picker::Terminator terminator(cfg_.mppn);
+        Picker::Filter filter(gv::param.plateWidth - start_pos);
+        Picker::Terminator terminator(gv::cfg.mppn);
         if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         solver.run(sub_batch);
         if (solver.best_obj().valid()) {
@@ -106,7 +108,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
     Solution cur_sol(fix_sol);                  // fix_sol被贪心的构造，每次固定一个1-cut。
     List<Solution> branch_sols;                 // 储存每次贪心前解时1-cut的解。
     // 贪心构造。
-    while (!timer_.isTimeOut()) {
+    while (!gv::timer.isTimeOut()) {
         branch(c1cpr, batch, branch_sols, false, 1);
         if (!branch_sols.empty()) {
             last_c1cpr = c1cpr;
@@ -121,7 +123,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
     Area res = item_area(cur_sol);
     update_sol_cache(cur_sol, res);
     // 优化最后一个1-cut。
-    if (!timer_.isTimeOut() && last_c1cpr > 0) {
+    if (!gv::timer.isTimeOut() && last_c1cpr > 0) {
         batch.add(last_cut_sol);
         cur_sol -= last_cut_sol;
         branch(last_c1cpr, batch, branch_sols, true, 1);
@@ -145,7 +147,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
 Area PlateSearch::item_area(const Solution &sol) {
     Area total_area = 0;
     for (auto it = sol.begin(); it != sol.end(); ++it)
-        total_area += aux_.item_area[it->item];
+        total_area += gv::item_area[it->item];
     return total_area;
 }
 

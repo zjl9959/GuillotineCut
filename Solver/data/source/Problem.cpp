@@ -1,10 +1,11 @@
-#include "Problem.h"
+#include "Solver/data/header/Problem.h"
 
 #include <cstdlib>
 
-#include "../utility/Utility.h"
-#include "../utility/LogSwitch.h"
-#include "../utility/CsvReader.h"
+#include "Solver/utility/Common.h"
+#include "Solver/utility/Utility.h"
+#include "Solver/utility/LogSwitch.h"
+#include "Solver/utility/CsvReader.h"
 
 
 using namespace std;

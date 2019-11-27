@@ -377,6 +377,7 @@ public:
 
 
     #if UTILITY_TIMER_CPP_STYLE
+    Timer() {}
     Timer(const Millisecond &duration, const TimePoint &st = Clock::now())
         : startTime(st), endTime(startTime + duration) {}
     #else

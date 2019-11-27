@@ -3,10 +3,9 @@
 #ifndef GUILLOTINECUT_CUTSEARCH_H
 #define GUILLOTINECUT_CUTSEARCH_H
 
-#include "../data/Auxiliary.h"
-#include "../data/Batch.h"
-#include "../data/Placement.h"
-#include "../data/Problem.h"
+#include "Solver/data/header/Batch.h"
+
+#include <mutex>
 
 namespace szx {
 
@@ -20,10 +19,7 @@ public:
             opt_tail(_opt_tail), max_iter(_max_iter), max_branch(_max_branch) {}
     };
 public:
-    CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const Auxiliary &aux, const Setting &set) :
-        defect_x_(aux.plate_defect_x[plate]), defect_y_(aux.plate_defect_y[plate]),
-        start_pos_(start_pos), items_(aux.items), item_area_(aux.item_area), param_(aux.param),
-        set_(set), tail_area_((aux.param.plateWidth - start_pos)*aux.param.plateHeight), nb_sol_cache_(nb_sol_cache) {}
+    CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const Setting &set);
     
     void run(Batch &batch);
     UsageRate best_obj() const;                         // 返回最优解的目标函数值。
@@ -50,14 +46,11 @@ private:
         }
     };
 private:
-    const Area tail_area_;                   // 剩余面积
+    const TID plate_;                       // 1-cut位于原料的id。
+    const Area tail_area_;                  // 剩余面积
     const TCoord start_pos_;                // 1-cut开始位置。
     const Setting set_;                     // 设置参数。
-    const List<Defect> &defect_x_;          // 瑕疵按照x坐标从小到大排列。
-    const List<Defect> &defect_y_;          // 瑕疵按照y坐标从小到大排列。
-    const List<Rect> &items_;               // 每个物品的长宽信息。
-    const List<Area> &item_area_;           // 每个物品的面积信息。
-    const Problem::Input::Param &param_;    // 全局参数。
+
     std::mutex sol_mutex_;                  // 更新最优解时需先获得该锁
     size_t nb_sol_cache_;                   // 缓存解的最大数量。
     std::multimap<UsageRate, Solution, UsageRateCmp> sol_cache_;   // 缓存解。

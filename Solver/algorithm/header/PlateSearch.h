@@ -4,16 +4,14 @@
 
 #include <mutex>
 
-#include "CutSearch.h"
-#include "../data/Configuration.h"
-#include "../data/Auxiliary.h"
+#include "Solver/data/header/Batch.h"
+#include "Solver/data/header/Placement.h"
 
 namespace szx{
 
 class PlateSearch {
 public:
-    PlateSearch(TID plate, size_t nb_sol_cache, Configuration &cfg, Random &rand, Timer &timer, const Auxiliary &aux) :
-		cfg_(cfg), rand_(rand), timer_(timer), plate_(plate), aux_(aux), nb_sol_cache_(nb_sol_cache) {};
+    PlateSearch(TID plate, size_t nb_sol_cache) : plate_(plate), nb_sol_cache_(nb_sol_cache) {};
 
     void beam_search(const Batch &source_batch);    // 束搜索，输入：物品栈。
     void get_best_sol(Solution &sol) const;         // 获取最优解。
@@ -29,11 +27,6 @@ private:
 private:
     TID plate_;              // 优化的原料id
     size_t nb_sol_cache_;   // 缓存解的数量
-    Configuration &cfg_;
-    Random &rand_;
-    Timer &timer_;
-    Auxiliary aux_;
-    
     std::mutex sol_mutex_;  // 更新最优解时需先获得该锁
     std::map<Area, Solution, std::greater<Area>> sol_cache_; // 缓存一些较好的解 // [zjl][TODO]:对于目标函数值相同的解该如何记录与过滤
 };

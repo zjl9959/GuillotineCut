@@ -1,9 +1,15 @@
-#include "CutSearch.h"
-#include "../data/PFSTree.h"
+#include "Solver/algorithm/header/CutSearch.h"
+
+#include "Solver/data/header/PFSTree.h"
+#include "Solver/data/header/Global.h"
 
 using namespace std;
 
 namespace szx {
+
+CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const Setting &set) :
+    plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
+    start_pos_(start_pos), set_(set), nb_sol_cache_(nb_sol_cache) {}
 
 /* 
 * 优化1-cut
@@ -49,7 +55,7 @@ void CutSearch::beam_search(Batch &batch) {
         // 限制beam_search宽度不超过set_.max_branch。
         List<ScorePair> score_pair;
         for (size_t i = 0; i < branch_nodes.size(); ++i) {
-            double score = static_cast<double>(used_item_area + item_area_[branch_nodes[i].item]) / envelope_area(branch_nodes[i]);
+            double score = static_cast<double>(used_item_area + gv::item_area[branch_nodes[i].item]) / envelope_area(branch_nodes[i]);
             score_pair.push_back(make_pair(score, i));
         }
         sort(score_pair.begin(), score_pair.end(), [](const ScorePair &lhs, const ScorePair &rhs) {return lhs.first > rhs.first; });
@@ -59,7 +65,7 @@ void CutSearch::beam_search(Batch &batch) {
         for (size_t i = 0; i < min(set_.max_branch, branch_nodes.size()); ++i) {
             Placement &place = branch_nodes[score_pair[i].second];
             fix_sol.push_back(place);
-            used_item_area += item_area_[place.item];
+            used_item_area += gv::item_area[place.item];
             batch.remove(place.item);
             UsageRate score = greedy(used_item_area, batch, fix_sol);
             if (score.valid() && best_score < score) {
@@ -67,12 +73,12 @@ void CutSearch::beam_search(Batch &batch) {
                 best_place = place;
             }
             fix_sol.pop_back();
-            used_item_area -= item_area_[place.item];
+            used_item_area -= gv::item_area[place.item];
             batch.add(place.item);
         }
         if (best_score.valid()) {
             fix_sol.push_back(best_place);
-            used_item_area += item_area_[best_place.item];
+            used_item_area += gv::item_area[best_place.item];
             batch.remove(best_place.item);
             branch_nodes.clear();
             branch(best_place, batch, branch_nodes);
@@ -111,16 +117,16 @@ void CutSearch::dfs(Batch &batch) {
         if (node.depth - pre_depth == 1) { // 向下扩展
             cur_sol.push_back(node.place);
             batch.remove(node.place.item);
-            used_item_area += item_area_[node.place.item];
+            used_item_area += gv::item_area[node.place.item];
         } else if (node.depth - pre_depth < 1) { // 向上回溯
             for (int i = static_cast<int>(cur_sol.size()) - 1; i >= node.depth; --i) {
                 batch.add(cur_sol[i].item);    // 恢复栈
-                used_item_area -= item_area_[cur_sol[i].item];  // 更新使用物品面积
+                used_item_area -= gv::item_area[cur_sol[i].item];  // 更新使用物品面积
             }
             cur_sol.erase(cur_sol.begin() + node.depth, cur_sol.end());
             cur_sol.push_back(node.place); // 更新当前解
             batch.remove(node.place.item);
-            used_item_area += item_area_[node.place.item];
+            used_item_area += gv::item_area[node.place.item];
         }
         // 分支并更新live_nodes。
         branch_nodes.clear();
@@ -133,7 +139,7 @@ void CutSearch::dfs(Batch &batch) {
             cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)used_item_area / (double)(
-                (cur_sol.back().c1cpr - start_pos_)*param_.plateHeight));
+                (cur_sol.back().c1cpr - start_pos_)*gv::param.plateHeight));
         }
         update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
         // 更新辅助变量。
@@ -152,10 +158,10 @@ void CutSearch::pfs(Batch &batch) {
     Solution cur_sol;      // 缓存当前解
     List<Placement> branch_nodes;   // 缓存每次分支扩展出来的节点。
     branch_nodes.reserve(100);
-    PfsTree tree(item_area_);
+    PfsTree tree;
     branch(Placement(start_pos_), batch, branch_nodes);
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-        tree.add(*it, static_cast<double>(item_area_[it->item]) /
+        tree.add(*it, static_cast<double>(gv::item_area[it->item]) /
             static_cast<double>(envelope_area(*it)));
     }
     while (!tree.empty() && cur_iter < set_.max_iter) {
@@ -165,7 +171,7 @@ void CutSearch::pfs(Batch &batch) {
         branch_nodes.clear();
         branch(node->place, batch, branch_nodes);
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-            tree.add(node, *it, static_cast<double>(node->area + item_area_[it->item]) /
+            tree.add(node, *it, static_cast<double>(node->area + gv::item_area[it->item]) /
                 static_cast<double>(envelope_area(*it)));
         }
         // 计算目标函数值。
@@ -173,7 +179,7 @@ void CutSearch::pfs(Batch &batch) {
             cur_obj = UsageRate((double)node->area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)node->area / (double)(
-                (node->place.c1cpr - start_pos_)*param_.plateHeight));
+                (node->place.c1cpr - start_pos_)*gv::param.plateHeight));
         }
         // 更新目标函数值。
         tree.get_tree_path(node, cur_sol);
@@ -202,7 +208,7 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
         cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
     } else {
         cur_obj = UsageRate((double)used_item_area / (double)(
-            (cur_node.c1cpr - start_pos_)*param_.plateHeight));
+            (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
     }
     update_sol_cache(cur_obj, fix_sol);
     Solution greedy_sol(fix_sol);    // 储存贪心构造的解。
@@ -212,7 +218,7 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
         // 挑选并记录最好的解。
         UsageRate best_node_score;
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-            UsageRate this_node_score(static_cast<double>(used_item_area + item_area_[it->item]) /
+            UsageRate this_node_score(static_cast<double>(used_item_area + gv::item_area[it->item]) /
                 static_cast<double>(envelope_area(*it)));
             if (best_node_score < this_node_score) {
                 best_node_score = this_node_score;
@@ -220,13 +226,13 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
             }
         }
         greedy_sol.push_back(cur_node);
-        used_item_area += item_area_[cur_node.item];
+        used_item_area += gv::item_area[cur_node.item];
         // 计算目标函数值并检查更新最优解。
         if (set_.opt_tail) {
             cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)used_item_area / (double)(
-                (cur_node.c1cpr - start_pos_)*param_.plateHeight));
+                (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
         }
         update_sol_cache(cur_obj, greedy_sol);
         // 更新batch并再次分支。
@@ -256,10 +262,10 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                 itemId = batch.get(i);
                 if (itemId == Problem::InvalidItemId)continue;
                 // pretreatment.
-                Rect item = items_[itemId];
+                Rect item = gv::items[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
-                if (old.c1cpr + item.w > param_.plateWidth)continue;
+                if (old.c1cpr + item.w > gv::param.plateWidth)continue;
                 // TODO: precheck if item exceed plate bound to speed up branch.
 
 				// 瑕疵冲突, slip_r：瑕疵右边界到左侧cut的距离, slip_u：瑕疵上边界到下侧cut的距离
@@ -303,7 +309,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                 itemId = batch.get(i);
                 if (itemId == Problem::InvalidItemId)continue;
                 // pretreatment.
-                Rect item = items_[itemId];
+                Rect item = gv::items[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
@@ -321,7 +327,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                     }
                 }
                 if (slip_r > old.c1cpr) {
-                    slip_u = sliptoDefectUp(old.c1cpr, old.c2cpu - item.h > param_.minWasteHeight ?
+                    slip_u = sliptoDefectUp(old.c1cpr, old.c2cpu - item.h > gv::param.minWasteHeight ?
                         old.c2cpu - item.h : 0, item.w);    // [zjl][TODO]:consider more.
                     if (slip_u != -1) {
                         Placement node_b2(old, itemId, rotate);
@@ -375,13 +381,13 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                 itemId = batch.get(i);
                 if (itemId == Problem::InvalidItemId)continue;
                 // pretreatment.
-                Rect item = items_[itemId];
+                Rect item = gv::items[itemId];
                 if (item.w == item.h && rotate)continue; // square item no need to rotate.
                 if (rotate) swap(item.w, item.h);
                 // if item confilct, slip_r to place item in the defect right, slip_u to place item in the defect up.
                 TLength slip_r = 0, slip_u = 0;
                 // place item in the up of current c4cp.
-                TLength last_item_w = old.getFlagBit(Placement::ROTATE) ? items_[old.item].h : items_[old.item].w;
+                TLength last_item_w = old.getFlagBit(Placement::ROTATE) ? gv::items[old.item].h : gv::items[old.item].w;
                 if (old.c2cpu > old.c4cp &&
                     last_item_w == item.w &&
                     !old.getFlagBit(Placement::DEFECT_U) &&
@@ -412,7 +418,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                         }
                     }
                     if (slip_r > old.c3cp) {
-                        slip_u = sliptoDefectUp(old.c3cp, old.c2cpu - item.h > old.c2cpb + param_.minWasteHeight ?
+                        slip_u = sliptoDefectUp(old.c3cp, old.c2cpu - item.h > old.c2cpb + gv::param.minWasteHeight ?
                             old.c2cpu - item.h : old.c2cpb, item.w);
                         if (slip_u != -1) {
                             if (!c2cpu_locked || (c2cpu_locked && slip_u + item.h <= old.c2cpu)) {
@@ -508,29 +514,29 @@ bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
 
 #pragma region minWasteChecker
     // check if item right side and c1cpr interval less than minWasteWidth.
-    if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < param_.minWasteWidth) {
-        node.c1cpr += param_.minWasteWidth; // move c1cpr right to staisfy constraint.
+    if (node.c3cp != node.c1cpr && node.c1cpr - node.c3cp < gv::param.minWasteWidth) {
+        node.c1cpr += gv::param.minWasteWidth; // move c1cpr right to staisfy constraint.
     }
     // check if new c1cpr and old c1cpr interval less than minWasteWidth.
-    if (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < param_.minWasteWidth) {
-        node.c1cpr += param_.minWasteWidth;
+    if (node.c1cpr != old.c1cpr && node.c1cpr - old.c1cpr < gv::param.minWasteWidth) {
+        node.c1cpr += gv::param.minWasteWidth;
     }
     // check if item up side and c2cpu interval less than minWasteHeight.
-    if (node.c4cp != node.c2cpu && node.c2cpu - node.c4cp < param_.minWasteHeight) {
+    if (node.c4cp != node.c2cpu && node.c2cpu - node.c4cp < gv::param.minWasteHeight) {
         if (node.getFlagBit(Placement::LOCKC2)) { // c2cpu cant's move in this case.
             return false;
         } else {
-            node.c2cpu += param_.minWasteHeight; // move c2cpu up to satisfy constraint.
+            node.c2cpu += gv::param.minWasteHeight; // move c2cpu up to satisfy constraint.
             if (node.getFlagBit(Placement::DEFECT_U))
                 node.c4cp = node.c2cpu;  // 物品在上，废料在下，防止在物品上方产生废料
         }
     }
     // check if new c2cpu and old c2cpu interval less than minWasteHeight
-    if (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < param_.minWasteHeight) {
+    if (node.c2cpu != old.c2cpu && node.c2cpu - old.c2cpu < gv::param.minWasteHeight) {
         if (node.getFlagBit(Placement::LOCKC2)) {
             return false;
         } else {
-            node.c2cpu += param_.minWasteHeight;
+            node.c2cpu += gv::param.minWasteHeight;
             if (node.getFlagBit(Placement::DEFECT_U))
                 node.c4cp = node.c2cpu;
         }
@@ -544,38 +550,38 @@ bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
 
 #pragma region sideChecker
     // check if cut1 exceed stock right side.
-    if (node.c1cpr > param_.plateWidth) {
+    if (node.c1cpr > gv::param.plateWidth) {
         return false;
     }
     // check if cut2 exceed stock up side.
-    if (node.c2cpu > param_.plateHeight) {
+    if (node.c2cpu > gv::param.plateHeight) {
         return false;
     }
 	// check if cut1 and stock right side interval less than minimum waste width.
-	if (param_.plateWidth != node.c1cpr &&
-		param_.plateWidth - node.c1cpr < param_.minWasteWidth) {
+	if (gv::param.plateWidth != node.c1cpr &&
+        gv::param.plateWidth - node.c1cpr < gv::param.minWasteWidth) {
 		return false;
 	}
 	// check if cut2 and stock up side interval less than minimum waste height.
-	if (param_.plateHeight != node.c2cpu &&
-		param_.plateHeight - node.c2cpu < param_.minWasteHeight) {
+	if (gv::param.plateHeight != node.c2cpu &&
+        gv::param.plateHeight - node.c2cpu < gv::param.minWasteHeight) {
 		return false;
 	}
 #pragma endregion sideChecker
 
 #pragma region cutWidthAndHeightChecker
     // check if maximum cut1 width not staisfy.
-    if (node.c1cpr - node.c1cpl > param_.maxL1Width) {
+    if (node.c1cpr - node.c1cpl > gv::param.maxL1Width) {
         return false;
     }
     // check if minimum cut1 width not staisfy.
     if (node.getFlagBit(Placement::NEW_L1) && old.item != Problem::InvalidItemId &&
-        old.c1cpr - old.c1cpl < param_.minL1Width) {
+        old.c1cpr - old.c1cpl < gv::param.minL1Width) {
         return false;
     }
     // check if minimum cut2 height not staisfy.
     if (node.getFlagBit(Placement::NEW_L2) && old.item != Problem::InvalidItemId &&
-        old.c2cpu - old.c2cpb < param_.minL2Height) {
+        old.c2cpu - old.c2cpb < gv::param.minL2Height) {
         return false;
     }
 #pragma endregion cutWidthAndHeightChecker
@@ -586,21 +592,21 @@ bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
 // if item or 1-cut conflict with defect, move item/1-cut to the defect right side.
 TCoord CutSearch::sliptoDefectRight(TCoord x, TCoord y, TLength w, TLength h) const {
     TCoord slip = x;
-    for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
+    for (auto it = gv::defect_x[plate_].begin(); it != gv::defect_x[plate_].end(); ++it) {
         if (it->x >= slip + w) {
             break; // defect in item right.
         }
         // 物品不在瑕疵的右、上、下侧，冲突
         if (!(slip - it->x >= it->w || y - it->y >= it->h || it->y - y >= h)) {
             slip = it->x + it->w;
-            if (slip - x < param_.minWasteWidth)
-                slip = x + param_.minWasteWidth;
+            if (slip - x < gv::param.minWasteWidth)
+                slip = x + gv::param.minWasteWidth;
         }
         // 检查c1cpr & c3cp(slip+w)是否冲突
         if (it->x < slip + w && it->x + it->w > slip + w) {
             slip = it->x + it->w - w;
-            if (slip - x < param_.minWasteWidth)
-                slip = x + param_.minWasteWidth;
+            if (slip - x < gv::param.minWasteWidth)
+                slip = x + gv::param.minWasteWidth;
         }
     }
     return slip;
@@ -609,7 +615,7 @@ TCoord CutSearch::sliptoDefectRight(TCoord x, TCoord y, TLength w, TLength h) co
 // if area(x, y, w, plateHeight-y) has just one defect, slip item to defect up, or return -1.
 TCoord CutSearch::sliptoDefectUp(TCoord x, TCoord y, TLength w) const {
     TCoord res = -1;
-    for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
+    for (auto it = gv::defect_x[plate_].begin(); it != gv::defect_x[plate_].end(); ++it) {
         if (it->x >= x + w) { // 瑕疵在右侧
             break;
         }
@@ -621,13 +627,13 @@ TCoord CutSearch::sliptoDefectUp(TCoord x, TCoord y, TLength w) const {
             }
         }
     }
-    return res != -1 && res - y < param_.minWasteHeight ? y + param_.minWasteHeight : res;
+    return res != -1 && res - y < gv::param.minWasteHeight ? y + gv::param.minWasteHeight : res;
 }
 
 // check if 1-cut through defect, return new 1-cut x coord. [not consider minwasteWidth constraint]
 TCoord CutSearch::cut1ThroughDefect(TCoord x) const {
     TCoord res = x;
-    for (auto it = defect_x_.begin(); it != defect_x_.end(); ++it) {
+    for (auto it = gv::defect_x[plate_].begin(); it != gv::defect_x[plate_].end(); ++it) {
         if (it->x >= res) break;
         if (it->x + it->w > res) {   // 1-cut cut through defect.
             res = it->x + it->w;
@@ -639,12 +645,12 @@ TCoord CutSearch::cut1ThroughDefect(TCoord x) const {
 // check if 2-cut through defect, return new 2-cut y coord.
 TCoord CutSearch::cut2ThroughDefect(TCoord y) const {
     TCoord res = y;
-    for (auto it = defect_y_.begin(); it != defect_y_.end(); ++it) {
+    for (auto it = gv::defect_y[plate_].begin(); it != gv::defect_y[plate_].end(); ++it) {
         if (it->y >= res)break;
         if (it->y + it->h > res) {    // 2-cut through defect.
             res = it->y + it->h;
-            if (res - y < param_.minWasteHeight)
-                res = y + param_.minWasteHeight;
+            if (res - y < gv::param.minWasteHeight)
+                res = y + gv::param.minWasteHeight;
         }
     }
     return res;
@@ -652,7 +658,7 @@ TCoord CutSearch::cut2ThroughDefect(TCoord y) const {
 
 /* 获取当前放置物品和该1-cut形成的包络面积。 */
 inline Area CutSearch::envelope_area(const Placement &place) const {
-    return (place.c1cpl - start_pos_)*param_.plateHeight +
+    return (place.c1cpl - start_pos_)*gv::param.plateHeight +
         place.c2cpb*(place.c1cpr - place.c1cpl) +
         (place.c3cp - place.c1cpl)*(place.c2cpu - place.c2cpb);
 }

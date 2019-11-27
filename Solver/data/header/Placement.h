@@ -2,8 +2,9 @@
 #ifndef GUILLOTINE_CUT_PLACEMENT_H
 #define GUILLOTINE_CUT_PLACEMENT_H
 
-#include "../Common.h"
-#include "Problem.h"
+#include "Solver/data/header/Problem.h"
+
+#include "Solver/utility/Common.h"
 
 namespace szx {
 

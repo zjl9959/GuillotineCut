@@ -21,9 +21,6 @@
     <Filter Include="Solver\data">
       <UniqueIdentifier>{fc0dff1a-34fe-47f8-ad3c-607437227b7a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Solver\solver">
-      <UniqueIdentifier>{9fac281a-1c8e-460c-b663-ca18f817427a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Solver\algorithm\header">
       <UniqueIdentifier>{2b0bddef-16ed-4019-b3ce-06b0afdc3f49}</UniqueIdentifier>
     </Filter>
@@ -33,6 +30,12 @@
     <Filter Include="Solver\unit_test">
       <UniqueIdentifier>{3a65a7d6-c497-4bde-a01c-bc9534f4e66d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Solver\data\header">
+      <UniqueIdentifier>{72daf757-32d6-4220-b618-366a85d038b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Solver\data\source">
+      <UniqueIdentifier>{cf6ab724-958c-4f5e-91a0-c5fc01606309}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Simulator.h">
@@ -40,21 +43,6 @@
     </ClInclude>
     <ClInclude Include="ThreadPool.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\data\Auxiliary.h">
-      <Filter>Solver\data</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\data\Batch.h">
-      <Filter>Solver\data</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\data\Configuration.h">
-      <Filter>Solver\data</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\data\Placement.h">
-      <Filter>Solver\data</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\data\Problem.h">
-      <Filter>Solver\data</Filter>
     </ClInclude>
     <ClInclude Include="..\Solver\utility\Config.h">
       <Filter>Solver\utility</Filter>
@@ -71,32 +59,44 @@
     <ClInclude Include="..\Solver\utility\Utility.h">
       <Filter>Solver\utility</Filter>
     </ClInclude>
-    <ClInclude Include="..\Solver\Common.h">
-      <Filter>Solver\solver</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\Solver.h">
-      <Filter>Solver\solver</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\algorithm\CutSearch.h">
-      <Filter>Solver\algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\algorithm\Factory.h">
-      <Filter>Solver\algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\algorithm\Picker.h">
-      <Filter>Solver\algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\algorithm\PlateSearch.h">
-      <Filter>Solver\algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Solver\algorithm\TopSearch.h">
-      <Filter>Solver\algorithm\header</Filter>
-    </ClInclude>
     <ClInclude Include="..\Solver\unit_test\test.h">
       <Filter>Solver\unit_test</Filter>
     </ClInclude>
-    <ClInclude Include="..\Solver\data\PFSTree.h">
-      <Filter>Solver\data</Filter>
+    <ClInclude Include="..\Solver\algorithm\header\CutSearch.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\algorithm\header\Picker.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\algorithm\header\PlateSearch.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\algorithm\header\Solver.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\algorithm\header\TopSearch.h">
+      <Filter>Solver\algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\utility\Common.h">
+      <Filter>Solver\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\data\header\Batch.h">
+      <Filter>Solver\data\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\data\header\Environment.h">
+      <Filter>Solver\data\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\data\header\Global.h">
+      <Filter>Solver\data\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\data\header\PFSTree.h">
+      <Filter>Solver\data\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\data\header\Placement.h">
+      <Filter>Solver\data\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Solver\data\header\Problem.h">
+      <Filter>Solver\data\header</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -106,38 +106,44 @@
     <ClCompile Include="Simulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\Solver\data\Problem.cpp">
-      <Filter>Solver\data</Filter>
-    </ClCompile>
     <ClCompile Include="..\Solver\utility\CsvReader.cpp">
       <Filter>Solver\utility</Filter>
     </ClCompile>
     <ClCompile Include="..\Solver\utility\Utility.cpp">
       <Filter>Solver\utility</Filter>
     </ClCompile>
-    <ClCompile Include="..\Solver\Solver.cpp">
-      <Filter>Solver\solver</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\algorithm\CutSearch.cpp">
-      <Filter>Solver\algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\algorithm\Factory.cpp">
-      <Filter>Solver\algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\algorithm\Picker.cpp">
-      <Filter>Solver\algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\algorithm\PlateSearch.cpp">
-      <Filter>Solver\algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\algorithm\TopSearch.cpp">
-      <Filter>Solver\algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Solver\data\Placement.cpp">
-      <Filter>Solver\data</Filter>
-    </ClCompile>
     <ClCompile Include="..\Solver\unit_test\test.cpp">
       <Filter>Solver\unit_test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\algorithm\source\CutSearch.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\algorithm\source\Picker.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\algorithm\source\PlateSearch.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\algorithm\source\Solver.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\algorithm\source\TopSearch.cpp">
+      <Filter>Solver\algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\data\source\Global.cpp">
+      <Filter>Solver\data\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\data\source\Placement.cpp">
+      <Filter>Solver\data\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\data\source\Problem.cpp">
+      <Filter>Solver\data\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\data\source\Environment.cpp">
+      <Filter>Solver\data\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\data\source\PFSTree.cpp">
+      <Filter>Solver\data\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

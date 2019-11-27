@@ -12,7 +12,8 @@
 #include <string>
 #include <vector>
 
-#include "../Solver/Solver.h"
+#include "Solver/algorithm/header/Solver.h"
+#include "Solver/data/header/Environment.h"
 
 
 namespace szx {

@@ -25,18 +25,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="data\Placement.h">
-      <Filter>data</Filter>
-    </ClInclude>
-    <ClInclude Include="data\Batch.h">
-      <Filter>data</Filter>
-    </ClInclude>
-    <ClInclude Include="data\Auxiliary.h">
-      <Filter>data</Filter>
-    </ClInclude>
-    <ClInclude Include="Common.h">
-      <Filter>solver</Filter>
-    </ClInclude>
     <ClInclude Include="utility\Config.h">
       <Filter>utility</Filter>
     </ClInclude>
@@ -52,35 +40,45 @@
     <ClInclude Include="utility\Utility.h">
       <Filter>utility</Filter>
     </ClInclude>
-    <ClInclude Include="Solver.h">
-      <Filter>solver</Filter>
-    </ClInclude>
-    <ClInclude Include="data\Problem.h">
-      <Filter>data</Filter>
-    </ClInclude>
-    <ClInclude Include="data\Configuration.h">
-      <Filter>data</Filter>
-    </ClInclude>
-    <ClInclude Include="algorithm\CutSearch.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="algorithm\Factory.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="algorithm\Picker.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="algorithm\PlateSearch.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
-    <ClInclude Include="algorithm\TopSearch.h">
-      <Filter>algorithm\header</Filter>
-    </ClInclude>
     <ClInclude Include="unit_test\test.h">
       <Filter>unit_test</Filter>
     </ClInclude>
-    <ClInclude Include="data\PFSTree.h" />
     <ClInclude Include="data\DFSTree.h" />
+    <ClInclude Include="algorithm\header\CutSearch.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\header\Picker.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\header\PlateSearch.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\header\Solver.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+    <ClInclude Include="algorithm\header\TopSearch.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="data\header\Batch.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="data\header\Factory.h">
+      <Filter>algorithm\header</Filter>
+    </ClInclude>
+    <ClInclude Include="data\header\PFSTree.h" />
+    <ClInclude Include="data\header\Placement.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="data\header\Problem.h">
+      <Filter>data</Filter>
+    </ClInclude>
+    <ClInclude Include="utility\Common.h">
+      <Filter>solver</Filter>
+    </ClInclude>
+    <ClInclude Include="data\header\Global.h" />
+    <ClInclude Include="data\header\Environment.h">
+      <Filter>data</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -92,32 +90,38 @@
     <ClCompile Include="utility\Utility.cpp">
       <Filter>utility</Filter>
     </ClCompile>
-    <ClCompile Include="Solver.cpp">
-      <Filter>solver</Filter>
-    </ClCompile>
-    <ClCompile Include="data\Problem.cpp">
-      <Filter>data</Filter>
-    </ClCompile>
-    <ClCompile Include="algorithm\CutSearch.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="algorithm\Factory.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="algorithm\Picker.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="algorithm\PlateSearch.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="algorithm\TopSearch.cpp">
-      <Filter>algorithm\source</Filter>
-    </ClCompile>
-    <ClCompile Include="data\Placement.cpp">
-      <Filter>data</Filter>
-    </ClCompile>
     <ClCompile Include="unit_test\test.cpp">
       <Filter>unit_test</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\source\CutSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\source\Picker.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\source\PlateSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\source\Solver.cpp">
+      <Filter>solver</Filter>
+    </ClCompile>
+    <ClCompile Include="algorithm\source\TopSearch.cpp">
+      <Filter>algorithm\source</Filter>
+    </ClCompile>
+    <ClCompile Include="data\source\Placement.cpp">
+      <Filter>data</Filter>
+    </ClCompile>
+    <ClCompile Include="data\source\Problem.cpp">
+      <Filter>data</Filter>
+    </ClCompile>
+    <ClCompile Include="data\source\Global.cpp">
+      <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="data\source\PFSTree.cpp">
+      <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="data\source\Environment.cpp">
+      <Filter>utility</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

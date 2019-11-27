@@ -3,11 +3,13 @@
 #include <iostream>
 #include <chrono>
 
-#include "../data/Problem.h"
-#include "../algorithm/Factory.h"
-#include "../algorithm/TopSearch.h"
-#include "../data/PFSTree.h"
-#include "../utility/Utility.h"
+#include "Solver/data/header/Problem.h"
+#include "Solver/data/header/Global.h"
+#include "Solver/data/header/PFSTree.h"
+#include "Solver/algorithm/header/TopSearch.h"
+#include "Solver/algorithm/header/PlateSearch.h"
+#include "Solver/algorithm/header/CutSearch.h"
+#include "Solver/utility/Utility.h"
 
 using namespace szx;
 using namespace std;
@@ -15,7 +17,7 @@ using namespace std;
 namespace unit_test {
 
 /* 辅助测试CutSearch的run接口 */
-Solution test_CutSearch(Auxiliary &aux) {
+Solution test_CutSearch() {
     // 该部分需要手动设置参数
     TID plate = 0;
     TCoord start_pos = 1239;
@@ -26,7 +28,7 @@ Solution test_CutSearch(Auxiliary &aux) {
     stacks.push_back(items);
     Batch batch(stacks);
     CutSearch::Setting set;
-    CutSearch solver(plate, 1, start_pos, aux, set);
+    CutSearch solver(plate, 1, start_pos, set);
     solver.run(batch);
 	std::cout << solver.best_obj().str() << std::endl;
     Solution sol;
@@ -35,7 +37,7 @@ Solution test_CutSearch(Auxiliary &aux) {
 }
 
 /* 测试PlateSearch的beam_search接口 */
-Solution test_PlateSearch(Timer &timer, Random &rand, Configuration &cfg, Auxiliary &aux) {
+Solution test_PlateSearch() {
     // 手动设置参数
     TID plate = 1;
     List<TID> items = {78, 57, 58, 36, 16, 55, 41, 37, 42, 38, 43, 39, 6, 90, 67, 59, 7, 60, 91, 92, 93};
@@ -44,7 +46,7 @@ Solution test_PlateSearch(Timer &timer, Random &rand, Configuration &cfg, Auxili
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
-    PlateSearch solver(plate, 1, cfg, rand, timer, aux);
+    PlateSearch solver(plate, 1);
     solver.beam_search(batch);
     Solution sol;
     solver.get_best_sol(sol);

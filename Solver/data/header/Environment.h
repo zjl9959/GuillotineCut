@@ -1,38 +1,31 @@
 #pragma once
-#ifndef GUILLOTINE_CUT_SOLVER_H
-#define GUILLOTINE_CUT_SOLVER_H
+#ifndef GUILLOTINE_CUT_CONFIGURE_H
+#define GUILLOTINE_CUT_CONFIGURE_H
 
-#include "Common.h"
-#include "utility/Utility.h"
-#include "data/Problem.h"
-#include "data/Auxiliary.h"
-#include "data/Configuration.h"
+#include <sstream>
+
+#include "Solver/utility/Common.h"
+#include "Solver/utility/Utility.h"
 
 namespace szx {
 
-// commmand line interface.
-struct Cli {
-    static constexpr int MaxArgLen = 256;
-    static constexpr int MaxArgNum = 32;
+struct Configuration {
+    size_t mtbn; // TopSearch最大分支数目
+    size_t mpbn; // PlateSearch最大分支数目
+    size_t mppn; // PlateSearch为每个1-cut最大挑选物品数目
+    size_t mcbn; // CutSearch::beam_search最大分支数目
 
-    static String InstancePathOption() { return "-p"; }
-    static String SolutionPathOption() { return "-o"; }
-    static String RandSeedOption() { return "-s"; }
-    static String TimeoutOption() { return "-t"; }
-    static String MaxIterOption() { return "-i"; }
-    static String JobNumOption() { return "-j"; }
-    static String RunIdOption() { return "-rid"; }
-    static String EnvironmentPathOption() { return "-env"; }
-    static String ConfigPathOption() { return "-cfg"; }
-    static String LogPathOption() { return "-log"; }
+    Configuration(size_t _mtbn = 64, size_t _mpbn = 64, size_t _mppn = 16, size_t _mcbn = 30) :
+        mtbn(_mtbn), mpbn(_mpbn), mppn(_mppn), mcbn(_mcbn) {}
 
-    static String AuthorNameSwitch() { return "-name"; }
-    static String HelpSwitch() { return "-h"; }
-
-    static String AuthorName() { return "J29"; }
-
-    // a dummy main function.
-    static int run(int argc, char *argv[]);
+    String toBriefStr() const {
+        std::ostringstream os;
+        os << "mtbn=" << mtbn
+            << ";mpbn=" << mpbn
+            << ";mppn=" << mppn
+            << ";mcbn=" << mcbn;
+        return os.str();
+    }
 };
 
 // describe the requirements to the input and output data interface.
@@ -103,26 +96,6 @@ struct Environment {
     String localTime;
 };
 
-class Solver {
-public:
-    Solver(const Problem::Input &inputData, const Environment &environment, const Configuration &config)
-        : input(inputData), env(environment), cfg(config), rand(environment.randSeed),
-        timer(std::chrono::milliseconds(environment.msTimeout)) {}
-    void run();
-protected:
-    bool check(Length &checkerObj) const;
-    void record() const;
-private:
-    Problem::Input input;
-    Environment env;
-    Configuration cfg;
-
-    Problem::Output output;
-    Random rand;
-    Timer timer;
-    Auxiliary aux;
-};
-
 }
 
-#endif // !GUILLOTINE_CUT_SOLVER_H
+#endif
