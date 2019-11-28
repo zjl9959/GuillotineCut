@@ -87,17 +87,21 @@ void Solver::run() {
     init_global_variables(input, env);
     // 调用topSearch进行求解
     TopSearch solver;
-    Solution best_sol;
     solver.beam_search();
-    solver.get_best_sol(best_sol);
-    output = createOutput(best_sol);
-    // 输出解
-    output.save(env.solutionPath());
-    #if SZX_DEBUG
-    save_solution(best_sol, "tmp/solution.csv");
-    output.save(env.solutionPathWithTime());
-    record();
-    #endif
+    if (solver.best_obj() != Problem::Output::MaxWidth) {
+        Solution best_sol;
+        solver.get_best_sol(best_sol);
+        output = createOutput(best_sol);
+        // 输出解
+        output.save(env.solutionPath());
+        #if SZX_DEBUG
+        save_solution(best_sol, "tmp/solution.csv");
+        output.save(env.solutionPathWithTime());
+        record();
+        #endif
+    } else {
+        Log(Log::Error) << "[ERROR]Can't find a complete solution." << endl;
+    }
 }
 
 void Solver::record() const {

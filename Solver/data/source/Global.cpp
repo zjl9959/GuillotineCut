@@ -29,7 +29,9 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
     gv::rand = Random(env.randSeed);
     gv::timer = Timer(std::chrono::milliseconds(env.msTimeout));
     constexpr TID InvalidItemId = Problem::InvalidItemId;
+    gv::items.clear();
     gv::items.reserve(input.batch.size());
+    gv::stacks.clear();
     gv::stacks.reserve(input.batch.size());
     gv::idMap = IdMap();
     // 将分配物品到每一个栈，并将其放入栈中
@@ -49,7 +51,9 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
     for (auto s = gv::stacks.begin(); s != gv::stacks.end(); ++s) {
         s->erase(remove(s->begin(), s->end(), InvalidItemId), s->end());
     }
+    gv::defect_x.clear();
     gv::defect_x.resize(Problem::MaxPlateNum);
+    gv::defect_y.clear();
     gv::defect_y.resize(Problem::MaxPlateNum);
     for (TID p = 0; p < Problem::MaxPlateNum; ++p) { gv::idMap.plate.toConsecutiveId(p); }
     // 将瑕疵映射到每块原料上
@@ -61,6 +65,7 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
         if (gv::defect_y.size() <= plateId) { gv::defect_y.resize(plateId + 1); }
         gv::defect_y[plateId].push_back(Defect(defectId, d->x, d->y, d->width, d->height));
     }
+    gv::item_area.clear();
     gv::item_area.reserve(gv::items.size());
     // 计算每块物品面积
     for (int i = 0; i < gv::items.size(); ++i) {
