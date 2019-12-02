@@ -19,10 +19,9 @@ public:
     void get_best_sol(Solution &sol) { sol = best_sol_; }
     /* 获取最优解使用原料的长度 */
     Length best_obj() { return best_obj_; }
-protected:
+private:
     void branch(ID plate_id, const Batch &source_batch, List<Solution> &sols, size_t nb_branch = 1);
     Length greedy_evaluate(ID plate_id, const Batch &source_batch, const Solution &fix_sol);
-private:
     Length get_obj(const Solution &sol);
     void update_best_sol(const Solution &sol, Length obj = -1);
 private:

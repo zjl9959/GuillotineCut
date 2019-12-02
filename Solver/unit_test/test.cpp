@@ -27,8 +27,7 @@ Solution test_CutSearch() {
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
-    CutSearch::Setting set;
-    CutSearch solver(plate, 1, start_pos, set);
+    CutSearch solver(plate, 1, start_pos, CutSearch::CUT);
     solver.run(batch);
 	std::cout << solver.best_obj().str() << std::endl;
     Solution sol;

@@ -7,17 +7,19 @@ using namespace std;
 
 namespace szx {
 
-CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const Setting &set) :
+CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const BRANCH_MODE mode) :
     plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
-    start_pos_(start_pos), set_(set), nb_sol_cache_(nb_sol_cache) {}
+    start_pos_(start_pos), mode_(mode), nb_sol_cache_(nb_sol_cache) {}
 
-/* 
+/*
 * 优化1-cut
 * 输入：batch（物品栈），opt_tail（是否优化原料末尾）
 * 输出：sol（该1-cut的最优解），返回：1-cut对应利用率
 */
 void CutSearch::run(Batch &batch) {
     beam_search(batch);
+    //pfs(batch);
+    //dfs(batch);
 }
 
 UsageRate CutSearch::best_obj() const {
@@ -62,7 +64,7 @@ void CutSearch::beam_search(Batch &batch) {
         // 贪心的估计并更新
         UsageRate best_score;
         Placement best_place;
-        for (size_t i = 0; i < min(set_.max_branch, branch_nodes.size()); ++i) {
+        for (size_t i = 0; i < min(gv::cfg.mcbn, branch_nodes.size()); ++i) {
             Placement &place = branch_nodes[score_pair[i].second];
             fix_sol.push_back(place);
             used_item_area += gv::item_area[place.item];
@@ -99,7 +101,6 @@ struct DFSTreeNode {
 
 /* 深度优先搜索 */
 void CutSearch::dfs(Batch &batch) {
-    size_t cur_iter = 0;   // 当前探索节点数目
     Depth pre_depth = -1;    // 上一个节点深度
     Area used_item_area = 0; // 已使用物品面积
     UsageRate cur_obj;  // 当前解利用率
@@ -111,9 +112,10 @@ void CutSearch::dfs(Batch &batch) {
     for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
         live_nodes.push_back(DFSTreeNode(0, *it));
     }
-    while (live_nodes.size() && cur_iter < set_.max_iter) {
+    while (live_nodes.size()) { // 对搜索空间进行完整的搜索
         DFSTreeNode node = live_nodes.back();
         live_nodes.pop_back();
+        // [zjl][TOOD]:添加剪枝部分代码。
         if (node.depth - pre_depth == 1) { // 向下扩展
             cur_sol.push_back(node.place);
             batch.remove(node.place.item);
@@ -135,7 +137,7 @@ void CutSearch::dfs(Batch &batch) {
             live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
         }
         // 计算当前解的目标函数值。
-        if (set_.opt_tail) {
+        if (mode_ == PLATE) {
             cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)used_item_area / (double)(
@@ -144,7 +146,6 @@ void CutSearch::dfs(Batch &batch) {
         update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
         // 更新辅助变量。
         pre_depth = node.depth;
-        ++cur_iter;
     }
 }
 #pragma endregion
@@ -153,6 +154,7 @@ void CutSearch::dfs(Batch &batch) {
 /* 优度优先搜索 */
 void CutSearch::pfs(Batch &batch) {
     size_t cur_iter = 0;   // 当前扩展节点次数。
+    constexpr size_t max_iter = 10000000;  // 优度优先搜索的最大扩展节点数目，需要手动调整。
     PfsTree::Node *last_node = nullptr;
     UsageRate cur_obj;     // 当前解利用率。
     Solution cur_sol;      // 缓存当前解
@@ -164,8 +166,9 @@ void CutSearch::pfs(Batch &batch) {
         tree.add(*it, static_cast<double>(gv::item_area[it->item]) /
             static_cast<double>(envelope_area(*it)));
     }
-    while (!tree.empty() && cur_iter < set_.max_iter) {
+    while (!tree.empty() && cur_iter < max_iter) {
         PfsTree::Node *node = tree.get();
+        // [zjl][TODO]:添加剪枝部分代码。
         tree.update_batch(last_node, node, batch);
         // 分支并更新tree。
         branch_nodes.clear();
@@ -175,7 +178,7 @@ void CutSearch::pfs(Batch &batch) {
                 static_cast<double>(envelope_area(*it)));
         }
         // 计算目标函数值。
-        if (set_.opt_tail) {
+        if (mode_ == PLATE) {
             cur_obj = UsageRate((double)node->area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)node->area / (double)(
@@ -204,7 +207,7 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
     UsageRate cur_obj;  // fix_sol + greedy_sol的目标函数值。
     Placement cur_node = fix_sol.back();    // 下一次分支的起点。
     // 检查当前解是否需要更新。
-    if (set_.opt_tail) {
+    if (mode_ == PLATE) {
         cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
     } else {
         cur_obj = UsageRate((double)used_item_area / (double)(
@@ -228,7 +231,7 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
         greedy_sol.push_back(cur_node);
         used_item_area += gv::item_area[cur_node.item];
         // 计算目标函数值并检查更新最优解。
-        if (set_.opt_tail) {
+        if (mode_ == PLATE) {
             cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
         } else {
             cur_obj = UsageRate((double)used_item_area / (double)(
@@ -436,7 +439,6 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                         }
                     }
                 }
-				// [TODO] else
                 if (old.c3cp + item.w > old.c1cpr) {
                     bool flag = false;
                     // creat a new L2 and place item in it.
@@ -470,7 +472,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                             }
                         }
                     }
-                    if (!set_.opt_tail || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
+                    if (mode_ == CUT || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                     {

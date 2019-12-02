@@ -1,6 +1,5 @@
 #include "Solver/algorithm/header/PlateSearch.h"
 
-#include "Solver/algorithm/header/CutSearch.h"
 #include "Solver/algorithm/header/Picker.h"
 #include "Solver/data/header/Global.h"
 
@@ -22,7 +21,7 @@ void PlateSearch::beam_search(const Batch &source_batch) {
     List<Solution> branch_sols;                 // 缓存每轮分支的解。
     while (!gv::timer.isTimeOut()) {               // 每次固定一个1-cut，直到原料末尾
         Area best_obj = 0;
-        branch(c1cpr, batch, branch_sols, false, gv::cfg.mpbn);
+        branch(c1cpr, batch, branch_sols, CutSearch::CUT, gv::cfg.mpbn);
         for (auto &sol : branch_sols) {   // 每轮分出多个分支
             batch.remove(sol);
             fix_sol += sol;
@@ -66,11 +65,10 @@ void PlateSearch::get_good_objs(List<Area>& objs) const {
 }
 #pragma endregion
 
-void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, bool opt_tail, size_t nb_branch) {
-    CutSearch::Setting set(opt_tail);
+void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, CutSearch::BRANCH_MODE mode, size_t nb_branch) {
     #ifdef PLATE_BRANCH_USE_PICKER
     sols.resize(nb_branch);
-    CutSearch solver(plate_, start_pos, 1, set);
+    CutSearch solver(plate_, start_pos, 1, mode);
     Picker picker(source_batch);
     size_t index = 0;
     for (size_t i = 0; i < nb_branch; ++i) {
@@ -86,7 +84,7 @@ void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solut
     }
     sols.resize(index);
     #else
-    CutSearch solver(plate_, start_pos, nb_branch, aux_, set);
+    CutSearch solver(plate_, start_pos, nb_branch, mode);
     Batch batch(source_batch);
     solver.run(batch);
     sols.clear();
@@ -109,7 +107,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
     List<Solution> branch_sols;                 // 储存每次贪心前解时1-cut的解。
     // 贪心构造。
     while (!gv::timer.isTimeOut()) {
-        branch(c1cpr, batch, branch_sols, false, 1);
+        branch(c1cpr, batch, branch_sols, CutSearch::CUT, 1);
         if (!branch_sols.empty()) {
             last_c1cpr = c1cpr;
             last_cut_sol = branch_sols[0];
@@ -126,7 +124,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
     if (!gv::timer.isTimeOut() && last_c1cpr > 0) {
         batch.add(last_cut_sol);
         cur_sol -= last_cut_sol;
-        branch(last_c1cpr, batch, branch_sols, true, 1);
+        branch(last_c1cpr, batch, branch_sols, CutSearch::PLATE, 1);
         if (!branch_sols.empty()) {
             cur_sol += branch_sols[0];
             Area new_res = item_area(cur_sol);

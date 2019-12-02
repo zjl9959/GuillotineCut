@@ -46,4 +46,8 @@ void Environment::calibrate() {
     msTimeout -= Environment::SaveSolutionTimeInMillisecond;
 }
 
+void Configuration::load(const String &path) {
+
+}
+
 }

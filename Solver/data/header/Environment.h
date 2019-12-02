@@ -26,6 +26,8 @@ struct Configuration {
             << ";mcbn=" << mcbn;
         return os.str();
     }
+
+    void load(const String &path);
 };
 
 // describe the requirements to the input and output data interface.

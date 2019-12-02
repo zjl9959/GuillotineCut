@@ -2,6 +2,7 @@
 
 #include "Solver/algorithm/header/Picker.h"
 #include "Solver/algorithm/header/PlateSearch.h"
+#include "Solver/algorithm/header/CutSearch.h"
 #include "Solver/data/header/Global.h"
 
 using namespace std;
@@ -62,12 +63,20 @@ void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &s
             if (solver.best_obj() > 0) {
                 solver.get_best_sol(sols[index++]);
             }
+            /*
+            CutSearch::Setting set(true);
+            CutSearch solver(plate_id, 0, 1, set);
+            solver.run(batch);
+            if (solver.best_obj().valid()) {
+                solver.get_best_sol(sols[index++]);
+            }
+            */
         }
     }
     sols.resize(index);
     #else
     sols.clear();
-    PlateSearch solver(plate_id, nb_branch, cfg_, rand_, timer_, aux_);
+    PlateSearch solver(plate_id, nb_branch);
     solver.beam_search(source_batch);
     solver.get_good_sols(sols);
     #endif // BRANCH_PICKER
