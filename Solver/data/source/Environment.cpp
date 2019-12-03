@@ -1,6 +1,13 @@
 #include "Solver/data/header/Environment.h"
+
 #include <thread>
+#include <fstream>
+#include <map>
+
 #include "Solver/algorithm/header/Solver.h"
+
+
+using namespace std;
 
 namespace szx {
 
@@ -47,7 +54,44 @@ void Environment::calibrate() {
 }
 
 void Configuration::load(const String &path) {
-
+    ifstream ifs(path);
+    if (ifs.is_open() == false) return;
+    map<string, string> param_switch;
+    string one_line;
+    while (getline(ifs, one_line)) {
+        if (!one_line.empty() && one_line.front() != '#') {
+            istringstream iss (one_line);
+            string name, equal, val;
+            iss >> name >> equal >> val;
+            if (equal == "=") {
+                param_switch.insert(make_pair(name, val));
+            }
+        }
+    }
+    map<string, string>::iterator it;
+    it = param_switch.find("pick_item");
+    if (it != param_switch.end()) {
+        if (it->second == "true")
+            this->pick_item = true;
+        else
+            this->pick_item = false;
+    }
+    it = param_switch.find("mtbn");
+    if (it != param_switch.end()) {
+        this->mtbn = stoull(it->second);
+    }
+    it = param_switch.find("mpbn");
+    if (it != param_switch.end()) {
+        this->mpbn = stoull(it->second);
+    }
+    it = param_switch.find("mppn");
+    if (it != param_switch.end()) {
+        this->mppn = stoull(it->second);
+    }
+    it = param_switch.find("mcbn");
+    if (it != param_switch.end()) {
+        this->mcbn = stoull(it->second);
+    }
 }
 
 }

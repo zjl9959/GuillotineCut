@@ -7,8 +7,6 @@ using namespace std;
 
 namespace szx{
 
-#define PLATE_BRANCH_USE_PICKER   // 该宏用于控制分支时是否挑选物品。
-
 #pragma region interface
 /*
 * 束搜索，输入：物品栈。
@@ -66,30 +64,30 @@ void PlateSearch::get_good_objs(List<Area>& objs) const {
 #pragma endregion
 
 void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, CutSearch::BRANCH_MODE mode, size_t nb_branch) {
-    #ifdef PLATE_BRANCH_USE_PICKER
-    sols.resize(nb_branch);
-    CutSearch solver(plate_, start_pos, 1, mode);
-    Picker picker(source_batch);
-    size_t index = 0;
-    for (size_t i = 0; i < nb_branch; ++i) {
-        if (gv::timer.isTimeOut())break;
-        Batch sub_batch(source_batch);    // 从batch中挑选的子集
-        Picker::Filter filter(gv::param.plateWidth - start_pos);
-        Picker::Terminator terminator(gv::cfg.mppn);
-        if (!picker.rand_pick(sub_batch, terminator, filter))continue;
-        solver.run(sub_batch);
-        if (solver.best_obj().valid()) {
-            solver.get_best_sol(sols[index++]);
+    if (gv::cfg.pick_item) {
+        sols.resize(nb_branch);
+        CutSearch solver(plate_, start_pos, 1, mode);
+        Picker picker(source_batch);
+        size_t index = 0;
+        for (size_t i = 0; i < nb_branch; ++i) {
+            if (gv::timer.isTimeOut())break;
+            Batch sub_batch(source_batch);    // 从batch中挑选的子集
+            Picker::Filter filter(gv::param.plateWidth - start_pos);
+            Picker::Terminator terminator(gv::cfg.mppn);
+            if (!picker.rand_pick(sub_batch, terminator, filter))continue;
+            solver.run(sub_batch);
+            if (solver.best_obj().valid()) {
+                solver.get_best_sol(sols[index++]);
+            }
         }
+        sols.resize(index);
+    } else {
+        CutSearch solver(plate_, start_pos, nb_branch, mode);
+        Batch batch(source_batch);
+        solver.run(batch);
+        sols.clear();
+        solver.get_good_sols(sols);
     }
-    sols.resize(index);
-    #else
-    CutSearch solver(plate_, start_pos, nb_branch, mode);
-    Batch batch(source_batch);
-    solver.run(batch);
-    sols.clear();
-    solver.get_good_sols(sols);
-    #endif // PLATE_BRANCH_USE_PICKER
 }
 
 /* 

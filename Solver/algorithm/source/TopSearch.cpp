@@ -9,8 +9,6 @@ using namespace std;
 
 namespace szx {
 
-#define TOP_BRANCH_USE_PICKER // 该宏用于控制分支时是否挑选物品。
-
 void TopSearch::beam_search() {
     Solution fix_sol;                   // 已经固定的解
     ID cur_plate = 0;                   // 当前原料id
@@ -50,36 +48,28 @@ void TopSearch::beam_search() {
 * 输出：sols（分支出来的局部原料解）。
 */
 void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &sols, size_t nb_branch) {
-    #ifdef TOP_BRANCH_USE_PICKER
-    Picker picker(source_batch);
-    Batch batch;
-    sols.resize(nb_branch);
-    Picker::Terminator terminator(0, static_cast<Area>(gv::param.plateHeight * gv::param.plateWidth * 2.5));
-    size_t index = 0;
-    for (size_t i = 0; i < nb_branch; ++i) {
-        if (picker.rand_pick(batch, terminator)) {
-            PlateSearch solver(plate_id, 1); // 只要一个最优解即可。
-            solver.beam_search(batch);
-            if (solver.best_obj() > 0) {
-                solver.get_best_sol(sols[index++]);
+    if (gv::cfg.pick_item) {
+        Picker picker(source_batch);
+        Batch batch;
+        sols.resize(nb_branch);
+        Picker::Terminator terminator(0, static_cast<Area>(gv::param.plateHeight * gv::param.plateWidth * 2.5));
+        size_t index = 0;
+        for (size_t i = 0; i < nb_branch; ++i) {
+            if (picker.rand_pick(batch, terminator)) {
+                PlateSearch solver(plate_id, 1); // 只要一个最优解即可。
+                solver.beam_search(batch);
+                if (solver.best_obj() > 0) {
+                    solver.get_best_sol(sols[index++]);
+                }
             }
-            /*
-            CutSearch::Setting set(true);
-            CutSearch solver(plate_id, 0, 1, set);
-            solver.run(batch);
-            if (solver.best_obj().valid()) {
-                solver.get_best_sol(sols[index++]);
-            }
-            */
         }
+        sols.resize(index);
+    } else {
+        sols.clear();
+        PlateSearch solver(plate_id, nb_branch);
+        solver.beam_search(source_batch);
+        solver.get_good_sols(sols);
     }
-    sols.resize(index);
-    #else
-    sols.clear();
-    PlateSearch solver(plate_id, nb_branch);
-    solver.beam_search(source_batch);
-    solver.get_good_sols(sols);
-    #endif // BRANCH_PICKER
 }
 
 /* 

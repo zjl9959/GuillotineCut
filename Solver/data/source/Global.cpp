@@ -24,8 +24,7 @@ int support_thread;                 // 支持线程数目
 * 初始化Solver的全局变量。
 */
 void init_global_variables(const Problem::Input &input, const Environment &env) {
-    gv::cfg = Configuration();
-    // [zjl][TODO]: load configure from file.
+    gv::cfg.load(env.DefaultCfgPath());
     gv::rand = Random(env.randSeed);
     gv::timer = Timer(std::chrono::milliseconds(env.msTimeout));
     constexpr TID InvalidItemId = Problem::InvalidItemId;

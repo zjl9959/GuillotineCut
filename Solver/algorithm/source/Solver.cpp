@@ -85,6 +85,7 @@ Problem::Output createOutput(const Solution &sol);
 void Solver::run() {
     //unit_test::test_copy_speed_of_placement(100000, 10000);
     init_global_variables(input, env);
+    Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
     // 调用topSearch进行求解
     TopSearch solver;
     solver.beam_search();
