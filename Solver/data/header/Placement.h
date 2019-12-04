@@ -75,7 +75,7 @@ public:
 
     String str() const {
         std::ostringstream os;
-        os << value_ << "%";
+        os << value_ * 100 << "%";
         return os.str();
     }
 private:

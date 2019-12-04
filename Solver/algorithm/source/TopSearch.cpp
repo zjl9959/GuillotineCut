@@ -42,6 +42,10 @@ void TopSearch::beam_search() {
     cout << endl;
 }
 
+void TopSearch::local_search() {
+    // [zjl][TODO]:add implement.
+}
+
 /*
 * 功能：分支，不对batch进行挑选操作。
 * 输入：plate_id（待分支原料id），source_batch（物品栈）。
@@ -122,6 +126,43 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj) {
         best_obj_ = obj;
         best_sol_ = sol;
     }
+}
+
+/*
+* 寻找对当前解来说，第一个能够改进局部较差原料的提升动作。
+* 输入：cur_sol（当前完整的解）。
+* 输出：improve（一个局部的改进解），返回size_t（对cur_sol的改进起始位置）。
+*/
+size_t TopSearch::find_first_improvement(const Solution &cur_sol, Solution &improve) {
+    // [zjl][TODO]: add implement.
+    return size_t();
+}
+
+/*
+* 计算输入的解中，每块原料的利用率。
+* 输入：sol（一个完整的解，解中最后一块原料作为余料来处理）。
+* 返回：usage_rates(该解中每块原料的<起始位置索引，原料利用率>对，按照利用率从小到大的顺序排列)。
+*/
+void TopSearch::get_plates_usage_rate(const Solution &sol, List<pair<size_t, UsageRate>> &usage_rates) {
+    if (sol.empty()) return;
+    const double plate_area = gv::param.plateHeight * gv::param.plateWidth;
+    Area item_area = gv::item_area[sol[0].item];    // 原料上物品面积。
+    size_t plate_index = 0;      // 原料起始位置在sol中的索引。
+    for (size_t i = 1; i < sol.size(); ++i) {
+        if (sol[i].getFlagBit(Placement::NEW_PLATE)) {
+            usage_rates.push_back(make_pair(plate_index, UsageRate(item_area / plate_area)));
+            plate_index = i;
+            item_area = gv::item_area[sol[i].item];
+        } else {
+            item_area += gv::item_area[sol[i].item];
+        }
+    }
+    // 计算余料利用率。
+    const double tail_plate_area = gv::param.plateHeight * sol.back().c1cpr;
+    usage_rates.push_back(make_pair(plate_index, UsageRate(item_area / tail_plate_area)));
+    // 对各原料利用率进行排序。
+    sort(usage_rates.begin(), usage_rates.end(),
+        [](const pair<size_t, UsageRate> &lhs, const pair<size_t, UsageRate> &rhs) { return lhs.second < rhs.second; });
 }
 
 }

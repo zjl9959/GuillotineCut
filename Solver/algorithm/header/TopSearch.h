@@ -15,6 +15,8 @@ public:
 
     /* 调用束搜索算法进行优化 */
     void beam_search();
+    /* 调用局部搜索算法进行优化 */
+    void local_search();
     /* 获取算得的最优解 */
     void get_best_sol(Solution &sol) { sol = best_sol_; }
     /* 获取最优解使用原料的长度 */
@@ -24,6 +26,9 @@ private:
     Length greedy_evaluate(ID plate_id, const Batch &source_batch, const Solution &fix_sol);
     Length get_obj(const Solution &sol);
     void update_best_sol(const Solution &sol, Length obj = -1);
+    
+    size_t find_first_improvement(const Solution &cur_sol, Solution &improve);
+    void get_plates_usage_rate(const Solution &sol, List<std::pair<size_t, UsageRate>> &usage_rates);
 private:
     std::mutex sol_mutex_;      // 更新最优解时需先获得该锁
     Solution best_sol_;         // 最优解
