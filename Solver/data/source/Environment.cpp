@@ -73,8 +73,33 @@ void Configuration::load(const String &path) {
     if (it != param_switch.end()) {
         if (it->second == "true")
             this->pick_item = true;
-        else
+        else if(it->second == "false")
             this->pick_item = false;
+    }
+    it = param_switch.find("top_mode");
+    if (it != param_switch.end()) {
+        if (it->second == "beam")
+            top_mode = TBEAM;
+        else if (it->second == "local")
+            top_mode = TLOCAL;
+    }
+    it = param_switch.find("plate_mode");
+    if (it != param_switch.end()) {
+        if (it->second == "beam")
+            plate_mode = PBEAM;
+        else if (it->second == "0")
+            plate_mode = P0;
+    }
+    it = param_switch.find("cut_mode");
+    if (it != param_switch.end()) {
+        if (it->second == "beam")
+            cut_mode = CBEAM;
+        else if (it->second == "dfs")
+            cut_mode = CDFS;
+        else if (it->second == "pfs")
+            cut_mode = CPFS;
+        else if (it->second == "A*")
+            cut_mode = CASTAR;
     }
     it = param_switch.find("mtbn");
     if (it != param_switch.end()) {
@@ -91,6 +116,10 @@ void Configuration::load(const String &path) {
     it = param_switch.find("mcbn");
     if (it != param_switch.end()) {
         this->mcbn = stoull(it->second);
+    }
+    it = param_switch.find("mcit");
+    if (it != param_switch.end()) {
+        this->mcit = stoull(it->second);
     }
 }
 

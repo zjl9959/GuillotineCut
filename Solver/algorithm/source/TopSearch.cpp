@@ -134,7 +134,18 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj) {
 * 输出：improve（一个局部的改进解），返回size_t（对cur_sol的改进起始位置）。
 */
 size_t TopSearch::find_first_improvement(const Solution &cur_sol, Solution &improve) {
-    // [zjl][TODO]: add implement.
+    static constexpr size_t max_k = 3;
+    List<pair<size_t, UsageRate>> rates;
+    get_plates_usage_rate(cur_sol, rates);
+    for (size_t k = 1; k < max_k; ++k) {    // 邻域从小到大
+        for (auto &rate : rates) {          // 利用率从低到高
+            Batch batch(gv::stacks);
+            for (size_t i = 0; i < rate.first; ++i) {
+                batch.remove(cur_sol.at(i).item);
+            }
+            // [zjl][TODO]:add code.
+        }
+    }
     return size_t();
 }
 
@@ -163,6 +174,20 @@ void TopSearch::get_plates_usage_rate(const Solution &sol, List<pair<size_t, Usa
     // 对各原料利用率进行排序。
     sort(usage_rates.begin(), usage_rates.end(),
         [](const pair<size_t, UsageRate> &lhs, const pair<size_t, UsageRate> &rhs) { return lhs.second < rhs.second; });
+}
+
+/*
+* 对于当前解，寻找当前原料开始位置的前一块原料的开始位置索引。
+* 输入：sol（要处理的解），cur_index（当前原料开始位置在解中的索引）。
+* 输出：返回值（前一块原料的起始位置索引）。
+*/
+size_t TopSearch::prev_plate_index(const Solution &sol, size_t cur_index) {
+    while (cur_index >= 0) {
+        if (cur_index == 0)break;
+        if (sol[cur_index].getFlagBit(Placement::NEW_PLATE))break;
+        --cur_index;
+    }
+    return cur_index;
 }
 
 }

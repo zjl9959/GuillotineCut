@@ -10,16 +10,24 @@
 namespace szx {
 
 struct Configuration {
+    enum MODE {
+        TBEAM, TLOCAL,
+        PBEAM, P0,
+        CBEAM, CDFS, CPFS, CASTAR
+    };
+
     bool pick_item = true;      // 是否挑选物品
+    MODE top_mode = TBEAM;      // topSearch优化模式
+    MODE plate_mode = PBEAM;    // plateSearch优化模式
+    MODE cut_mode = CBEAM;      // cutSearch优化模式
     size_t mtbn = 64;           // TopSearch最大分支数目
     size_t mpbn = 64;           // PlateSearch最大分支数目
     size_t mppn = 16;           // PlateSearch为每个1-cut最大挑选物品数目
     size_t mcbn = 30;           // CutSearch::beam_search最大分支数目
+    size_t mcit = 1000000;          // CutSearch::pfs的最大迭代数目 
 
     Configuration() {}
     Configuration(const String &path) { load(path); }
-    Configuration(size_t _mtbn, size_t _mpbn, size_t _mppn, size_t _mcbn) :
-        mtbn(_mtbn), mpbn(_mpbn), mppn(_mppn), mcbn(_mcbn) {}
 
     String toBriefStr() const {
         std::ostringstream os;
@@ -27,7 +35,30 @@ struct Configuration {
         os << "mtbn=" << mtbn
             << ";mpbn=" << mpbn;
         if (pick_item)os << ";mppn=" << mppn;
-        os << ";mcbn=" << mcbn;
+        if (cut_mode == CBEAM)
+            os << ";mcbn=" << mcbn;
+        else if (cut_mode == CPFS)
+            os << ";mcit=" << mcit;
+        os << ";mode=";
+        // 顶层策略。
+        if (top_mode == TBEAM)
+            os << "beam";
+        else if (top_mode == TLOCAL)
+            os << "local";
+        // 原料层策略。
+        if (plate_mode == PBEAM)
+            os << "+beam";
+        else if (plate_mode == P0)
+            os << "+0";
+        // 1-cut层策略。
+        if (cut_mode == CBEAM)
+            os << "+beam";
+        else if (cut_mode == CDFS)
+            os << "+dfs";
+        else if (cut_mode == CPFS)
+            os << "+pfs";
+        else if (cut_mode == CASTAR)
+            os << "+A*";
         return os.str();
     }
 
@@ -52,7 +83,7 @@ struct Environment {
     static String DefaultSolutionDir() { return "Solution/"; }
     static String DefaultVisualizationDir() { return "Visualization/"; }
     static String DefaultEnvPath() { return "env.csv"; }
-    static String DefaultCfgPath() { return "cfg.csv"; }
+    static String DefaultCfgPath() { return "cfg.txt"; }
     static String DefaultLogPath() { return "log.csv"; }
 
     Environment(const String &instanceName, const String &solutionPath,
