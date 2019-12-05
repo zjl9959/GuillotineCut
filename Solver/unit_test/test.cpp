@@ -11,17 +11,26 @@
 #include "Solver/algorithm/header/CutSearch.h"
 #include "Solver/utility/Utility.h"
 
-using namespace szx;
 using namespace std;
 
-namespace unit_test {
+namespace szx {
 
-/* 辅助测试CutSearch的run接口 */
-Solution test_CutSearch() {
+void UnitTest::run() {
+    // [zjl][TODO]:完善测试函数，添加自动读入参数代码。
+    // 测试cutSearch
+    test_CutSearch();
+    // 测试plateSearch
+    test_PlateSearch();
+}
+
+/*
+* 辅助测试CutSearch的run接口。
+*/
+void UnitTest::test_CutSearch() {
     // 该部分需要手动设置参数
     TID plate = 0;
     TCoord start_pos = 1239;
-    List<TID> items = {22, 0, 23, 24, 1};
+    List<TID> items = { 22, 0, 23, 24, 1 };
     // 进行测试
     std::reverse(items.begin(), items.end());
     List<List<TID>> stacks;
@@ -29,31 +38,33 @@ Solution test_CutSearch() {
     Batch batch(stacks);
     CutSearch solver(plate, 1, start_pos, CutSearch::CUT);
     solver.run(batch);
-	std::cout << solver.best_obj().str() << std::endl;
+    std::cout << solver.best_obj().str() << std::endl;
     Solution sol;
     solver.get_best_sol(sol);
-    return sol;
 }
 
-/* 测试PlateSearch的beam_search接口 */
-Solution test_PlateSearch() {
+/*
+* 测试PlateSearch的beam_search接口。
+*/
+void UnitTest::test_PlateSearch() {
     // 手动设置参数
     TID plate = 1;
-    List<TID> items = {78, 57, 58, 36, 16, 55, 41, 37, 42, 38, 43, 39, 6, 90, 67, 59, 7, 60, 91, 92, 93};
+    List<TID> items = { 78, 57, 58, 36, 16, 55, 41, 37, 42, 38, 43, 39, 6, 90, 67, 59, 7, 60, 91, 92, 93 };
     // 进行测试
     std::reverse(items.begin(), items.end());
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
     PlateSearch solver(plate, 1);
-    solver.beam_search(batch);
+    solver.run(batch);
     Solution sol;
     solver.get_best_sol(sol);
-    return sol;
 }
 
-/* 测试Placement结构体和指针在构造和复制时的速度差别 */
-void test_copy_speed_of_placement(int repeat, int nb_element) {
+/*
+* 测试Placement结构体和指针在构造和复制时的速度差别。
+*/
+void UnitTest::test_copy_speed_of_placement(int repeat, int nb_element) {
     cout << "test copy speed of placement and placement*" << endl;
     cout << "repeat:" << repeat << " nb_element:" << nb_element << endl;
     List<Placement> source1, dest1;

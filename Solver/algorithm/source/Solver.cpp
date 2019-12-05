@@ -8,7 +8,10 @@
 #include "Solver/algorithm/header/TopSearch.h"
 #include "Solver/unit_test/test.h"
 
+#define TEST_MODE
+
 using namespace std;
+
 
 namespace szx {
 
@@ -51,28 +54,17 @@ int Cli::run(int argc, char *argv[]) {
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
+
+    init_global_variables(input, env);
+    Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
     
+    #ifdef TEST_MODE
+    UnitTest test;
+    test.run();
+    #else
     Solver solver(input, env);
     solver.run();
-    
-
-    /*
-    // 测试cutSearch
-    Auxiliary aux = createAuxiliary(input);
-    Solution sol = unit_test::test_CutSearch(aux);
-    Problem::Output out = createOutput(sol, aux);
-    out.save(env.solutionPathWithTime());
-    */
-
-    /*
-    // 测试plateSearch
-    Auxiliary aux = createAuxiliary(input);
-    Timer timer(chrono::milliseconds(env.msTimeout));
-    Random rand(env.randSeed);
-    Solution sol = unit_test::test_PlateSearch(timer, rand, cfg, aux);
-    Problem::Output out = createOutput(sol, aux);
-    out.save(env.solutionPathWithTime());
-    */
+    #endif
 
     return 0;
 }
@@ -83,12 +75,9 @@ int Cli::run(int argc, char *argv[]) {
 Problem::Output createOutput(const Solution &sol);
 
 void Solver::run() {
-    //unit_test::test_copy_speed_of_placement(100000, 10000);
-    init_global_variables(input, env);
-    Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
     // 调用topSearch进行求解
     TopSearch solver;
-    solver.beam_search();
+    solver.run();
     if (solver.best_obj() != Problem::Output::MaxWidth) {
         Solution best_sol;
         solver.get_best_sol(best_sol);

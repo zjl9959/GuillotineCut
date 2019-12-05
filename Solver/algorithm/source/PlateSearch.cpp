@@ -8,6 +8,14 @@ using namespace std;
 namespace szx{
 
 #pragma region interface
+
+void PlateSearch::run(const Batch &source_batch) {
+    if (gv::cfg.plate_mode == Configuration::PBEAM)
+        beam_search(source_batch);
+    else if (gv::cfg.plate_mode == Configuration::P0);
+        // [zjl][TODO]: add implement.
+}
+
 /*
 *  ¯À—À˜£¨ ‰»Î£∫ŒÔ∆∑’ª°£
 */

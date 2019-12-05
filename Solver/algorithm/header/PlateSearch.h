@@ -14,12 +14,13 @@ class PlateSearch {
 public:
     PlateSearch(TID plate, size_t nb_sol_cache) : plate_(plate), nb_sol_cache_(nb_sol_cache) {};
 
-    void beam_search(const Batch &source_batch);    // 束搜索，输入：物品栈。
+    void run(const Batch &source_batch);            // 运行PlateSearch求解器。
     void get_best_sol(Solution &sol) const;         // 获取最优解。
     void get_good_sols(List<Solution> &sols) const; // 获取多个较好的解，输出：sols(多个解)。
     Area best_obj() const;                          // 返回最优解的目标函数值。
     void get_good_objs(List<Area> &objs) const;     // 获取多个较好的解的目标函数值。
 private:
+    void beam_search(const Batch &source_batch);    // 束搜索，输入：物品栈。
     void branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, CutSearch::BRANCH_MODE mode, size_t nb_branch = 1);
     Area greedy_evaluate(const Batch &source_batch, const Solution &sol);
     Area item_area(const Solution &sol);

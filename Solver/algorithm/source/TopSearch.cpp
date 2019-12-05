@@ -9,6 +9,13 @@ using namespace std;
 
 namespace szx {
 
+void TopSearch::run() {
+    if (gv::cfg.top_mode == Configuration::TBEAM)
+        beam_search();
+    else if (gv::cfg.top_mode == Configuration::TLOCAL)
+        local_search();
+}
+
 void TopSearch::beam_search() {
     Solution fix_sol;                   // 已经固定的解
     ID cur_plate = 0;                   // 当前原料id
@@ -61,7 +68,7 @@ void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &s
         for (size_t i = 0; i < nb_branch; ++i) {
             if (picker.rand_pick(batch, terminator)) {
                 PlateSearch solver(plate_id, 1); // 只要一个最优解即可。
-                solver.beam_search(batch);
+                solver.run(batch);
                 if (solver.best_obj() > 0) {
                     solver.get_best_sol(sols[index++]);
                 }
@@ -71,7 +78,7 @@ void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &s
     } else {
         sols.clear();
         PlateSearch solver(plate_id, nb_branch);
-        solver.beam_search(source_batch);
+        solver.run(source_batch);
         solver.get_good_sols(sols);
     }
 }

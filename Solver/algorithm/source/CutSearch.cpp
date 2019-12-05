@@ -12,14 +12,17 @@ CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const BRA
     start_pos_(start_pos), mode_(mode), nb_sol_cache_(nb_sol_cache) {}
 
 /*
-* 优化1-cut
+* 优化1-cut，根据全局配置参数，自动选择优化策略。
 * 输入：batch（物品栈），opt_tail（是否优化原料末尾）
 * 输出：sol（该1-cut的最优解），返回：1-cut对应利用率
 */
 void CutSearch::run(Batch &batch) {
-    beam_search(batch);
-    //pfs(batch);
-    //dfs(batch);
+    if(gv::cfg.cut_mode == Configuration::CBEAM)
+        beam_search(batch);
+    else if(gv::cfg.cut_mode == Configuration::CPFS)
+        pfs(batch);
+    else if(gv::cfg.cut_mode == Configuration::CDFS)
+        dfs(batch);
 }
 
 UsageRate CutSearch::best_obj() const {
@@ -154,7 +157,6 @@ void CutSearch::dfs(Batch &batch) {
 /* 优度优先搜索 */
 void CutSearch::pfs(Batch &batch) {
     size_t cur_iter = 0;   // 当前扩展节点次数。
-    constexpr size_t max_iter = 10000000;  // 优度优先搜索的最大扩展节点数目，需要手动调整。
     PfsTree::Node *last_node = nullptr;
     UsageRate cur_obj;     // 当前解利用率。
     Solution cur_sol;      // 缓存当前解
@@ -166,7 +168,7 @@ void CutSearch::pfs(Batch &batch) {
         tree.add(*it, static_cast<double>(gv::item_area[it->item]) /
             static_cast<double>(envelope_area(*it)));
     }
-    while (!tree.empty() && cur_iter < max_iter) {
+    while (!tree.empty() && cur_iter < gv::cfg.mcit) {
         PfsTree::Node *node = tree.get();
         // [zjl][TODO]:添加剪枝部分代码。
         tree.update_batch(last_node, node, batch);
