@@ -8,7 +8,7 @@
 #include "Solver/algorithm/header/TopSearch.h"
 #include "Solver/unit_test/test.h"
 
-#define TEST_MODE
+//#define TEST_MODE
 
 using namespace std;
 

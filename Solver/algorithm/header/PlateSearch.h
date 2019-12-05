@@ -20,7 +20,8 @@ public:
     Area best_obj() const;                          // 返回最优解的目标函数值。
     void get_good_objs(List<Area> &objs) const;     // 获取多个较好的解的目标函数值。
 private:
-    void beam_search(const Batch &source_batch);    // 束搜索，输入：物品栈。
+    void skip(const Batch &source_batch);
+    void beam_search(const Batch &source_batch);
     void branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, CutSearch::BRANCH_MODE mode, size_t nb_branch = 1);
     Area greedy_evaluate(const Batch &source_batch, const Solution &sol);
     Area item_area(const Solution &sol);

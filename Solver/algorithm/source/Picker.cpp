@@ -29,7 +29,7 @@ bool Picker::rand_pick(Batch &target_batch, Terminator terminator, Filter filter
         }
     }
     if (pool.empty())return false;
-    TID max_rand_num = pool.size();
+    TID max_rand_num = static_cast<TID>(pool.size());
     List<List<TID>> chosen; chosen.resize(stack_num); // 被挑选的物品列表
     List<TID> item_set;                               // 被挑物品id集合，用于判断重复
     while (true) {

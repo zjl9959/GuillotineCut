@@ -29,39 +29,7 @@ struct Configuration {
     Configuration() {}
     Configuration(const String &path) { load(path); }
 
-    String toBriefStr() const {
-        std::ostringstream os;
-        if (!pick_item)os << "nopick;";
-        os << "mtbn=" << mtbn
-            << ";mpbn=" << mpbn;
-        if (pick_item)os << ";mppn=" << mppn;
-        if (cut_mode == CBEAM)
-            os << ";mcbn=" << mcbn;
-        else if (cut_mode == CPFS)
-            os << ";mcit=" << mcit;
-        os << ";mode=";
-        // 顶层策略。
-        if (top_mode == TBEAM)
-            os << "beam";
-        else if (top_mode == TLOCAL)
-            os << "local";
-        // 原料层策略。
-        if (plate_mode == PBEAM)
-            os << "+beam";
-        else if (plate_mode == P0)
-            os << "+0";
-        // 1-cut层策略。
-        if (cut_mode == CBEAM)
-            os << "+beam";
-        else if (cut_mode == CDFS)
-            os << "+dfs";
-        else if (cut_mode == CPFS)
-            os << "+pfs";
-        else if (cut_mode == CASTAR)
-            os << "+A*";
-        return os.str();
-    }
-
+    String toBriefStr() const;
     void load(const String &path);
 };
 

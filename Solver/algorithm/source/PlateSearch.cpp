@@ -12,8 +12,30 @@ namespace szx{
 void PlateSearch::run(const Batch &source_batch) {
     if (gv::cfg.plate_mode == Configuration::PBEAM)
         beam_search(source_batch);
-    else if (gv::cfg.plate_mode == Configuration::P0);
-        // [zjl][TODO]: add implement.
+    else if (gv::cfg.plate_mode == Configuration::P0)
+        skip(source_batch);
+}
+
+/*
+* 跳过PlateSearch的搜索过程，直接使用CutSearch对整块原料进行优化。
+*/
+void PlateSearch::skip(const Batch &source_batch) {
+    CutSearch solver(plate_, 0, nb_sol_cache_, CutSearch::PLATE);
+    if (gv::cfg.pick_item) {
+        Batch sub_batch;
+        Picker picker(source_batch);
+        Picker::Terminator terminator(gv::cfg.mppn);
+        if (picker.rand_pick(sub_batch, terminator));
+            solver.run(sub_batch);
+    } else {
+        Batch batch(source_batch);
+        solver.run(batch);
+    }
+    List<Solution> sols;
+    solver.get_good_sols(sols);
+    for (auto &sol : sols) {
+        update_sol_cache(sol);
+    }
 }
 
 /*
