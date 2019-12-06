@@ -36,10 +36,10 @@ public:
         left_item_area_ = total_item_area_;
     }
     /* 拷贝构造函数 */
-    Batch(const Batch &other) : left_items_(other.left_items_), total_item_area_(other.total_item_area_),
+    Batch(const Batch &other) : left_items_(other.left_items_), total_item_area_(other.left_item_area_),
         left_item_area_(other.left_item_area_), stacks_(other.stacks_), item2stack_(other.item2stack_) {}
     /* 转移构造函数 */
-    Batch(Batch &&other) : left_items_(other.left_items_), total_item_area_(other.total_item_area_),
+    Batch(Batch &&other) : left_items_(other.left_items_), total_item_area_(other.left_item_area_),
         left_item_area_(other.left_item_area_), stacks_(move(other.stacks_)), item2stack_(move(other.item2stack_)) {}
 
     /* 拷贝赋值函数 */
