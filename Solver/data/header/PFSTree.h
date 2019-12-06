@@ -14,16 +14,15 @@ public:
     struct Node {
         Depth depth;    // 节点深度
         TID nb_child;   // 子节点数量
-        Area area;  // 当前使用物品的面积
         Node *parent;   // 父节点地址
         Placement place;   // 放置位置
 
         /* 用于创建第一层节点 */
         Node(Placement &_place, Area _item_area) : depth(0),
-            nb_child(0), area(_item_area), parent(nullptr), place(_place) {}
+            nb_child(0), parent(nullptr), place(_place) {}
         /* 用于创建后续节点 */
         Node(Node *_parent, Placement &_place, Area _item_area) : depth(_parent->depth + 1),
-            nb_child(0), area(_parent->area + _item_area), parent(_parent), place(_place) {}
+            nb_child(0), parent(_parent), place(_place) {}
     };
 private:
     class Score {

@@ -24,14 +24,14 @@ public:
     /* 判断选择器是否满足停止条件 */
     class Terminator {
     public:
-        Terminator(TID max_item_num = 0, Area total_area_lb = 0) : max_item_num_(max_item_num),
+        Terminator(size_t max_item_num = 0, Area total_area_lb = 0) : max_item_num_(max_item_num),
             total_area_lb_(total_area_lb), cur_item_num_(0), cur_total_area_(0) {};
         bool operator()(TID item);
     private:
-        TID max_item_num_;          // 最大挑选物品数目
+        size_t max_item_num_;          // 最大挑选物品数目
         Area total_area_lb_;        // 最大挑选物品面积和
         
-        TID cur_item_num_;          // 当前已挑选物品数目
+        size_t cur_item_num_;          // 当前已挑选物品数目
         Area cur_total_area_;       // 当前已挑选物品面积和
     };
 public:

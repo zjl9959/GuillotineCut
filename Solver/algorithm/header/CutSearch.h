@@ -14,7 +14,6 @@ public:
     enum BRANCH_MODE {
         CUT,    // 只在该1-cut内分支。
         PLATE,  // 分支时可以开新的1-cut，但不能开新的plate。
-        TOTAL   // 分支时可以开新的plate。
     };
 public:
     CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const BRANCH_MODE mode);

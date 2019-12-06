@@ -25,7 +25,7 @@ void PlateSearch::skip(const Batch &source_batch) {
         Batch sub_batch;
         Picker picker(source_batch);
         Picker::Terminator terminator(gv::cfg.mppn);
-        if (picker.rand_pick(sub_batch, terminator));
+        if (picker.rand_pick(sub_batch, terminator))
             solver.run(sub_batch);
     } else {
         Batch batch(source_batch);
@@ -98,10 +98,10 @@ void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solut
         sols.resize(nb_branch);
         CutSearch solver(plate_, start_pos, 1, mode);
         Picker picker(source_batch);
+        Batch sub_batch;    // 从batch中挑选的子集。
         size_t index = 0;
         for (size_t i = 0; i < nb_branch; ++i) {
             if (gv::timer.isTimeOut())break;
-            Batch sub_batch(source_batch);    // 从batch中挑选的子集
             Picker::Filter filter(gv::param.plateWidth - start_pos);
             Picker::Terminator terminator(gv::cfg.mppn);
             if (!picker.rand_pick(sub_batch, terminator, filter))continue;
