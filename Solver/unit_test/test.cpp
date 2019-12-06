@@ -20,7 +20,7 @@ void UnitTest::run() {
     // 测试cutSearch
     test_CutSearch();
     // 测试plateSearch
-    test_PlateSearch();
+    //test_PlateSearch();
 }
 
 /*
@@ -29,14 +29,14 @@ void UnitTest::run() {
 void UnitTest::test_CutSearch() {
     // 该部分需要手动设置参数
     TID plate = 0;
-    TCoord start_pos = 1239;
-    List<TID> items = { 22, 0, 23, 24, 1 };
+    TCoord start_pos = 0;
+    List<TID> items = { 39, 40, 41, 42, 43, 44, 45, 46, 47, 48 };
     // 进行测试
     std::reverse(items.begin(), items.end());
     List<List<TID>> stacks;
     stacks.push_back(items);
     Batch batch(stacks);
-    CutSearch solver(plate, 1, start_pos, CutSearch::CUT);
+    CutSearch solver(plate, start_pos, 1, CutSearch::PLATE);
     solver.run(batch);
     std::cout << solver.best_obj().str() << std::endl;
     Solution sol;

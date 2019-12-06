@@ -50,7 +50,7 @@ private:
 
     std::mutex sol_mutex_;                  // 更新最优解时需先获得该锁
     size_t nb_sol_cache_;                   // 缓存解的最大数量。
-    std::multimap<UsageRate, Solution, UsageRateCmp> sol_cache_;   // 缓存解。
+    std::map<UsageRate, Solution, UsageRateCmp> sol_cache_;   // 缓存解。
 };
 
 }

@@ -129,6 +129,11 @@ void CutSearch::dfs(Batch &batch) {
             cur_sol.push_back(node.place); // 更新当前解
             batch.remove(node.place.item);
         }
+        if (mode_ == CUT) {             // CUT模式下对每一个分支节点进行解的更新检测。
+            cur_obj = UsageRate((double)batch.used_item_area() / (double)(
+                (cur_sol.back().c1cpr - start_pos_)*gv::param.plateHeight));
+            update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
+        }
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
             (envelope_area(node.place) + batch.left_item_area()));
         if (upper_bound < best_obj()) {
@@ -142,16 +147,11 @@ void CutSearch::dfs(Batch &batch) {
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
             live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
         }
-        // 计算当前解的目标函数值。
-        if (mode_ == PLATE) {
+        if (branch_nodes.empty() && mode_ == PLATE) {   // PLATE模式下仅对叶子节点进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
-        } else {
-            cur_obj = UsageRate((double)batch.used_item_area() / (double)(
-                (cur_sol.back().c1cpr - start_pos_)*gv::param.plateHeight));
+            update_sol_cache(cur_obj, cur_sol);
         }
-        update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
-        // 更新辅助变量。
-        pre_depth = node.depth;
+        pre_depth = node.depth;         // 更新上一个节点的深度信息。
     }
 }
 #pragma endregion
@@ -176,6 +176,12 @@ void CutSearch::pfs(Batch &batch) {
         ++gv::info.nb_explore_nodes;
         PfsTree::Node *node = tree.get();
         tree.update_batch(last_node, node, batch);
+        if (mode_ == CUT) {     // CUT模式下对每一个分支节点进行解的更新检测。
+            cur_obj = UsageRate((double)batch.used_item_area() / (double)(
+                (node->place.c1cpr - start_pos_)*gv::param.plateHeight));
+            tree.get_tree_path(node, cur_sol);
+            update_sol_cache(cur_obj, cur_sol);
+        }
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
             (envelope_area(node->place) + batch.left_item_area()));
         if (upper_bound < best_obj()) {
@@ -191,20 +197,15 @@ void CutSearch::pfs(Batch &batch) {
             tree.add(node, *it, static_cast<double>(batch.used_item_area() + gv::item_area[it->item]) /
                 static_cast<double>(envelope_area(*it)));
         }
-        // 计算目标函数值。
-        if (mode_ == PLATE) {
-            cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
-        } else {
-            cur_obj = UsageRate((double)batch.used_item_area() / (double)(
-                (node->place.c1cpr - start_pos_)*gv::param.plateHeight));
+        if (branch_nodes.empty()) {
+            tree.add_leaf_node(node);   // 树中需要记录叶子节点，以便删除树。
+            if (mode_ == PLATE) {       // PLATE模式下仅对叶子节点进行解的更新检测。
+                cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
+                tree.get_tree_path(node, cur_sol);
+                update_sol_cache(cur_obj, cur_sol);
+            }
         }
-        // 更新目标函数值。
-        tree.get_tree_path(node, cur_sol);
-        update_sol_cache(cur_obj, cur_sol);
-        // 更新辅助信息。
-        if(branch_nodes.empty())    // 树种需要记录叶子节点，以便删除树。
-            tree.add_leaf_node(node);
-        last_node = node;
+        last_node = node;           // 更新上一个节点。
     }
 }
 #pragma endregion
