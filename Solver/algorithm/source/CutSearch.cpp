@@ -49,7 +49,6 @@ void CutSearch::get_good_objs(List<UsageRate> &objs) const {
 #pragma region BeamSearch
 /* 束搜索 */
 void CutSearch::beam_search(Batch &batch) {
-    Area used_item_area = 0;    // 固定物品的面积和。
     Solution fix_sol;   // 已经被固定下来的解。
     Placement resume_point(start_pos_); // 每次分支的恢复点。
     List<Placement> branch_nodes;   // 缓存分支节点。
@@ -60,7 +59,7 @@ void CutSearch::beam_search(Batch &batch) {
         // 限制beam_search宽度不超过set_.max_branch。
         List<ScorePair> score_pair;
         for (size_t i = 0; i < branch_nodes.size(); ++i) {
-            double score = static_cast<double>(used_item_area + gv::item_area[branch_nodes[i].item]) / envelope_area(branch_nodes[i]);
+            double score = static_cast<double>(batch.used_item_area() + gv::item_area[branch_nodes[i].item]) / envelope_area(branch_nodes[i]);
             score_pair.push_back(make_pair(score, i));
         }
         sort(score_pair.begin(), score_pair.end(), [](const ScorePair &lhs, const ScorePair &rhs) {return lhs.first > rhs.first; });
@@ -70,20 +69,17 @@ void CutSearch::beam_search(Batch &batch) {
         for (size_t i = 0; i < min(gv::cfg.mcbn, branch_nodes.size()); ++i) {
             Placement &place = branch_nodes[score_pair[i].second];
             fix_sol.push_back(place);
-            used_item_area += gv::item_area[place.item];
             batch.remove(place.item);
-            UsageRate score = greedy(used_item_area, batch, fix_sol);
+            UsageRate score = greedy(batch, fix_sol);
             if (score.valid() && best_score < score) {
                 best_score = score;
                 best_place = place;
             }
             fix_sol.pop_back();
-            used_item_area -= gv::item_area[place.item];
             batch.add(place.item);
         }
         if (best_score.valid()) {
             fix_sol.push_back(best_place);
-            used_item_area += gv::item_area[best_place.item];
             batch.remove(best_place.item);
             branch_nodes.clear();
             branch(best_place, batch, branch_nodes);
@@ -216,26 +212,26 @@ void CutSearch::pfs(Batch &batch) {
 * 输出：贪心走到底（到达1-cut尾部或原料尾部）时所得解的利用率。
 * 注意：由于函数在运行时会改变引用的batch和fix_sol，该函数不便使用多线程。
 */
-UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &fix_sol) {
+UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
     assert(!fix_sol.empty());
     UsageRate cur_obj;  // fix_sol + greedy_sol的目标函数值。
     Placement cur_node = fix_sol.back();    // 下一次分支的起点。
-    // 检查当前解是否需要更新。
-    if (mode_ == PLATE) {
-        cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
-    } else {
-        cur_obj = UsageRate((double)used_item_area / (double)(
-            (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
-    }
-    update_sol_cache(cur_obj, fix_sol);
     Solution greedy_sol(fix_sol);    // 储存贪心构造的解。
     List<Placement> branch_nodes;
     branch(cur_node, batch, branch_nodes);
+    if (mode_ == CUT) {
+        cur_obj = UsageRate((double)batch.used_item_area() / (double)(
+            (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
+        update_sol_cache(cur_obj, fix_sol);
+    } else if (mode_ == PLATE && branch_nodes.empty()) {
+        cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
+        update_sol_cache(cur_obj, fix_sol);
+    }
     while (!branch_nodes.empty()) {
         // 挑选并记录最好的解。
         UsageRate best_node_score;
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
-            UsageRate this_node_score(static_cast<double>(used_item_area + gv::item_area[it->item]) /
+            UsageRate this_node_score(static_cast<double>(batch.used_item_area() + gv::item_area[it->item]) /
                 static_cast<double>(envelope_area(*it)));
             if (best_node_score < this_node_score) {
                 best_node_score = this_node_score;
@@ -243,19 +239,18 @@ UsageRate CutSearch::greedy(Area used_item_area, Batch &batch, const Solution &f
             }
         }
         greedy_sol.push_back(cur_node);
-        used_item_area += gv::item_area[cur_node.item];
-        // 计算目标函数值并检查更新最优解。
-        if (mode_ == PLATE) {
-            cur_obj = UsageRate((double)used_item_area / (double)tail_area_);
-        } else {
-            cur_obj = UsageRate((double)used_item_area / (double)(
-                (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
-        }
-        update_sol_cache(cur_obj, greedy_sol);
         // 更新batch并再次分支。
         batch.remove(cur_node.item);
         branch_nodes.clear();
         branch(cur_node, batch, branch_nodes);
+        if (mode_ == CUT) {
+            cur_obj = UsageRate((double)batch.used_item_area() / (double)(
+                (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
+            update_sol_cache(cur_obj, greedy_sol);
+        } else if (mode_ == PLATE && branch_nodes.empty()) {
+            cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
+            update_sol_cache(cur_obj, fix_sol);
+        }
     }
     // 恢复batch中的物品。
     size_t count = 0, max_count = greedy_sol.size() - fix_sol.size();

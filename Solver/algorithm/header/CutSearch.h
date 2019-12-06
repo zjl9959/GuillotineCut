@@ -27,7 +27,7 @@ private:
     void beam_search(Batch &batch);
     void dfs(Batch &batch);
     void pfs(Batch &batch);
-    UsageRate greedy(Area used_item_area, Batch &batch, const Solution &fix_sol);
+    UsageRate greedy(Batch &batch, const Solution &fix_sol);
     void branch(const Placement &old, const Batch &batch, List<Placement> &branch_nodes);
     bool constraintCheck(const Placement &old, Placement &node);
     TCoord sliptoDefectRight(TCoord x, TCoord y, TLength w, TLength h) const;
