@@ -115,6 +115,7 @@ void CutSearch::dfs(Batch &batch) {
         live_nodes.push_back(DFSTreeNode(0, *it));
     }
     while (live_nodes.size()) { // 对搜索空间进行完整的搜索
+        gv::info.nb_explore_nodes++;
         DFSTreeNode node = live_nodes.back();
         live_nodes.pop_back();
         if (node.depth - pre_depth == 1) { // 向下扩展
@@ -131,6 +132,7 @@ void CutSearch::dfs(Batch &batch) {
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
             (envelope_area(node.place) + batch.left_item_area()));
         if (upper_bound < best_obj()) {
+            gv::info.nb_cut_nodes++;
             pre_depth = node.depth;
             continue;      // 剪枝。
         }
@@ -171,6 +173,7 @@ void CutSearch::pfs(Batch &batch) {
     }
     while (!tree.empty() && cur_iter < gv::cfg.mcit) {
         ++cur_iter;
+        ++gv::info.nb_explore_nodes;
         PfsTree::Node *node = tree.get();
         tree.update_batch(last_node, node, batch);
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
@@ -178,6 +181,7 @@ void CutSearch::pfs(Batch &batch) {
         if (upper_bound < best_obj()) {
             tree.add_leaf_node(node);
             last_node = node;
+            ++gv::info.nb_cut_nodes;
             continue;           // 剪枝。
         }
         // 分支并更新tree。

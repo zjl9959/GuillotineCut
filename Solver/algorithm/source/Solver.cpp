@@ -64,6 +64,7 @@ int Cli::run(int argc, char *argv[]) {
     #else
     Solver solver(input, env);
     solver.run();
+    cout << gv::info.str() << endl;
     #endif
 
     return 0;

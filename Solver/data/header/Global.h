@@ -34,6 +34,13 @@ struct IdMap {
     ZeroBasedConsecutiveIdMap<TID, TID, Problem::MaxPlateNum> plate;
 };
 
+struct Statistics {
+    size_t nb_explore_nodes = 0;    // cutSearch总共探索的节点数目。
+    size_t nb_cut_nodes = 0;        // cutSearch总共剪枝头掉的节点数目。
+    void reset();                   // 复位统计数据。
+    String str() const;             // 格式化Information字符串。
+};
+
 void init_global_variables(const Problem::Input &input, const Environment &env);
 
 namespace gv {
@@ -48,6 +55,7 @@ extern List<List<Defect>> defect_y;        // 每块原料上的瑕疵，按照y坐标排序
 extern Problem::Input::Param param;        // 约束参数
 extern IdMap idMap;                        // 输入TID和连续TID之间的映射
 extern int support_thread;                 // 支持线程数目
+extern Statistics info;
 }
 
 }

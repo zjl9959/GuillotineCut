@@ -18,6 +18,7 @@ List<List<Defect>> defect_y;        // 每块原料上的瑕疵，按照y坐标排序
 Problem::Input::Param param;        // 约束参数
 IdMap idMap;                        // 输入TID和连续TID之间的映射
 int support_thread;                 // 支持线程数目
+Statistics info;                   // 统计程序运行中的关键信息
 }
 
 /*
@@ -81,6 +82,19 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
         sort(gv::defect_y[p].begin(), gv::defect_y[p].end(), [](Defect &lhs, Defect &rhs) { return lhs.y < rhs.y; });
     gv::param = input.param;
     gv::support_thread = thread::hardware_concurrency();
+    gv::info.reset();
+}
+
+void Statistics::reset() {
+    nb_explore_nodes = 0;
+    nb_cut_nodes = 0;
+}
+
+String Statistics::str() const {
+    ostringstream os;
+    os << "nb_explore_nodes=" << nb_explore_nodes
+        << ";nb_cut_nodes=" << nb_cut_nodes;
+    return os.str();
 }
 
 }
