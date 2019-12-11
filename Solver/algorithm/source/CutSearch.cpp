@@ -7,9 +7,9 @@ using namespace std;
 
 namespace szx {
 
-CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const BRANCH_MODE mode) :
+CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail) :
     plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
-    start_pos_(start_pos), mode_(mode), nb_sol_cache_(nb_sol_cache) {}
+    start_pos_(start_pos), opt_tail_(opt_tail), nb_sol_cache_(nb_sol_cache) {}
 
 /*
 * 优化1-cut，根据全局配置参数，自动选择优化策略。
@@ -125,7 +125,7 @@ void CutSearch::dfs(Batch &batch) {
             cur_sol.push_back(node.place); // 更新当前解
             batch.remove(node.place.item);
         }
-        if (mode_ == CUT) {             // CUT模式下对每一个分支节点进行解的更新检测。
+        if (opt_tail_ == false) {             // 对每一个分支状态进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (cur_sol.back().c1cpr - start_pos_)*gv::param.plateHeight));
             update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
@@ -143,7 +143,7 @@ void CutSearch::dfs(Batch &batch) {
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
             live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
         }
-        if (branch_nodes.empty() && mode_ == PLATE) {   // PLATE模式下仅对叶子节点进行解的更新检测。
+        if (branch_nodes.empty() && opt_tail_) {   // 仅对到达叶子节点的解进行更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
             update_sol_cache(cur_obj, cur_sol);
         }
@@ -172,7 +172,7 @@ void CutSearch::pfs(Batch &batch) {
         ++gv::info.nb_explore_nodes;
         PfsTree::Node *node = tree.get();
         tree.update_batch(last_node, node, batch);
-        if (mode_ == CUT) {     // CUT模式下对每一个分支节点进行解的更新检测。
+        if (opt_tail_ == false) {     // 对每一个分支状态进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (node->place.c1cpr - start_pos_)*gv::param.plateHeight));
             tree.get_tree_path(node, cur_sol);
@@ -195,7 +195,7 @@ void CutSearch::pfs(Batch &batch) {
         }
         if (branch_nodes.empty()) {
             tree.add_leaf_node(node);   // 树中需要记录叶子节点，以便删除树。
-            if (mode_ == PLATE) {       // PLATE模式下仅对叶子节点进行解的更新检测。
+            if (opt_tail_ == true) {       // 仅对到达叶子节点的解进行更新检测。
                 cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
                 tree.get_tree_path(node, cur_sol);
                 update_sol_cache(cur_obj, cur_sol);
@@ -219,11 +219,11 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
     Solution greedy_sol(fix_sol);    // 储存贪心构造的解。
     List<Placement> branch_nodes;
     branch(cur_node, batch, branch_nodes);
-    if (mode_ == CUT) {
+    if (opt_tail_ == false) {
         cur_obj = UsageRate((double)batch.used_item_area() / (double)(
             (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
         update_sol_cache(cur_obj, fix_sol);
-    } else if (mode_ == PLATE && branch_nodes.empty()) {
+    } else if (opt_tail_ == true && branch_nodes.empty()) {
         cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
         update_sol_cache(cur_obj, fix_sol);
     }
@@ -243,11 +243,11 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
         batch.remove(cur_node.item);
         branch_nodes.clear();
         branch(cur_node, batch, branch_nodes);
-        if (mode_ == CUT) {
+        if (opt_tail_ == false) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
             update_sol_cache(cur_obj, greedy_sol);
-        } else if (mode_ == PLATE && branch_nodes.empty()) {
+        } else if (opt_tail_ == true && branch_nodes.empty()) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
             update_sol_cache(cur_obj, fix_sol);
         }
@@ -481,7 +481,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                             }
                         }
                     }
-                    if (mode_ == CUT || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
+                    if (opt_tail_ == false || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                     {

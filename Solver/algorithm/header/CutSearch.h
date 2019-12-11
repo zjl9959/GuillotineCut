@@ -11,12 +11,7 @@ namespace szx {
 
 class CutSearch {
 public:
-    enum BRANCH_MODE {
-        CUT,    // 只在该1-cut内分支。
-        PLATE,  // 分支时可以开新的1-cut，但不能开新的plate。
-    };
-public:
-    CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, const BRANCH_MODE mode);
+    CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail);
     
     void run(Batch &batch);
     UsageRate best_obj() const;                         // 返回最优解的目标函数值。
@@ -46,7 +41,7 @@ private:
     const TID plate_;                       // 1-cut位于原料的id。
     const Area tail_area_;                  // 剩余面积
     const TCoord start_pos_;                // 1-cut开始位置。
-    const BRANCH_MODE mode_;                // 分支模式的设置。
+    const bool opt_tail_;                   // 是否优化最后一个1-cut。
 
     std::mutex sol_mutex_;                  // 更新最优解时需先获得该锁
     size_t nb_sol_cache_;                   // 缓存解的最大数量。

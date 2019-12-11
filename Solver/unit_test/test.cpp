@@ -32,7 +32,7 @@ void UnitTest::test_CutSearch() {
     TCoord start_pos = 0;
     List<List<TID>> stacks = { {1}, {42}, {20}, {23}, {33} };
     Batch batch(stacks);
-    CutSearch solver(plate, start_pos, 1, CutSearch::PLATE);
+    CutSearch solver(plate, start_pos, 1, true);
     solver.run(batch);
     std::cout << solver.best_obj().str() << std::endl;
     Solution sol;
