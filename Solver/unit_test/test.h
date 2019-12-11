@@ -3,6 +3,8 @@
 
 namespace szx {
 
+#define TEST_MODE
+
 class UnitTest {
 public:
     void run();

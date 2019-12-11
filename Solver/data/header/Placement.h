@@ -4,6 +4,8 @@
 
 #include "Solver/data/header/Problem.h"
 
+#include <iostream>
+
 #include "Solver/utility/Common.h"
 
 namespace szx {
@@ -59,7 +61,8 @@ TID nb_used_plate(const Solution &sol);    // 计算当前解使用了多少块原料
 
 bool valid_plate_sol(const Solution &sol);  // 检测plate solution是否合法
 
-void save_solution(const Solution &sol, const String &path);    // 保存解到文件中
+std::ostream& operator<< (std::ostream &out, const Solution &sol);
+
 #pragma endregion
 
 #pragma region UsageRate

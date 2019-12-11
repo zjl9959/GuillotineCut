@@ -53,12 +53,12 @@ bool valid_plate_sol(const Solution &sol) {
     return true;
 }
 
-void save_solution(const Solution &sol, const String &path) {
-    ofstream ofs(path);
-    if (!ofs.is_open())return;
-    ofs << "item,c1cpl,c1cpr,c2cpb,c2cpu,c3cp,c4cp,flag" << endl;
+std::ostream&
+operator<<(std::ostream &out, const Solution &sol)
+{
+    out << "item,c1cpl,c1cpr,c2cpb,c2cpu,c3cp,c4cp,flag" << endl;
     for (auto it = sol.cbegin(); it != sol.cend(); ++it) {
-        ofs << it->item << "," << it->c1cpl << ","
+        out << it->item << "," << it->c1cpl << ","
             << it->c1cpr << "," << it->c2cpb << ","
             << it->c2cpu << "," << it->c3cp << ","
             << it->c4cp << "," << it->flag << "("
@@ -72,6 +72,7 @@ void save_solution(const Solution &sol, const String &path) {
             << (it->getFlagBit(Placement::NEW_L2) ? "NEW_L2;" : "")
             << ")" << endl;
     }
+    return out;
 }
 
 }

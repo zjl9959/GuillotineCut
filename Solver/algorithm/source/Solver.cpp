@@ -8,7 +8,6 @@
 #include "Solver/algorithm/header/TopSearch.h"
 #include "Solver/unit_test/test.h"
 
-//#define TEST_MODE
 
 using namespace std;
 
@@ -86,7 +85,6 @@ void Solver::run() {
         // Êä³ö½â
         output.save(env.solutionPath());
         #if SZX_DEBUG
-        save_solution(best_sol, "tmp/solution.csv");
         output.save(env.solutionPathWithTime());
         record();
         #endif
