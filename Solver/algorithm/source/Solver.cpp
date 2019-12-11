@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <windows.h>
 
 #include "Solver/utility/LogSwitch.h"
 #include "Solver/data/header/Global.h"
@@ -10,7 +11,6 @@
 
 
 using namespace std;
-
 
 namespace szx {
 
@@ -57,7 +57,7 @@ int Cli::run(int argc, char *argv[]) {
     init_global_variables(input, env);
     Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
     
-    #ifdef TEST_MODE
+    #if TEST_MODE == true
     UnitTest test;
     test.run();
     #else
@@ -367,6 +367,16 @@ Problem::Output createOutput(const Solution &sol) {
     // 计算已使用原料的宽度
     output.totalWidth = cur_plate * gv::param.plateWidth + sol.back().c1cpr;
     return output;
+}
+
+/*
+* 更新中间解文件。
+*/
+void update_middle_solution(const Solution &sol) {
+    static const string middle_path = "middle_sol.csv";
+    static constexpr int sleep_milliseconds = 1000;
+    createOutput(sol).save(middle_path);
+    Sleep(sleep_milliseconds);
 }
 #pragma endregion
 

@@ -56,6 +56,9 @@ void CutSearch::beam_search(Batch &batch) {
     branch(resume_point, batch, branch_nodes);
     using ScorePair = pair<double, size_t>;
     while (!branch_nodes.empty()) {
+        #if UPDATE_MIDDLE_SOL == 0
+        update_middle_solution(fix_sol);
+        #endif
         // 限制beam_search宽度不超过set_.max_branch。
         List<ScorePair> score_pair;
         for (size_t i = 0; i < branch_nodes.size(); ++i) {
@@ -111,6 +114,9 @@ void CutSearch::dfs(Batch &batch) {
         live_nodes.push_back(DFSTreeNode(0, *it));
     }
     while (live_nodes.size()) { // 对搜索空间进行完整的搜索
+        #if UPDATE_MIDDLE_SOL == 0
+        update_middle_solution(cur_sol);
+        #endif
         gv::info.nb_explore_nodes++;
         DFSTreeNode node = live_nodes.back();
         live_nodes.pop_back();
@@ -171,6 +177,11 @@ void CutSearch::pfs(Batch &batch) {
         ++cur_iter;
         ++gv::info.nb_explore_nodes;
         PfsTree::Node *node = tree.get();
+        #if UPDATE_MIDDLE_SOL == 0
+        Solution temp_sol;
+        tree.get_tree_path(node, temp_sol);
+        update_middle_solution(temp_sol);
+        #endif
         tree.update_batch(last_node, node, batch);
         if (opt_tail_ == false) {     // 对每一个分支状态进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(

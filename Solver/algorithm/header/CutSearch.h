@@ -9,6 +9,10 @@
 
 namespace szx {
 
+// 0 : CutSearch中不断更新中间解文件
+// 1 ：PlateSearch中不断更新中间解文件
+#define UPDATE_MIDDLE_SOL 0
+
 class CutSearch {
 public:
     CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail);
@@ -47,6 +51,8 @@ private:
     size_t nb_sol_cache_;                   // 缓存解的最大数量。
     std::map<UsageRate, Solution, UsageRateCmp> sol_cache_;   // 缓存解。
 };
+
+void update_middle_solution(const Solution &sol);
 
 }
 

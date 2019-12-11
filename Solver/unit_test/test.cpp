@@ -27,30 +27,27 @@ void UnitTest::run() {
 * 辅助测试CutSearch的run接口。
 */
 void UnitTest::test_CutSearch() {
-    // 该部分需要手动设置参数
     TID plate = 0;
     TCoord start_pos = 0;
-    List<List<TID>> stacks = { {1}, {42}, {20}, {23}, {33} };
+    List<List<TID>> stacks;
+    //stacks = { {0, 1, 2, 3, 4} }; // 手动写入数据。
+    stacks = gv::stacks;            // 从全局数据中读入batch。
     Batch batch(stacks);
     CutSearch solver(plate, start_pos, 1, true);
     solver.run(batch);
     std::cout << solver.best_obj().str() << std::endl;
     Solution sol;
     solver.get_best_sol(sol);
-    cout << sol << endl;
 }
 
 /*
 * 测试PlateSearch的beam_search接口。
 */
 void UnitTest::test_PlateSearch() {
-    // 手动设置参数
     TID plate = 1;
-    List<TID> items = { 78, 57, 58, 36, 16, 55, 41, 37, 42, 38, 43, 39, 6, 90, 67, 59, 7, 60, 91, 92, 93 };
-    // 进行测试
-    std::reverse(items.begin(), items.end());
     List<List<TID>> stacks;
-    stacks.push_back(items);
+    stacks = { {} };     // 手动写入数据。
+    //stacks = gv::stacks;    // 从全局数据中读入batch。
     Batch batch(stacks);
     PlateSearch solver(plate, 1);
     solver.run(batch);

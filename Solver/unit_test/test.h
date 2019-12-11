@@ -3,7 +3,9 @@
 
 namespace szx {
 
-#define TEST_MODE
+// true:开启测试模式
+// false:关闭测试模式
+#define TEST_MODE true
 
 class UnitTest {
 public:
