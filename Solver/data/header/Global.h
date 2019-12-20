@@ -37,6 +37,7 @@ struct IdMap {
 struct Statistics {
     size_t nb_explore_nodes = 0;    // cutSearch总共探索的节点数目。
     size_t nb_cut_nodes = 0;        // cutSearch总共剪枝头掉的节点数目。
+
     void reset();                   // 复位统计数据。
     String str() const;             // 格式化Information字符串。
 };

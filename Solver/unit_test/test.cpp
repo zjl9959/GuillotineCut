@@ -15,6 +15,11 @@ using namespace std;
 
 namespace szx {
 
+using MS = std::chrono::milliseconds;
+using US = std::chrono::microseconds;
+using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
+using Clock = std::chrono::steady_clock;
+
 void UnitTest::run() {
     // [zjl][TODO]:完善测试函数，添加自动读入参数代码。
     // 测试cutSearch
@@ -27,15 +32,18 @@ void UnitTest::run() {
 * 辅助测试CutSearch的run接口。
 */
 void UnitTest::test_CutSearch() {
+    cout << "test cut search" << endl;
     TID plate = 0;
     TCoord start_pos = 0;
     List<List<TID>> stacks;
     //stacks = { {0, 1, 2, 3, 4} }; // 手动写入数据。
     stacks = gv::stacks;            // 从全局数据中读入batch。
     Batch batch(stacks);
+    TimePoint start_time(Clock::now());
     CutSearch solver(plate, start_pos, 1, true);
     solver.run(batch);
     std::cout << solver.best_obj().str() << std::endl;
+    cout << "cost time:" << std::chrono::duration_cast<US>(Clock::now() - start_time).count() << "ms";
     Solution sol;
     solver.get_best_sol(sol);
 }
@@ -44,13 +52,16 @@ void UnitTest::test_CutSearch() {
 * 测试PlateSearch的beam_search接口。
 */
 void UnitTest::test_PlateSearch() {
+    cout << "test plate search" << endl;
     TID plate = 1;
     List<List<TID>> stacks;
     stacks = { {} };     // 手动写入数据。
     //stacks = gv::stacks;    // 从全局数据中读入batch。
     Batch batch(stacks);
+    TimePoint start_time(Clock::now());
     PlateSearch solver(plate, 1);
     solver.run(batch);
+    cout << "cost time:" << std::chrono::duration_cast<MS>(Clock::now() - start_time).count() << "ms";
     Solution sol;
     solver.get_best_sol(sol);
 }

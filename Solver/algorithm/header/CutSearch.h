@@ -11,7 +11,7 @@ namespace szx {
 
 // 0 : CutSearch中不断更新中间解文件
 // 1 ：PlateSearch中不断更新中间解文件
-#define UPDATE_MIDDLE_SOL 0
+#define UPDATE_MIDDLE_SOL 2
 
 class CutSearch {
 public:
