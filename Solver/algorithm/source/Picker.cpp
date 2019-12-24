@@ -53,10 +53,21 @@ bool Picker::rand_pick(Batch &target_batch, Terminator terminator, Filter filter
     }
     if (item_set.empty())
         return false;
+    sort(item_set.begin(), item_set.end());
     if (!cache_.set(item_set))
         return false;
     target_batch = move(Batch(chosen, true));
     return true;
+}
+
+bool Picker::pick_for_plate(TID pid, Batch & target_batch) {
+    throw "not implement";
+    return false;
+}
+
+bool Picker::pick_for_cut(TID pid, TCoord start_pos, Batch & target_batch) {
+    throw "not implement";
+    return false;
 }
 
 bool Picker::Filter::operator()(TID item) {

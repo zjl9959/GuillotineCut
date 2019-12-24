@@ -370,12 +370,43 @@ Problem::Output createOutput(const Solution &sol) {
 }
 
 /*
-* 更新中间解文件。
+* 功能：更新中间解文件。
 */
-void update_middle_solution(const Solution &sol) {
+void update_middle_solution(TID pid, const Solution &sol) {
+    if (sol.empty())return;
     static const string middle_path = "middle_sol.csv";
     static constexpr int sleep_milliseconds = 1000;
-    createOutput(sol).save(middle_path);
+    int count = 0;
+    Placement plate_item;
+    plate_item.c1cpl = 0;
+    plate_item.c1cpr = gv::param.plateWidth;
+    plate_item.c2cpb = 0;
+    plate_item.c2cpu = gv::param.plateHeight;
+    plate_item.c3cp = gv::param.plateWidth;
+    plate_item.c4cp = gv::param.plateHeight;
+    plate_item.item = gv::items.size();
+    gv::items.push_back(Rect(gv::param.plateWidth, gv::param.plateHeight));
+    ++count;
+    plate_item.flag = Placement::NEW_PLATE | Placement::NEW_L1 | Placement::NEW_L2;
+    Solution new_sol;
+    while (pid--)new_sol.push_back(plate_item);
+    if (!sol[0].getFlagBit(Placement::NEW_PLATE)) {
+        plate_item.c1cpr = sol[0].c1cpl;
+        plate_item.c3cp = sol[0].c1cpl;
+        plate_item.item = gv::items.size();
+        gv::items.push_back(Rect(sol[0].c1cpl, gv::param.plateHeight));
+        ++count;
+        new_sol.push_back(plate_item);
+    }
+    new_sol += sol;
+    Problem::Output out = createOutput(new_sol);
+    while (count--)gv::items.pop_back();
+    for (Problem::Output::Node& node : out.nodes) {
+        if (node.type >= int(gv::items.size())) {
+            node.type = -1;
+        }
+    }
+    out.save("middle_sol.csv");
     Sleep(sleep_milliseconds);
 }
 #pragma endregion

@@ -5,6 +5,7 @@
 #include "Solver/data/header/Batch.h"
 #include "Solver/utility/Common.h"
 #include "Solver/utility/Utility.h"
+#include "Solver/data/header/Global.h"
 
 namespace szx {
 
@@ -43,6 +44,8 @@ public:
     * 输出：target_batch（挑选出来的物品所形成的栈），true：挑选成功，false：挑选失败。
     */
     bool rand_pick(Batch &target_batch, Terminator terminator = Terminator(), Filter filter = Filter());
+    bool pick_for_plate(TID pid, Batch &target_batch);
+    bool pick_for_cut(TID pid, TCoord start_pos, Batch &target_batch);
 private:
     const Batch &source_;
     CombinationCache cache_; // 缓存挑选过的物品，保证不重复

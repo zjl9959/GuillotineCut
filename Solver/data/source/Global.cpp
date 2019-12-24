@@ -1,5 +1,7 @@
 #include "Solver/data/header/Global.h"
 
+#include <iomanip>
+
 #include "Solver/utility/LogSwitch.h"
 
 using namespace std;
@@ -85,15 +87,53 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
     gv::info.reset();
 }
 
+#define USE_STATISTICS
+void Statistics::add_L1(double usage_rate) {
+    #ifdef USE_STATISTICS
+    L1_min = min(L1_min, usage_rate);
+    L1_max = max(L1_max, usage_rate);
+    L1_total += usage_rate;
+    L1_count++;
+    #endif // USE_STATISTICS
+}
+
+void Statistics::add_plate(double usage_rate) {
+    #ifdef USE_STATISTICS
+    plate_min = min(plate_min, usage_rate);
+    plate_max = max(plate_max, usage_rate);
+    plate_total += usage_rate;
+    plate_count++;
+    #endif // USE_STATISTICS
+}
+
 void Statistics::reset() {
-    nb_explore_nodes = 0;
-    nb_cut_nodes = 0;
+    #ifdef USE_STATISTICS
+    L1_count = 0;
+    L1_min = 10.0;
+    L1_max = -1.0;
+    L1_total = 0.0;
+
+    plate_count = 0;
+    plate_min = 10.0;
+    plate_max = -1.0;
+    plate_total = 0.0;
+    #endif // USE_STATISTICS
 }
 
 String Statistics::str() const {
     ostringstream os;
-    os << "nb_explore_nodes=" << nb_explore_nodes
-        << ";nb_cut_nodes=" << nb_cut_nodes;
+    #ifdef USE_STATISTICS
+    os << setprecision(4)
+        << "1-cut:[" << L1_min * 100 << "%,"
+        << L1_max * 100 << "%]("
+        << L1_total / L1_count * 100 << "%,"
+        << L1_count << ")";
+    os << setprecision(4)
+        << " plate:[" << plate_min * 100 << "%,"
+        << plate_max * 100 << "%]("
+        << plate_total / plate_count * 100 << "%,"
+        << plate_count << ")";
+    #endif // USE_STATISTICS
     return os.str();
 }
 

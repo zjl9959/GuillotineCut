@@ -9,7 +9,7 @@ namespace szx {
 
 CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail) :
     plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
-    start_pos_(start_pos), opt_tail_(opt_tail), nb_sol_cache_(nb_sol_cache) {}
+    start_pos_(start_pos), opt_tail_(opt_tail), nb_sol_cache_(nb_sol_cache), cb_(gv::items.size()) {}
 
 /*
 * 优化1-cut，根据全局配置参数，自动选择优化策略。
@@ -23,6 +23,7 @@ void CutSearch::run(Batch &batch) {
         pfs(batch);
     else if(gv::cfg.cut_mode == Configuration::CDFS)
         dfs(batch);
+    if(best_obj().valid()) gv::info.add_L1(best_obj().value());
 }
 
 UsageRate CutSearch::best_obj() const {
@@ -57,7 +58,7 @@ void CutSearch::beam_search(Batch &batch) {
     using ScorePair = pair<double, size_t>;
     while (!branch_nodes.empty()) {
         #if UPDATE_MIDDLE_SOL == 0
-        update_middle_solution(fix_sol);
+        update_middle_solution(plate_, fix_sol);
         #endif
         // 限制beam_search宽度不超过set_.max_branch。
         List<ScorePair> score_pair;
@@ -115,9 +116,8 @@ void CutSearch::dfs(Batch &batch) {
     }
     while (live_nodes.size()) { // 对搜索空间进行完整的搜索
         #if UPDATE_MIDDLE_SOL == 0
-        update_middle_solution(cur_sol);
+        update_middle_solution(plate_, cur_sol);
         #endif
-        gv::info.nb_explore_nodes++;
         DFSTreeNode node = live_nodes.back();
         live_nodes.pop_back();
         if (node.depth - pre_depth == 1) { // 向下扩展
@@ -139,7 +139,6 @@ void CutSearch::dfs(Batch &batch) {
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
             (envelope_area(node.place) + batch.left_item_area()));
         if (upper_bound < best_obj()) {
-            gv::info.nb_cut_nodes++;
             pre_depth = node.depth;
             continue;      // 剪枝。
         }
@@ -175,12 +174,11 @@ void CutSearch::pfs(Batch &batch) {
     }
     while (!tree.empty() && cur_iter < gv::cfg.mcit) {
         ++cur_iter;
-        ++gv::info.nb_explore_nodes;
         PfsTree::Node *node = tree.get();
         #if UPDATE_MIDDLE_SOL == 0
         Solution temp_sol;
         tree.get_tree_path(node, temp_sol);
-        update_middle_solution(temp_sol);
+        update_middle_solution(plate_, temp_sol);
         #endif
         tree.update_batch(last_node, node, batch);
         if (opt_tail_ == false) {     // 对每一个分支状态进行解的更新检测。
@@ -194,7 +192,6 @@ void CutSearch::pfs(Batch &batch) {
         if (upper_bound < best_obj()) {
             tree.add_leaf_node(node);
             last_node = node;
-            ++gv::info.nb_cut_nodes;
             continue;           // 剪枝。
         }
         // 分支并更新tree。
@@ -218,7 +215,7 @@ void CutSearch::pfs(Batch &batch) {
 #pragma endregion
 
 /* 
-* 贪心构造解
+* 功能：贪心构造解
 * 输入：used_item_area(固定部分物品占用面积), batch(可以物品栈), fix_sol(固定部分解)
 * 输出：贪心走到底（到达1-cut尾部或原料尾部）时所得解的利用率。
 * 注意：由于函数在运行时会改变引用的batch和fix_sol，该函数不便使用多线程。
@@ -686,9 +683,10 @@ inline Area CutSearch::envelope_area(const Placement &place) const {
 }
 
 /*
-* 更新sol_cache，自动删除多余的较差的解。
+* 功能：更新sol_cache，自动删除多余的较差的解。
 * 输入：obj(当前解的利用率)，sol（当前解的值）。
 */
+//#define TEST_COMBINE_CACHE
 void CutSearch::update_sol_cache(UsageRate obj, const Solution &sol) {
     lock_guard<mutex> guard(sol_mutex_);
     if (sol_cache_.size() < nb_sol_cache_) {
@@ -698,6 +696,16 @@ void CutSearch::update_sol_cache(UsageRate obj, const Solution &sol) {
         if (sol_cache_.size() > nb_sol_cache_)
             sol_cache_.erase(prev(sol_cache_.end()));
     }
+    #ifdef TEST_COMBINE_CACHE
+    // [zjl][TODO]:考虑成品的旋转。
+    List<TID> ordered_item_list;
+    for (const Placement &p : sol) {
+        ordered_item_list.push_back(p.item);
+    }
+    sort(ordered_item_list.begin(), ordered_item_list.end());
+    if (cb_.set(ordered_item_list) == false)
+        throw "Cut search solutin repeat!";
+    #endif // TEST_COMBINE_CACHE
 }
 
 }
