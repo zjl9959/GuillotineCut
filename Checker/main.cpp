@@ -28,7 +28,7 @@
 
 using namespace std;
 
-unsigned int active_log = 1; // Once log file is generated this var will be cleared.
+unsigned int active_log = 0; // Once log file is generated this var will be cleared.
 ofstream log_file; // Reference to log file.
 
 ofstream statistics_file; // Reference to statisticsLog file.
@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) {
 
     /// If csv files exist and files index is equal.
     string log_name = "logs/" + file_idx + "_log.txt";
-    log_file.open(log_name.c_str());
+    //log_file.open(log_name.c_str());
     cout << endl << "\t\t----------- Start files parsing -----------" << endl;
     log_file << endl << "\t\t----------- Start files parsing -----------" << endl;
     int exit_code = 0;
@@ -327,7 +327,7 @@ void statisticsLog(void) {
     string temp;
     total_waste = 0.0;
     string statisticsPath = "logs/" + file_idx + "_statistics.csv";
-    statistics_file.open(statisticsPath.c_str());
+    //statistics_file.open(statisticsPath.c_str());
     statistics_file << "instanceId;validSolution;nPlates;totalGeoLoss;widthResidual" << endl;
 
     statistics_file << file_idx << ";";
