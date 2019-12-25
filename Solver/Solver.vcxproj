@@ -182,6 +182,7 @@
     <ClInclude Include="utility\LogSwitch.h" />
     <ClInclude Include="utility\ThreadPool.h" />
     <ClInclude Include="utility\Utility.h" />
+    <ClInclude Include="utility\zjl_log.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="algorithm\source\CutSearch.cpp" />
@@ -198,6 +199,7 @@
     <ClCompile Include="unit_test\test.cpp" />
     <ClCompile Include="utility\CsvReader.cpp" />
     <ClCompile Include="utility\Utility.cpp" />
+    <ClCompile Include="utility\zjl_log.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

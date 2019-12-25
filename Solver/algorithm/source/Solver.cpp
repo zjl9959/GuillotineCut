@@ -8,6 +8,7 @@
 #include "Solver/data/header/Global.h"
 #include "Solver/algorithm/header/TopSearch.h"
 #include "Solver/unit_test/test.h"
+#include "Solver/utility/zjl_log.hpp"
 
 
 using namespace std;
@@ -51,11 +52,14 @@ int Cli::run(int argc, char *argv[]) {
     if (env.instName.empty() || env.slnPath.empty()) { return -1; }
 
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
+    zjl_log::log << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << zjl_log::info;
+    
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
     init_global_variables(input, env);
     Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
+    zjl_log::log << gv::cfg.toBriefStr() << zjl_log::info;
     
     #if TEST_MODE == true
     UnitTest test;
@@ -63,7 +67,8 @@ int Cli::run(int argc, char *argv[]) {
     #else
     Solver solver(input, env);
     solver.run();
-    cout << gv::info.str() << endl;
+    zjl_log::log << gv::info.str() << zjl_log::info;
+    //cout << gv::info.str() << endl;
     #endif
 
     return 0;

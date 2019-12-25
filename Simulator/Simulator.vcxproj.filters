@@ -98,6 +98,9 @@
     <ClInclude Include="..\Solver\data\header\Problem.h">
       <Filter>Solver\data\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\Solver\utility\zjl_log.hpp">
+      <Filter>Solver\utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -144,6 +147,9 @@
     </ClCompile>
     <ClCompile Include="..\Solver\data\source\PFSTree.cpp">
       <Filter>Solver\data\source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Solver\utility\zjl_log.cpp">
+      <Filter>Solver\utility</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
