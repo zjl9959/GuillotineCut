@@ -25,9 +25,9 @@ private:
     Length get_obj(const Solution &sol);
     void update_best_sol(const Solution &sol, Length obj = -1);
     
-    size_t find_first_improvement(const Solution &cur_sol, Solution &improve);
-    void get_plates_usage_rate(const Solution &sol, List<std::pair<size_t, UsageRate>> &usage_rates);
-    size_t prev_plate_index(const Solution &sol, size_t cur_index);
+    bool find_first_improvement(Solution &cur_sol);
+    List<double> get_plates_usage_rate(const Solution &sol);
+    List<int> get_plates_index(const Solution &sol);
 private:
     std::mutex sol_mutex_;      // 更新最优解时需先获得该锁
     Solution best_sol_;         // 最优解
