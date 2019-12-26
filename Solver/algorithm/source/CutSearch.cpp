@@ -9,7 +9,7 @@ namespace szx {
 
 CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail) :
     plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
-    start_pos_(start_pos), opt_tail_(opt_tail), nb_sol_cache_(nb_sol_cache), cb_(gv::items.size()) {}
+    start_pos_(start_pos), opt_tail_(opt_tail), nb_sol_cache_(nb_sol_cache) {}
 
 /*
 * 优化1-cut，根据全局配置参数，自动选择优化策略。
@@ -23,7 +23,8 @@ void CutSearch::run(Batch &batch) {
         pfs(batch);
     else if(gv::cfg.cut_mode == Configuration::CDFS)
         dfs(batch);
-    if(best_obj().valid()) gv::info.add_L1(best_obj().value());
+    if(best_obj().valid())
+        gv::info.add_L1(best_obj().value());
 }
 
 UsageRate CutSearch::best_obj() const {
@@ -57,9 +58,6 @@ void CutSearch::beam_search(Batch &batch) {
     branch(resume_point, batch, branch_nodes);
     using ScorePair = pair<double, size_t>;
     while (!branch_nodes.empty()) {
-        #if UPDATE_MIDDLE_SOL == 0
-        update_middle_solution(plate_, fix_sol);
-        #endif
         // 限制beam_search宽度不超过set_.max_branch。
         List<ScorePair> score_pair;
         for (size_t i = 0; i < branch_nodes.size(); ++i) {
@@ -236,6 +234,9 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
         update_sol_cache(cur_obj, fix_sol);
     }
     while (!branch_nodes.empty()) {
+        #if UPDATE_MIDDLE_SOL == 0
+        update_middle_solution(plate_, greedy_sol);
+        #endif
         // 挑选并记录最好的解。
         UsageRate best_node_score;
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
@@ -257,9 +258,12 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
             update_sol_cache(cur_obj, greedy_sol);
         } else if (opt_tail_ == true && branch_nodes.empty()) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
-            update_sol_cache(cur_obj, fix_sol);
+            update_sol_cache(cur_obj, greedy_sol);
         }
     }
+    #if UPDATE_MIDDLE_SOL == 0
+    update_middle_solution(plate_, greedy_sol);
+    #endif
     // 恢复batch中的物品。
     size_t count = 0, max_count = greedy_sol.size() - fix_sol.size();
     for (auto it = greedy_sol.rbegin(); it != greedy_sol.rend() && count < max_count; ++it, ++count)
@@ -696,16 +700,6 @@ void CutSearch::update_sol_cache(UsageRate obj, const Solution &sol) {
         if (sol_cache_.size() > nb_sol_cache_)
             sol_cache_.erase(prev(sol_cache_.end()));
     }
-    #ifdef TEST_COMBINE_CACHE
-    // [zjl][TODO]:考虑成品的旋转。
-    List<TID> ordered_item_list;
-    for (const Placement &p : sol) {
-        ordered_item_list.push_back(p.item);
-    }
-    sort(ordered_item_list.begin(), ordered_item_list.end());
-    if (cb_.set(ordered_item_list) == false)
-        throw "Cut search solutin repeat!";
-    #endif // TEST_COMBINE_CACHE
 }
 
 }

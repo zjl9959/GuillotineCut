@@ -15,7 +15,8 @@ void PlateSearch::run(const Batch &source_batch) {
         beam_search(source_batch);
     else if (gv::cfg.plate_mode == Configuration::P0)
         skip(source_batch);
-    if (best_obj() > 0) gv::info.add_plate((double)best_obj() / (gv::param.plateHeight * gv::param.plateWidth));
+    if (best_obj() > 0)
+        gv::info.add_plate((double)best_obj() / (gv::param.plateHeight * gv::param.plateWidth));
 }
 
 /*
