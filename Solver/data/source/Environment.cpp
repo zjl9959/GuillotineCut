@@ -126,7 +126,8 @@ void Configuration::load(const String &path) {
 String Configuration::toBriefStr() const {
     std::ostringstream os;
     if (!pick_item)os << "nopick;";
-    os << "mtbn=" << mtbn;
+    if(top_mode == TBEAM)
+        os << "mtbn=" << mtbn;
     if(plate_mode == PBEAM)
         os << ";mpbn=" << mpbn;
     if (pick_item)os << ";mppn=" << mppn;

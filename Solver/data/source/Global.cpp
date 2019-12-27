@@ -87,7 +87,7 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
     gv::info.reset();
 }
 
-#define USE_STATISTICS
+//#define USE_STATISTICS
 void Statistics::add_L1(double usage_rate) {
     #ifdef USE_STATISTICS
     L1_min = min(L1_min, usage_rate);
@@ -133,6 +133,8 @@ String Statistics::str() const {
         << plate_max * 100 << "%]("
         << plate_total / plate_count * 100 << "%,"
         << plate_count << ")";
+    #else
+    os << "No statistics data.";
     #endif // USE_STATISTICS
     return os.str();
 }

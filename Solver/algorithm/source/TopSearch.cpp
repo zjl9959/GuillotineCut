@@ -52,7 +52,19 @@ void TopSearch::beam_search() {
 }
 
 void TopSearch::local_search() {
-    // [zjl][TODO]:add implement.
+    Solution s0;    // 初始解
+    generate_init_sol(s0);
+    update_best_sol(s0);
+    int iter = 0;   // 迭代步数
+    while (!gv::timer.isTimeOut()) {
+        if (find_first_improvement(s0) == false) {
+            // 如果找不到可以提升的动作，则进行随机扰动。
+            // [zjl][TODO]:该如何扰动？
+        }
+        assert(s0.size() == gv::items.size());
+        update_best_sol(s0);
+        ++iter;
+    }
 }
 
 /*
@@ -86,7 +98,7 @@ void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &s
 }
 
 /* 
-* 贪心的走到底，并评估sol的好坏
+* 功能：贪心的走到底，并评估sol的好坏
 * 输入：plate_id（原料id），source_batch（物品栈）
 * 输出：sol（原料上的解）；返回：sol的评估值（原料使用长度）
 */
@@ -138,7 +150,29 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj) {
 }
 
 /*
-* 寻找对当前解来说，第一个能够改进局部较差原料的提升动作。
+* 功能：构造一个初始解（贪心的策略）。
+* 输出：构造的解。
+*/
+void TopSearch::generate_init_sol(Solution &sol) {
+    Batch b(gv::stacks);
+    TID plate = 0;
+    while (b.size() != 0) {
+        PlateSearch solver(plate, 1);
+        solver.run(b);
+        if (solver.best_obj() > 0) {
+            Solution temp_sol;
+            solver.get_best_sol(temp_sol);
+            sol += temp_sol;
+            b.remove(temp_sol);
+            ++plate;
+        } else {
+            throw "Error in generate_init_sol.";
+        }
+    }
+}
+
+/*
+* 功能：寻找对当前解来说，第一个能够改进局部较差原料的提升动作。
 * 输入：cur_sol（当前完整的解）。
 * 输出：cur_sol（新的解），返回值（true:改进，false:未改进）。
 */
@@ -167,8 +201,10 @@ bool TopSearch::find_first_improvement(Solution &cur_sol) {
             }
             // 重新构造的局部解。
             Solution partial_sol;
-            double total_partial_usage_rate = 0.0;
+            double total_partial_usage_rate = 0.0;  // 重新构造解的利用率统计和。
+            double total_bad_usage_rate = 0.0;      // 老的局部解的利用率统计和。
             for (int j = plate - k; j <= plate; ++j) {
+                total_bad_usage_rate += usage_rates[j];
                 PlateSearch solver(j, 1);
                 solver.run(batch);
                 if (solver.best_obj() > 0) {
@@ -176,16 +212,16 @@ bool TopSearch::find_first_improvement(Solution &cur_sol) {
                     solver.get_best_sol(temp_sol);
                     partial_sol += temp_sol;
                     batch.remove(temp_sol);
-                    total_partial_usage_rate += (double)solver.best_obj() / gv::param.plateWidth * gv::param.plateHeight;
+                    total_partial_usage_rate += (double)solver.best_obj() / (gv::param.plateWidth * gv::param.plateHeight);
                 } else {
                     return false;
                 }
             }
             // 检查partial_sol是否优于老的解。
-            if (total_partial_usage_rate > accumulate(usage_rates[plate - k], usage_rates[plate], 0.0)) {
+            if (total_partial_usage_rate > total_bad_usage_rate) {
                 cur_sol.resize(plates_index[plate - k]);
                 cur_sol += partial_sol;
-                while (batch.size() != 0) {
+                while (batch.size() != 0) {     // 构造后续完整的解。
                     PlateSearch solver(plate, 1);
                     solver.run(batch);
                     if (solver.best_obj() > 0) {
@@ -206,7 +242,7 @@ bool TopSearch::find_first_improvement(Solution &cur_sol) {
 }
 
 /*
-* 计算输入的解中，每块原料的利用率。
+* 功能：计算输入的解中，每块原料的利用率。
 * 输入：sol（一个完整的解，解中最后一块原料作为余料来处理）。
 * 输出：返回值（每块原料的利用率）。
 */

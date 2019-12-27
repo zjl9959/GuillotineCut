@@ -24,7 +24,7 @@ private:
     Length greedy_evaluate(ID plate_id, const Batch &source_batch, const Solution &fix_sol);
     Length get_obj(const Solution &sol);
     void update_best_sol(const Solution &sol, Length obj = -1);
-    
+    void generate_init_sol(Solution &sol);
     bool find_first_improvement(Solution &cur_sol);
     List<double> get_plates_usage_rate(const Solution &sol);
     List<int> get_plates_index(const Solution &sol);

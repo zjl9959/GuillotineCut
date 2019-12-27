@@ -12,9 +12,9 @@
 #include <iostream>
 
 
-//#define CLOSE_ALL_LOGS
-
 namespace zjl_log {
+
+#define CLOSE_ALL_LOGS
 
 class LogSwitch {
 	friend class Log;
