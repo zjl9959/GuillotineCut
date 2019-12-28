@@ -11,7 +11,9 @@ namespace szx {
 
 class TopSearch {
 public:
-    TopSearch() : best_obj_(Problem::Output::MaxWidth) {};
+    TopSearch() : best_obj_(Problem::Output::MaxWidth), total_item_area_(0) {
+        for (auto area : gv::item_area)total_item_area_ += area;
+    };
     void run(); // 运行TopSearch求解器。
     /* 获取算得的最优解 */
     void get_best_sol(Solution &sol) { sol = best_sol_; }
@@ -29,6 +31,7 @@ private:
     List<double> get_plates_usage_rate(const Solution &sol);
     List<int> get_plates_index(const Solution &sol);
 private:
+    Area total_item_area_;      // 物品总面积
     std::mutex sol_mutex_;      // 更新最优解时需先获得该锁
     Solution best_sol_;         // 最优解
     Length best_obj_;           // 最优解对应的使用原料长度

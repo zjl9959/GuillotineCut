@@ -58,6 +58,7 @@ int Cli::run(int argc, char *argv[]) {
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
 
     init_global_variables(input, env);
+    
     Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
     zjl_log::log << gv::cfg.toBriefStr() << zjl_log::info;
     

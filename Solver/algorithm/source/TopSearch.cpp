@@ -133,7 +133,7 @@ Length TopSearch::get_obj(const Solution &sol) {
         if (it->getFlagBit(Placement::NEW_PLATE))
             ++plate_num;
     }
-    return plate_num* gv::param.plateWidth + sol.back().c1cpr;
+    return (plate_num - 1)* gv::param.plateWidth + sol.back().c1cpr;
 }
 
 /* 检查sol是否优于bestsol_，如是则更新bestsol_ */
@@ -144,6 +144,8 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj) {
         obj = get_obj(sol);
     lock_guard<mutex> guard(sol_mutex_);
     if (best_obj_ > obj) {
+        Log(Log::Debug) << "Find a better sol, usage rate:"
+            << total_item_area_ / (double)(obj * gv::param.plateHeight) * 100 << "%" << endl;
         best_obj_ = obj;
         best_sol_ = sol;
     }
