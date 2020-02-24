@@ -79,7 +79,6 @@
     <ClInclude Include="data\header\Environment.h">
       <Filter>data</Filter>
     </ClInclude>
-    <ClInclude Include="utility\zjl_log.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -122,9 +121,6 @@
       <Filter>utility</Filter>
     </ClCompile>
     <ClCompile Include="data\source\Environment.cpp">
-      <Filter>utility</Filter>
-    </ClCompile>
-    <ClCompile Include="utility\zjl_log.cpp">
       <Filter>utility</Filter>
     </ClCompile>
   </ItemGroup>

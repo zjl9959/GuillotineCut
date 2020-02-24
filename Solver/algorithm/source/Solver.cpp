@@ -8,7 +8,6 @@
 #include "Solver/data/header/Global.h"
 #include "Solver/algorithm/header/TopSearch.h"
 #include "Solver/unit_test/test.h"
-#include "Solver/utility/zjl_log.hpp"
 
 
 using namespace std;
@@ -52,7 +51,6 @@ int Cli::run(int argc, char *argv[]) {
     if (env.instName.empty() || env.slnPath.empty()) { return -1; }
 
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
-    zjl_log::log << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << zjl_log::info;
     
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
@@ -60,7 +58,6 @@ int Cli::run(int argc, char *argv[]) {
     init_global_variables(input, env);
     
     Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
-    zjl_log::log << gv::cfg.toBriefStr() << zjl_log::info;
     
     #if TEST_MODE == true
     UnitTest test;
@@ -68,8 +65,6 @@ int Cli::run(int argc, char *argv[]) {
     #else
     Solver solver(input, env);
     solver.run();
-    zjl_log::log << gv::info.str() << zjl_log::info;
-    //cout << gv::info.str() << endl;
     #endif
 
     return 0;
@@ -104,8 +99,6 @@ void Solver::record() const {
 
     ostringstream log;
 
-    System::MemoryUsage mu = System::peakMemoryUsage();
-
     Area total_item_area = 0;
     for (int i = 0; i < gv::item_area.size(); ++i) {
         total_item_area += gv::item_area[i];
@@ -120,16 +113,11 @@ void Solver::record() const {
 
     // record basic information.
     log << env.friendlyLocalTime() << ","
-        << env.rid << ","
         << env.instName << ","
-        << feasible << "," << (obj - checkerObj) << ","
-        << output.totalWidth << ","
-        << gv::timer.elapsedSeconds() << ","
-        << mu.physicalMemory << "," << mu.virtualMemory << ","
         << env.randSeed << ","
-        << gv::cfg.toBriefStr() << ","
-        << total_item_area / (output.totalWidth * input.param.plateHeight / 100.0) << "%," // util ratio.
-        << checkerObj; // wasted area.
+        << gv::timer.elapsedSeconds() << ","
+        << (feasible ? checkerObj : -1) << ","
+        << gv::cfg.toBriefStr();
 
     // record solution vector.
     // EXTEND[szx][2]: save solution in log.
@@ -142,7 +130,7 @@ void Solver::record() const {
     ofstream logFile(env.logPath, ios::app);
     logFile.seekp(0, ios::end);
     if (logFile.tellp() <= 0) {
-        logFile << "Time,ID,Instance,Feasible,ObjMatch,Width,Duration,PhysMem,VirtMem,RandSeed,Config,UtilRatio,CheckerObj" << endl;
+        logFile << "Time,Instance,RandSeed,Duration,Waste,Config" << endl;
     }
     logFile << log.str();
     logFile.close();
@@ -390,7 +378,7 @@ void update_middle_solution(TID pid, const Solution &sol) {
     plate_item.c2cpu = gv::param.plateHeight;
     plate_item.c3cp = gv::param.plateWidth;
     plate_item.c4cp = gv::param.plateHeight;
-    plate_item.item = gv::items.size();
+    plate_item.item = static_cast<TID>(gv::items.size());
     gv::items.push_back(Rect(gv::param.plateWidth, gv::param.plateHeight));
     ++count;
     plate_item.flag = Placement::NEW_PLATE | Placement::NEW_L1 | Placement::NEW_L2;
@@ -399,7 +387,7 @@ void update_middle_solution(TID pid, const Solution &sol) {
     if (!sol[0].getFlagBit(Placement::NEW_PLATE)) {
         plate_item.c1cpr = sol[0].c1cpl;
         plate_item.c3cp = sol[0].c1cpl;
-        plate_item.item = gv::items.size();
+        plate_item.item = static_cast<TID>(gv::items.size());
         gv::items.push_back(Rect(sol[0].c1cpl, gv::param.plateHeight));
         ++count;
         new_sol.push_back(plate_item);

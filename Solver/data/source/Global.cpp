@@ -87,7 +87,7 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
     gv::info.reset();
 }
 
-//#define USE_STATISTICS
+#define USE_STATISTICS
 void Statistics::add_L1(double usage_rate) {
     #ifdef USE_STATISTICS
     L1_min = min(L1_min, usage_rate);
