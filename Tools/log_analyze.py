@@ -2,5 +2,6 @@
 
 import json
 import csv
+import git
 import matplotlib
 

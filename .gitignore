@@ -254,3 +254,4 @@ ModelManifest.xml
 /Deploy/analyzer.xlsx
 /Deploy/cfg.txt
 *.log
+/Tools/INFO.json
