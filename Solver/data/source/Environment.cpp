@@ -125,36 +125,24 @@ void Configuration::load(const String &path) {
 
 String Configuration::toBriefStr() const {
     std::ostringstream os;
-    if (!pick_item)os << "nopick;";
-    if(top_mode == TBEAM)
-        os << "mtbn=" << mtbn;
-    if(plate_mode == PBEAM)
-        os << ";mpbn=" << mpbn;
-    if (pick_item)os << ";mppn=" << mppn;
-    if (cut_mode == CBEAM)
-        os << ";mcbn=" << mcbn;
-    else if (cut_mode == CPFS)
-        os << ";mcit=" << mcit;
-    os << ";mode=";
-    // 顶层策略。
+    if (pick_item)
+        os << "P" << mppn << "_";
     if (top_mode == TBEAM)
-        os << "beam";
+        os << "B" << mtbn << "_";
     else if (top_mode == TLOCAL)
-        os << "local";
-    // 原料层策略。
+        os << "L_";
     if (plate_mode == PBEAM)
-        os << "+beam";
+        os << "B" << mpbn << "_";
     else if (plate_mode == P0)
-        os << "+0";
-    // 1-cut层策略。
+        os << "X_";
     if (cut_mode == CBEAM)
-        os << "+beam";
+        os << "B" << mcbn;
     else if (cut_mode == CDFS)
-        os << "+dfs";
+        os << "D" << mcit;
     else if (cut_mode == CPFS)
-        os << "+pfs";
+        os << "P" << mcit;
     else if (cut_mode == CASTAR)
-        os << "+A*";
+        os << "A" << mcit;
     return os.str();
 }
 

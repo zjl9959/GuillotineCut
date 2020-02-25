@@ -57,7 +57,7 @@ int Cli::run(int argc, char *argv[]) {
 
     init_global_variables(input, env);
     
-    Log(Log::Debug) << gv::cfg.toBriefStr() << endl;
+    Log(Log::Debug) << "Configure: " << gv::cfg.toBriefStr() << "\n"  << endl;
     
     #if TEST_MODE == true
     UnitTest test;
@@ -112,12 +112,13 @@ void Solver::record() const {
     }
 
     // record basic information.
-    log << env.friendlyLocalTime() << ","
-        << env.instName << ","
-        << env.randSeed << ","
-        << gv::timer.elapsedSeconds() << ","
-        << (feasible ? checkerObj : -1) << ","
-        << gv::cfg.toBriefStr();
+    log << env.friendlyLocalTime() << ";"
+        << env.instName << ";"
+        << env.randSeed << ";"
+        << gv::timer.elapsedSeconds() << ";"
+        << (feasible ? checkerObj : -1) << ";"
+        << gv::cfg.toBriefStr() << ';'
+        << gv::info.toBriefStr();
 
     // record solution vector.
     // EXTEND[szx][2]: save solution in log.
@@ -130,7 +131,7 @@ void Solver::record() const {
     ofstream logFile(env.logPath, ios::app);
     logFile.seekp(0, ios::end);
     if (logFile.tellp() <= 0) {
-        logFile << "Time,Instance,RandSeed,Duration,Waste,Config" << endl;
+        logFile << "Time,Instance,RandSeed,Duration,Waste,Configure,Statistic" << endl;
     }
     logFile << log.str();
     logFile.close();

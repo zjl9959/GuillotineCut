@@ -120,21 +120,19 @@ void Statistics::reset() {
     #endif // USE_STATISTICS
 }
 
-String Statistics::str() const {
+String Statistics::toBriefStr() const {
     ostringstream os;
     #ifdef USE_STATISTICS
-    os << setprecision(4)
-        << "1-cut:[" << L1_min * 100 << "%,"
-        << L1_max * 100 << "%]("
-        << L1_total / L1_count * 100 << "%,"
-        << L1_count << ")";
-    os << setprecision(4)
-        << " plate:[" << plate_min * 100 << "%,"
-        << plate_max * 100 << "%]("
-        << plate_total / plate_count * 100 << "%,"
-        << plate_count << ")";
-    #else
-    os << "No statistics data.";
+    os << setprecision(4) << "{\"cut\":{"
+        << "\"min\":" << L1_min << ","
+        << "\"max\":" << L1_max << ","
+        << "\"average\":" << L1_total / L1_count << ","
+        << "\"count\":"<< L1_count << "},";
+    os << setprecision(4) << "\"plate\":{"
+        << "\"min\":" << plate_min << ","
+        << "\"max\":" << plate_max << ","
+        << "\"average\":"<< plate_total / plate_count << ","
+        << "\"count\":" << plate_count << "}}";
     #endif // USE_STATISTICS
     return os.str();
 }

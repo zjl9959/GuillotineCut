@@ -42,8 +42,6 @@ void TopSearch::beam_search() {
             fix_sol += best_platesol;
             batch.remove(best_platesol);
             cur_plate++;
-            cout << "\r                     \rÒÑÍê³É£º" <<
-                (1.0 - static_cast<double>(batch.size()) / gv::items.size()) * 100.0 << "%";
         } else {
             break;
         }
@@ -120,7 +118,7 @@ Length TopSearch::greedy_evaluate(ID plate_id, const Batch &source_batch, const 
             return Problem::Output::MaxWidth;
         }
     }
-    Length obj = plate_id * gv::param.plateWidth + cur_sol.back().c1cpr;
+    Length obj = (plate_id - 1) * gv::param.plateWidth + cur_sol.back().c1cpr;
     update_best_sol(cur_sol, obj);
     return obj;
 }
@@ -144,8 +142,7 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj) {
         obj = get_obj(sol);
     lock_guard<mutex> guard(sol_mutex_);
     if (best_obj_ > obj) {
-        Log(Log::Debug) << "Find a better sol, usage rate:"
-            << total_item_area_ / (double)(obj * gv::param.plateHeight) * 100 << "%" << endl;
+        Log(Log::Debug) << "=> " << total_item_area_ / (double)(obj * gv::param.plateHeight) * 100 << "%" << endl;
         best_obj_ = obj;
         best_sol_ = sol;
     }

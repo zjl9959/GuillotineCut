@@ -48,7 +48,7 @@ struct Statistics {
     void add_L1(double usage_rate);
     void add_plate(double usage_rate);
     void reset();                   // 复位统计数据。
-    String str() const;             // 格式化Information字符串。
+    String toBriefStr() const;         // 格式化用于csv日志格式的字符串。
 };
 
 void init_global_variables(const Problem::Input &input, const Environment &env);
