@@ -113,12 +113,9 @@ def run():
         instance_list = list()
         for i in range(1, max_ins_id + 1):
             inst_name = group + str(i)
-            '''
             scatter_hist_path = img_output_dir + '算例' + inst_name + '物品长宽分布统计图.png'
             size = parse_batch_size(instance_dir + inst_name + batch_suffix)
             draw_scatter_hist(size[0], size[1], scatter_hist_path, '                 算例' + inst_name + '物品长宽分布统计图')
-            print('保存图片：' + scatter_hist_path)
-            '''
             res = parse_batch(instance_dir + inst_name + batch_suffix)
             nb_item_list.append(res[0])
             nb_stack_list.append(res[1])
