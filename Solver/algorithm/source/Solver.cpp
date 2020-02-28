@@ -117,8 +117,7 @@ void Solver::record() const {
         << env.randSeed << ";"
         << gv::timer.elapsedSeconds() << ";"
         << (feasible ? checkerObj : -1) << ";"
-        << gv::cfg.toBriefStr() << ';'
-        << gv::info.toBriefStr();
+        << gv::cfg.toBriefStr();
 
     // record solution vector.
     // EXTEND[szx][2]: save solution in log.
@@ -131,7 +130,7 @@ void Solver::record() const {
     ofstream logFile(env.logPath, ios::app);
     logFile.seekp(0, ios::end);
     if (logFile.tellp() <= 0) {
-        logFile << "Time,Instance,RandSeed,Duration,Waste,Configure,Statistic" << endl;
+        logFile << "Time,Instance,RandSeed,Duration,Waste,Configure" << endl;
     }
     logFile << log.str();
     logFile.close();

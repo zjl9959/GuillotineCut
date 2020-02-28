@@ -23,8 +23,6 @@ void CutSearch::run(Batch &batch) {
         pfs(batch);
     else if(gv::cfg.cut_mode == Configuration::CDFS)
         dfs(batch);
-    if(best_obj().valid())
-        gv::info.add_L1(best_obj().value());
 }
 
 UsageRate CutSearch::best_obj() const {

@@ -35,20 +35,7 @@ struct IdMap {
 };
 
 struct Statistics {
-    int L1_count;
-    double L1_max;
-    double L1_min;
-    double L1_total;
-
-    int plate_count;
-    double plate_max;
-    double plate_min;
-    double plate_total;
-
-    void add_L1(double usage_rate);
-    void add_plate(double usage_rate);
-    void reset();                   // 复位统计数据。
-    String toBriefStr() const;         // 格式化用于csv日志格式的字符串。
+    // TODO add statistic.
 };
 
 void init_global_variables(const Problem::Input &input, const Environment &env);
