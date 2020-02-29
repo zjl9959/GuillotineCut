@@ -69,13 +69,6 @@ void Configuration::load(const String &path) {
         }
     }
     map<string, string>::iterator it;
-    it = param_switch.find("pick_item");
-    if (it != param_switch.end()) {
-        if (it->second == "true")
-            this->pick_item = true;
-        else if(it->second == "false")
-            this->pick_item = false;
-    }
     it = param_switch.find("top_mode");
     if (it != param_switch.end()) {
         if (it->second == "beam")
@@ -109,10 +102,6 @@ void Configuration::load(const String &path) {
     if (it != param_switch.end()) {
         this->mpbn = stoull(it->second);
     }
-    it = param_switch.find("mppn");
-    if (it != param_switch.end()) {
-        this->mppn = stoull(it->second);
-    }
     it = param_switch.find("mcbn");
     if (it != param_switch.end()) {
         this->mcbn = stoull(it->second);
@@ -125,8 +114,6 @@ void Configuration::load(const String &path) {
 
 String Configuration::toBriefStr() const {
     std::ostringstream os;
-    if (pick_item)
-        os << "P" << mppn << "_";
     if (top_mode == TBEAM)
         os << "B" << mtbn << "_";
     else if (top_mode == TLOCAL)

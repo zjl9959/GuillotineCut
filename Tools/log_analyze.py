@@ -26,7 +26,7 @@ class Log():
         self.instance = instance
         self.duration = duration
         self.waste = waste
-        self.gap = (waste - json_data['best_sol_all'][instance]) / waste * 100
+        self.gap = (waste - json_data['offical_3600'][instance]) / waste * 100
         item_area = json_data['item_area'][instance]
         self.usage_rate = item_area / (waste + item_area) * 100
         self.configure = configure
@@ -103,7 +103,7 @@ def draw_group_inst_log(group, logs):
     inst_log = filter_by_group(logs, group)
     title =  '与最优解之间的GAP（算例集' + group + '）'
     img_path = img_output_dir + '\\' + title + date_time + '.png'
-    max_index = {'A': 20, 'B': 15, 'X': 15}[group]
+    max_index = 15
     data = [0 for _ in range(max_index)]
     labels = [' ' for _ in range(max_index)]
     for inst in inst_log:

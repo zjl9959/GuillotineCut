@@ -7,9 +7,9 @@ using namespace std;
 
 namespace szx {
 
-CutSearch::CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail) :
+CutSearch::CutSearch(TID plate, TCoord start_pos, bool opt_tail) :
     plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
-    start_pos_(start_pos), opt_tail_(opt_tail), nb_sol_cache_(nb_sol_cache) {}
+    start_pos_(start_pos), opt_tail_(opt_tail) {}
 
 /*
 * 优化1-cut，根据全局配置参数，自动选择优化策略。
@@ -23,27 +23,6 @@ void CutSearch::run(Batch &batch) {
         pfs(batch);
     else if(gv::cfg.cut_mode == Configuration::CDFS)
         dfs(batch);
-}
-
-UsageRate CutSearch::best_obj() const {
-    return sol_cache_.empty() ? UsageRate() : sol_cache_.begin()->first;
-}
-
-void CutSearch::get_best_sol(Solution &sol) const {
-    if (!sol_cache_.empty())
-        sol = sol_cache_.begin()->second;
-}
-
-void CutSearch::get_good_sols(List<Solution> &sols) const {
-    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
-        sols.push_back(it->second);
-    }
-}
-
-void CutSearch::get_good_objs(List<UsageRate> &objs) const {
-    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
-        objs.push_back(it->first);
-    }
 }
 
 #pragma region BeamSearch
@@ -130,7 +109,7 @@ void CutSearch::dfs(Batch &batch) {
         if (opt_tail_ == false) {             // 对每一个分支状态进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (cur_sol.back().c1cpr - start_pos_)*gv::param.plateHeight));
-            update_sol_cache(cur_obj, cur_sol);     // 检查更新最优解。
+            update_best_sol(cur_obj, cur_sol);     // 检查更新最优解。
         }
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
             (envelope_area(node.place) + batch.left_item_area()));
@@ -146,7 +125,7 @@ void CutSearch::dfs(Batch &batch) {
         }
         if (branch_nodes.empty() && opt_tail_) {   // 仅对到达叶子节点的解进行更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
-            update_sol_cache(cur_obj, cur_sol);
+            update_best_sol(cur_obj, cur_sol);
         }
         pre_depth = node.depth;         // 更新上一个节点的深度信息。
     }
@@ -181,7 +160,7 @@ void CutSearch::pfs(Batch &batch) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (node->place.c1cpr - start_pos_)*gv::param.plateHeight));
             tree.get_tree_path(node, cur_sol);
-            update_sol_cache(cur_obj, cur_sol);
+            update_best_sol(cur_obj, cur_sol);
         }
         UsageRate upper_bound(static_cast<double>(batch.total_item_area()) /
             (envelope_area(node->place) + batch.left_item_area()));
@@ -202,7 +181,7 @@ void CutSearch::pfs(Batch &batch) {
             if (opt_tail_ == true) {       // 仅对到达叶子节点的解进行更新检测。
                 cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
                 tree.get_tree_path(node, cur_sol);
-                update_sol_cache(cur_obj, cur_sol);
+                update_best_sol(cur_obj, cur_sol);
             }
         }
         last_node = node;           // 更新上一个节点。
@@ -226,10 +205,10 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
     if (opt_tail_ == false) {
         cur_obj = UsageRate((double)batch.used_item_area() / (double)(
             (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
-        update_sol_cache(cur_obj, fix_sol);
+        update_best_sol(cur_obj, fix_sol);
     } else if (opt_tail_ == true && branch_nodes.empty()) {
         cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
-        update_sol_cache(cur_obj, fix_sol);
+        update_best_sol(cur_obj, fix_sol);
     }
     while (!branch_nodes.empty()) {
         #if UPDATE_MIDDLE_SOL == 0
@@ -253,10 +232,10 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
         if (opt_tail_ == false) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
-            update_sol_cache(cur_obj, greedy_sol);
+            update_best_sol(cur_obj, greedy_sol);
         } else if (opt_tail_ == true && branch_nodes.empty()) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
-            update_sol_cache(cur_obj, greedy_sol);
+            update_best_sol(cur_obj, greedy_sol);
         }
     }
     #if UPDATE_MIDDLE_SOL == 0
@@ -689,14 +668,11 @@ inline Area CutSearch::envelope_area(const Placement &place) const {
 * 输入：obj(当前解的利用率)，sol（当前解的值）。
 */
 //#define TEST_COMBINE_CACHE
-void CutSearch::update_sol_cache(UsageRate obj, const Solution &sol) {
-    lock_guard<mutex> guard(sol_mutex_);
-    if (sol_cache_.size() < nb_sol_cache_) {
-        sol_cache_.insert(make_pair(obj, sol));
-    } else if (sol_cache_.rbegin()->first < obj) {
-        sol_cache_.insert(make_pair(obj, sol));
-        if (sol_cache_.size() > nb_sol_cache_)
-            sol_cache_.erase(prev(sol_cache_.end()));
+void CutSearch::update_best_sol(UsageRate obj, const Solution &sol) {
+    if (best_obj_ < obj)
+    {
+        best_obj_ = obj;
+        best_sol_ = sol;
     }
 }
 

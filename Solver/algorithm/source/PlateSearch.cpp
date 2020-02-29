@@ -23,22 +23,7 @@ void PlateSearch::run(const Batch &source_batch) {
 * 跳过PlateSearch的搜索过程，直接使用CutSearch对整块原料进行优化。
 */
 void PlateSearch::skip(const Batch &source_batch) {
-    CutSearch solver(plate_, 0, nb_sol_cache_, true);
-    if (gv::cfg.pick_item) {
-        Batch sub_batch;
-        Picker picker(source_batch);
-        Picker::Terminator terminator(gv::cfg.mppn);
-        if (picker.rand_pick(sub_batch, terminator))
-            solver.run(sub_batch);
-    } else {
-        Batch batch(source_batch);
-        solver.run(batch);
-    }
-    List<Solution> sols;
-    solver.get_good_sols(sols);
-    for (auto &sol : sols) {
-        update_sol_cache(sol);
-    }
+    throw "not implement!";
 }
 
 /*
@@ -73,54 +58,25 @@ void PlateSearch::beam_search(const Batch &source_batch) {
         }
     }
 }
-
-void PlateSearch::get_best_sol(Solution & sol) const {
-    if (!sol_cache_.empty())
-        sol = sol_cache_.begin()->second;
-}
-
-void PlateSearch::get_good_sols(List<Solution>& sols) const {
-    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
-        sols.push_back(it->second);
-    }
-}
-
-Area PlateSearch::best_obj() const {
-    return sol_cache_.empty() ? -1 : sol_cache_.begin()->first;
-}
-
-void PlateSearch::get_good_objs(List<Area>& objs) const {
-    for (auto it = sol_cache_.begin(); it != sol_cache_.end(); ++it) {
-        objs.push_back(it->first);
-    }
-}
 #pragma endregion
 
 void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, bool tail, size_t nb_branch) {
-    if (gv::cfg.pick_item) {
-        sols.resize(nb_branch);
-        CutSearch solver(plate_, start_pos, 1, tail);
-        Picker picker(source_batch);
-        Batch sub_batch;    // 从batch中挑选的子集。
-        size_t index = 0;
-        for (size_t i = 0; i < nb_branch; ++i) {
-            if (gv::timer.isTimeOut())break;
-            Picker::Filter filter(gv::param.plateWidth - start_pos);
-            Picker::Terminator terminator(gv::cfg.mppn);
-            if (!picker.rand_pick(sub_batch, terminator, filter))continue;
-            solver.run(sub_batch);
-            if (solver.best_obj().valid()) {
-                solver.get_best_sol(sols[index++]);
-            }
+    sols.resize(nb_branch);
+    CutSearch solver(plate_, start_pos, tail);
+    Picker picker(source_batch);
+    Batch sub_batch;    // 从batch中挑选的子集。
+    size_t index = 0;
+    for (size_t i = 0; i < nb_branch; ++i) {
+        if (gv::timer.isTimeOut())break;
+        Picker::Filter filter(gv::param.plateWidth - start_pos);
+        Picker::Terminator terminator(12);
+        if (!picker.rand_pick(sub_batch, terminator, filter))continue;
+        solver.run(sub_batch);
+        if (solver.best_obj().valid()) {
+            solver.get_best_sol(sols[index++]);
         }
-        sols.resize(index);
-    } else {
-        CutSearch solver(plate_, start_pos, nb_branch, tail);
-        Batch batch(source_batch);
-        solver.run(batch);
-        sols.clear();
-        solver.get_good_sols(sols);
     }
+    sols.resize(index);
 }
 
 /* 
@@ -150,7 +106,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
         }
     }
     Area res = item_area(cur_sol);
-    update_sol_cache(cur_sol, res);
+    update_best_sol(cur_sol, res);
     // 优化最后一个1-cut。
     if (!gv::timer.isTimeOut() && last_c1cpr > 0) {
         batch.add(last_cut_sol);
@@ -161,7 +117,7 @@ Area PlateSearch::greedy_evaluate(const Batch &source_batch, const Solution &fix
             Area new_res = item_area(cur_sol);
             if (new_res > res) {
                 res = new_res;
-                update_sol_cache(cur_sol, new_res);
+                update_best_sol(cur_sol, new_res);
             }
         }
     }
@@ -183,17 +139,13 @@ Area PlateSearch::item_area(const Solution &sol) {
 /* 
 * 检查sol是否优于bestsol_，如是则更新bestsol_。
 */
-void PlateSearch::update_sol_cache(const Solution &sol, Area obj) {
+void PlateSearch::update_best_sol(const Solution &sol, Area obj) {
     if(obj == 0)
         obj = item_area(sol);
-    lock_guard<mutex> guard(sol_mutex_);
-    assert(valid_plate_sol(sol));
-    if (sol_cache_.size() < nb_sol_cache_) {
-        sol_cache_.insert(make_pair(obj, sol));
-    } else if (sol_cache_.rbegin()->first < obj) {
-        sol_cache_.insert(make_pair(obj, sol));
-        if(sol_cache_.size() > nb_sol_cache_)
-            sol_cache_.erase(prev(sol_cache_.end()));
+    if (obj > best_obj_)
+    {
+        best_obj_ = obj;
+        best_sol_ = sol;
     }
 }
 

@@ -40,7 +40,7 @@ void UnitTest::test_CutSearch() {
     stacks = gv::stacks;            // 从全局数据中读入batch。
     Batch batch(stacks);
     TimePoint start_time(Clock::now());
-    CutSearch solver(plate, start_pos, 1, true);
+    CutSearch solver(plate, start_pos, true);
     solver.run(batch);
     std::cout << solver.best_obj().str() << std::endl;
     cout << "cost time:" << std::chrono::duration_cast<US>(Clock::now() - start_time).count() << "ms";
@@ -59,7 +59,7 @@ void UnitTest::test_PlateSearch() {
     //stacks = gv::stacks;    // 从全局数据中读入batch。
     Batch batch(stacks);
     TimePoint start_time(Clock::now());
-    PlateSearch solver(plate, 1);
+    PlateSearch solver(plate);
     solver.run(batch);
     cout << "cost time:" << std::chrono::duration_cast<MS>(Clock::now() - start_time).count() << "ms";
     Solution sol;

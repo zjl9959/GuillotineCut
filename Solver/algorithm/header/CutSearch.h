@@ -15,13 +15,17 @@ namespace szx {
 
 class CutSearch {
 public:
-    CutSearch(TID plate, TCoord start_pos, size_t nb_sol_cache, bool opt_tail);
+    CutSearch(TID plate, TCoord start_pos, bool opt_tail);
     
     void run(Batch &batch);
-    UsageRate best_obj() const;                         // 返回最优解的目标函数值。
-    void get_best_sol(Solution &sol) const;             // 获取最优解。
-    void get_good_sols(List<Solution> &sols) const;     // 获取较好的解。
-    void get_good_objs(List<UsageRate> &objs) const;    // 获取较好的解的目标函数值。
+    UsageRate best_obj() const
+    {
+        return best_obj_;
+    }
+    void get_best_sol(Solution &sol) const
+    {
+        sol = best_sol_;
+    }
 private:
     void beam_search(Batch &batch);
     void dfs(Batch &batch);
@@ -34,22 +38,15 @@ private:
     TCoord cut1ThroughDefect(TCoord x) const;
     TCoord cut2ThroughDefect(TCoord y) const;
     Area envelope_area(const Placement &place) const;
-    void update_sol_cache(UsageRate obj, const Solution &sol);
-private:
-    struct UsageRateCmp {
-        bool operator()(const UsageRate &lhs, const UsageRate &rhs) {
-            return rhs < lhs;
-        }
-    };
+    void update_best_sol(UsageRate obj, const Solution &sol);
 private:
     const TID plate_;                       // 1-cut位于原料的id。
     const Area tail_area_;                  // 剩余面积
     const TCoord start_pos_;                // 1-cut开始位置。
     const bool opt_tail_;                   // 是否优化最后一个1-cut。
 
-    std::mutex sol_mutex_;                  // 更新最优解时需先获得该锁
-    size_t nb_sol_cache_;                   // 缓存解的最大数量。
-    std::multimap<UsageRate, Solution, UsageRateCmp> sol_cache_;   // 缓存解。
+    UsageRate best_obj_;                    // 最优目标函数值。
+    Solution best_sol_;                     // 最优解。
 };
 
 void update_middle_solution(TID pid, const Solution &sol);

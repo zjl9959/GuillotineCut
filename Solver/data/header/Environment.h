@@ -16,13 +16,11 @@ struct Configuration {
         CBEAM, CDFS, CPFS, CASTAR
     };
 
-    bool pick_item = true;      // 是否挑选物品
     MODE top_mode = TBEAM;      // topSearch优化模式
     MODE plate_mode = PBEAM;    // plateSearch优化模式
     MODE cut_mode = CBEAM;      // cutSearch优化模式
     size_t mtbn = 0;            // TopSearch最大分支数目
     size_t mpbn = 0;            // PlateSearch最大分支数目
-    size_t mppn = 0;            // PlateSearch为每个1-cut最大挑选物品数目
     size_t mcbn = 0;            // CutSearch::beam_search最大分支数目
     size_t mcit = 0;            // CutSearch::pfs的最大迭代数目 
 

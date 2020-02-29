@@ -71,28 +71,21 @@ void TopSearch::local_search() {
 * 输出：sols（分支出来的局部原料解）。
 */
 void TopSearch::branch(ID plate_id, const Batch &source_batch, List<Solution> &sols, size_t nb_branch) {
-    if (gv::cfg.pick_item) {
-        Picker picker(source_batch);
-        Batch batch;
-        sols.resize(nb_branch);
-        Picker::Terminator terminator(0, static_cast<Area>(gv::param.plateHeight * gv::param.plateWidth * 2.5));
-        size_t index = 0;
-        for (size_t i = 0; i < nb_branch; ++i) {
-            if (picker.rand_pick(batch, terminator)) {
-                PlateSearch solver(plate_id, 1); // 只要一个最优解即可。
-                solver.run(batch);
-                if (solver.best_obj() > 0) {
-                    solver.get_best_sol(sols[index++]);
-                }
+    Picker picker(source_batch);
+    Batch batch;
+    sols.resize(nb_branch);
+    Picker::Terminator terminator(0, static_cast<Area>(gv::param.plateHeight * gv::param.plateWidth * 2.5));
+    size_t index = 0;
+    for (size_t i = 0; i < nb_branch; ++i) {
+        if (picker.rand_pick(batch, terminator)) {
+            PlateSearch solver(plate_id); // 只要一个最优解即可。
+            solver.run(batch);
+            if (solver.best_obj() > 0) {
+                solver.get_best_sol(sols[index++]);
             }
         }
-        sols.resize(index);
-    } else {
-        sols.clear();
-        PlateSearch solver(plate_id, nb_branch);
-        solver.run(source_batch);
-        solver.get_good_sols(sols);
     }
+    sols.resize(index);
 }
 
 /* 
@@ -156,7 +149,7 @@ void TopSearch::generate_init_sol(Solution &sol) {
     Batch b(gv::stacks);
     TID plate = 0;
     while (b.size() != 0) {
-        PlateSearch solver(plate, 1);
+        PlateSearch solver(plate);
         solver.run(b);
         if (solver.best_obj() > 0) {
             Solution temp_sol;
@@ -204,7 +197,7 @@ bool TopSearch::find_first_improvement(Solution &cur_sol) {
             double total_bad_usage_rate = 0.0;      // 老的局部解的利用率统计和。
             for (int j = plate - k; j <= plate; ++j) {
                 total_bad_usage_rate += usage_rates[j];
-                PlateSearch solver(j, 1);
+                PlateSearch solver(j);
                 solver.run(batch);
                 if (solver.best_obj() > 0) {
                     Solution temp_sol;
@@ -221,7 +214,7 @@ bool TopSearch::find_first_improvement(Solution &cur_sol) {
                 cur_sol.resize(plates_index[plate - k]);
                 cur_sol += partial_sol;
                 while (batch.size() != 0) {     // 构造后续完整的解。
-                    PlateSearch solver(plate, 1);
+                    PlateSearch solver(plate);
                     solver.run(batch);
                     if (solver.best_obj() > 0) {
                         Solution temp_sol;
