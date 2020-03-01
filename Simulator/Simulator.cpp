@@ -112,9 +112,9 @@ void Simulator::debug() {
 
 void Simulator::benchmark(int repeat) {
     Task task;
-    task.instSet = "X";
-    //task.timeout = "180";
-    task.timeout = "3600";
+    task.instSet = "B";
+    task.timeout = "180";
+    //task.timeout = "3600";
     //task.maxIter = "1000000000";
     task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();

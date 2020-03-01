@@ -38,9 +38,10 @@ struct Statistics {
     size_t nb_reoptimize_improve;
     size_t nb_1cut_sol;
     size_t nb_plate_sol;
-    List<List<Area>> iter_plate_wastes;
+    List<List<double>> iter_plate_usage_rates;
 
     void clear();
+    void add_plate_usage_rates(const List<double> &usage_rates);
     String to_str();
     void save(String &path);
 };

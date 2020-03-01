@@ -96,6 +96,19 @@ void Statistics::clear() {
     nb_reoptimize_improve = 0;
     nb_1cut_sol = 0;
     nb_plate_sol = 0;
+    iter_plate_usage_rates.clear();
+    #endif // USE_STATISTICS
+}
+
+void Statistics::add_plate_usage_rates(const List<double> &usage_rates) {
+    #ifdef USE_STATISTICS
+    iter_plate_usage_rates.resize(iter_plate_usage_rates.size() + 1);
+    double elapsedmillseconds = static_cast<double>(gv::timer.elapsedMilliseconds().count());
+    iter_plate_usage_rates.rbegin()->push_back(elapsedmillseconds);
+    for (double usage_rate : usage_rates)
+    {
+        iter_plate_usage_rates.rbegin()->push_back(usage_rate);
+    }
     #endif // USE_STATISTICS
 }
 
@@ -113,7 +126,7 @@ void Statistics::save(String &path) {
     #ifdef USE_STATISTICS
     ofstream ofs(path, ios::app);
     if (!ofs.is_open()) return;
-    for (auto &wastes : iter_plate_wastes)
+    for (auto &wastes : iter_plate_usage_rates)
     {
         for (int i = 0; i < wastes.size(); ++i)
         {

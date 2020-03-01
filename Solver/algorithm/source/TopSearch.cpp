@@ -148,20 +148,20 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj)
         best_sol_ = sol;
     }
     // 记录每块原料的信息。
-    gv::info.iter_plate_wastes.push_back(get_plates_waste(sol));
+    gv::info.add_plate_usage_rates(get_plates_usage_rate(sol));
 }
 
-List<Area> TopSearch::get_plates_waste(const Solution &sol)
+List<double> TopSearch::get_plates_usage_rate(const Solution &sol)
 {
-    List<Area> res;
+    List<double> res;
     if (sol.empty()) return res;
-    const Area plate_area = gv::param.plateHeight * gv::param.plateWidth;
+    const double plate_area = gv::param.plateHeight * gv::param.plateWidth;
     Area item_area = gv::item_area[sol[0].item];    // 原料上物品面积。
     for (size_t i = 1; i < sol.size(); ++i)
     {
         if (sol[i].getFlagBit(Placement::NEW_PLATE))
         {
-            res.push_back(plate_area - item_area);
+            res.push_back(item_area / plate_area);
             item_area = gv::item_area[sol[i].item];
         }
         else
@@ -170,8 +170,8 @@ List<Area> TopSearch::get_plates_waste(const Solution &sol)
         }
     }
     // 计算余料利用率。
-    const Area tail_plate_area = gv::param.plateHeight * sol.back().c1cpr;
-    res.push_back(tail_plate_area - item_area);
+    const double tail_plate_area = gv::param.plateHeight * sol.back().c1cpr;
+    res.push_back(item_area / tail_plate_area);
     return res;
 }
 
