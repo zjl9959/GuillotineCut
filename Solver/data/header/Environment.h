@@ -11,11 +11,9 @@ namespace szx {
 
 struct Configuration {
     enum MODE {
-        TBEAM, TLOCAL,
         CBEAM, CDFS, CPFS, CASTAR
     };
 
-    MODE top_mode = TBEAM;      // topSearch优化模式
     MODE cut_mode = CBEAM;      // cutSearch优化模式
     size_t mtbn = 0;            // TopSearch最大分支数目
     size_t mpbn = 0;            // PlateSearch最大分支数目
@@ -67,6 +65,8 @@ struct Environment {
     String defectsPath() const { return instName + DefectsSuffix(); }
     String solutionPath() const { return slnPath; }
     String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
+    String statisticPath() const { return "Statistic/" + 
+        instName.substr(instName.find_last_of('/')) + '_' + localTime; }
 
     String visualizPath() const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + ".html"; }
     template<typename T>

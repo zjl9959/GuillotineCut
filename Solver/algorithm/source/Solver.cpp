@@ -88,6 +88,7 @@ void Solver::run() {
         output.save(env.solutionPath());
         #if SZX_DEBUG
         output.save(env.solutionPathWithTime());
+        gv::info.save(env.statisticPath());
         record();
         #endif
     } else {

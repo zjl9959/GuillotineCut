@@ -255,3 +255,4 @@ ModelManifest.xml
 /Deploy/cfg.txt
 *.log
 /Tools/INFO.json
+/Deploy/Statistic

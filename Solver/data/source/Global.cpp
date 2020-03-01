@@ -1,6 +1,7 @@
 #include "Solver/data/header/Global.h"
 
 #include <iomanip>
+#include <fstream>
 
 #include "Solver/utility/LogSwitch.h"
 #include "..\header\Global.h"
@@ -106,6 +107,26 @@ String Statistics::to_str() {
     oss << "nb_plate_sol:" << nb_plate_sol << endl;
     #endif // USE_STATISTICS
     return oss.str();
+}
+
+void Statistics::save(String &path) {
+    #ifdef USE_STATISTICS
+    ofstream ofs(path, ios::app);
+    if (!ofs.is_open()) return;
+    for (auto &wastes : iter_plate_wastes)
+    {
+        for (int i = 0; i < wastes.size(); ++i)
+        {
+            ofs << wastes[i];
+            if (i != wastes.size() - 1)
+            {
+                ofs << ',';
+            }
+        }
+        ofs << endl;
+    }
+    ofs.close();
+    #endif // USE_STATISTICS
 }
 
 }

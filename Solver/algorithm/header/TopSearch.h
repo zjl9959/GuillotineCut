@@ -21,14 +21,11 @@ public:
     Length best_obj() { return best_obj_; }
 private:
     void beam_search();
-    void local_search();
     void branch(ID plate_id, const Batch &source_batch, List<Solution> &sols, size_t nb_branch = 1);
     Length greedy_evaluate(ID plate_id, const Batch &source_batch, const Solution &fix_sol);
     Length get_obj(const Solution &sol);
     void update_best_sol(const Solution &sol, Length obj = -1);
-    bool find_first_improvement(Solution &cur_sol);
-    List<double> get_plates_usage_rate(const Solution &sol);
-    List<int> get_plates_index(const Solution &sol);
+    List<Area> get_plates_waste(const Solution &sol);
 private:
     Area total_item_area_;      // 物品总面积
     std::mutex sol_mutex_;      // 更新最优解时需先获得该锁

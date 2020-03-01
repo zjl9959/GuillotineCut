@@ -13,14 +13,7 @@ namespace szx {
 
 void TopSearch::run()
 {
-    if (gv::cfg.top_mode == Configuration::TBEAM)
-    {
-        beam_search();
-    }
-    else if (gv::cfg.top_mode == Configuration::TLOCAL)
-    {
-        local_search();
-    }
+    beam_search();
 }
 
 void TopSearch::beam_search()
@@ -154,130 +147,21 @@ void TopSearch::update_best_sol(const Solution &sol, Length obj)
         best_obj_ = obj;
         best_sol_ = sol;
     }
+    // 记录每块原料的信息。
+    gv::info.iter_plate_wastes.push_back(get_plates_waste(sol));
 }
 
-void TopSearch::local_search()
+List<Area> TopSearch::get_plates_waste(const Solution &sol)
 {
-    Solution s0;    // 初始解
-    //generate_init_sol(s0);
-    update_best_sol(s0);
-    int iter = 0;   // 迭代步数
-    while (!gv::timer.isTimeOut())
-    {
-        if (!find_first_improvement(s0))
-        {
-            // 如果找不到可以提升的动作，则进行随机扰动。
-            // [zjl][TODO]:该如何扰动？
-        }
-        assert(s0.size() == gv::items.size());
-        update_best_sol(s0);
-        ++iter;
-    }
-}
-
-/*
-* 功能：寻找对当前解来说，第一个能够改进局部较差原料的提升动作。
-* 输入：cur_sol（当前完整的解）。
-* 输出：cur_sol（新的解），返回值（true:改进，false:未改进）。
-*/
-bool TopSearch::find_first_improvement(Solution &cur_sol)
-{
-    static constexpr size_t max_k = 3;          // 最多回溯前k块原料。
-    const Area plate_area = gv::param.plateWidth * gv::param.plateHeight;
-
-    List<int> plates_index = get_plates_index(cur_sol);
-    List<double> usage_rates = get_plates_usage_rate(cur_sol);
-    double average = accumulate(usage_rates.begin(), usage_rates.end(), 0.0) / plates_index.size();
-    List<int> bad_plates;                       // 利用率低于平均值的原料列表。
-    for (int i = 0; i < plates_index.size(); ++i)
-    {
-        if (usage_rates[i] < average)
-            bad_plates.push_back(i);
-    }
-    // 因为是first_improvement，通过随机打乱原料id顺序来提高算法的疏散性。
-    for (int nb_rand_suff = 0; nb_rand_suff < bad_plates.size(); ++nb_rand_suff)
-    {
-        int temp = gv::rand.pick(bad_plates.size());
-        swap(bad_plates.begin() + temp, bad_plates.begin() + bad_plates.size() - 1);
-    }
-    for (int plate : bad_plates)
-    {   // 对于每一块较差的原料。
-        for (size_t k = 1; k <= max_k; ++k)
-        {   // 邻域从小到大。
-            Batch batch(gv::stacks);
-            if (plate < k) break;               // 前面没有这么多原料可供回溯了。
-            for (int i = 0; i < plates_index[plate - k]; ++i)
-            {
-                batch.remove(cur_sol.at(i).item);
-            }
-            // 重新构造的局部解。
-            Solution partial_sol;
-            double total_partial_usage_rate = 0.0;  // 重新构造解的利用率统计和。
-            double total_bad_usage_rate = 0.0;      // 老的局部解的利用率统计和。
-            for (int j = plate - k; j <= plate; ++j)
-            {
-                total_bad_usage_rate += usage_rates[j];
-                PlateSearch solver(j);
-                solver.run(batch);
-                if (solver.best_obj() > 0) {
-                    Solution temp_sol;
-                    solver.get_best_sol(temp_sol);
-                    partial_sol += temp_sol;
-                    batch.remove(temp_sol);
-                    total_partial_usage_rate += (double)solver.best_obj() / plate_area;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            // 检查partial_sol是否优于老的解。
-            if (total_partial_usage_rate > total_bad_usage_rate)
-            {
-                cur_sol.resize(plates_index[plate - k]);
-                cur_sol += partial_sol;
-                while (batch.size() != 0)
-                {   // 构造后续完整的解。
-                    PlateSearch solver(plate);
-                    solver.run(batch);
-                    if (solver.best_obj() > 0)
-                    {
-                        Solution temp_sol;
-                        solver.get_best_sol(temp_sol);
-                        cur_sol += temp_sol;
-                        batch.remove(temp_sol);
-                        ++plate;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-/*
-* 功能：计算输入的解中，每块原料的利用率。
-* 输入：sol（一个完整的解，解中最后一块原料作为余料来处理）。
-* 输出：返回值（每块原料的利用率）。
-*/
-List<double> TopSearch::get_plates_usage_rate(const Solution &sol)
-{
-    List<double> res;
+    List<Area> res;
     if (sol.empty()) return res;
-    const double plate_area = gv::param.plateHeight * gv::param.plateWidth;
+    const Area plate_area = gv::param.plateHeight * gv::param.plateWidth;
     Area item_area = gv::item_area[sol[0].item];    // 原料上物品面积。
-    size_t plate_index = 0;                         // 原料起始位置在sol中的索引。
     for (size_t i = 1; i < sol.size(); ++i)
     {
         if (sol[i].getFlagBit(Placement::NEW_PLATE))
         {
-            res.push_back(item_area / plate_area);
-            plate_index = i;
+            res.push_back(plate_area - item_area);
             item_area = gv::item_area[sol[i].item];
         }
         else
@@ -286,26 +170,8 @@ List<double> TopSearch::get_plates_usage_rate(const Solution &sol)
         }
     }
     // 计算余料利用率。
-    const double tail_plate_area = gv::param.plateHeight * sol.back().c1cpr;
-    res.push_back(item_area / tail_plate_area);
-    return res;
-}
-
-/*
-* 功能：构建当前解的每块原料id对于在解中开始位置索引。
-* 输入：sol（要处理的解）。
-* 输出：返回值（索引列表）。
-*/
-List<int> TopSearch::get_plates_index(const Solution &sol)
-{
-    List<int> res;
-    for (int i = 0; i < sol.size(); ++i)
-    {
-        if (sol[i].getFlagBit(Placement::NEW_PLATE))
-        {
-            res.push_back(i);
-        }
-    }
+    const Area tail_plate_area = gv::param.plateHeight * sol.back().c1cpr;
+    res.push_back(tail_plate_area - item_area);
     return res;
 }
 

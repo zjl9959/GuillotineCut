@@ -38,9 +38,11 @@ struct Statistics {
     size_t nb_reoptimize_improve;
     size_t nb_1cut_sol;
     size_t nb_plate_sol;
+    List<List<Area>> iter_plate_wastes;
 
     void clear();
     String to_str();
+    void save(String &path);
 };
 
 void init_global_variables(const Problem::Input &input, const Environment &env);

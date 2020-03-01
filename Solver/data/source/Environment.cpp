@@ -69,13 +69,6 @@ void Configuration::load(const String &path) {
         }
     }
     map<string, string>::iterator it;
-    it = param_switch.find("top_mode");
-    if (it != param_switch.end()) {
-        if (it->second == "beam")
-            top_mode = TBEAM;
-        else if (it->second == "local")
-            top_mode = TLOCAL;
-    }
     it = param_switch.find("cut_mode");
     if (it != param_switch.end()) {
         if (it->second == "beam")
@@ -107,11 +100,8 @@ void Configuration::load(const String &path) {
 
 String Configuration::toBriefStr() const {
     std::ostringstream os;
-    if (top_mode == TBEAM)
-        os << "B" << mtbn << "_";
-    else if (top_mode == TLOCAL)
-        os << "L_";
-    os << "B" << mpbn << "_";
+    os << mtbn << "_";
+    os << mpbn << "_";
     if (cut_mode == CBEAM)
         os << "B" << mcbn;
     else if (cut_mode == CDFS)
