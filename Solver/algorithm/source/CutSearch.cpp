@@ -25,12 +25,22 @@ CutSearch::CutSearch(TID plate, TCoord start_pos, TCoord end_pos) :
 * 输出：sol（该1-cut的最优解），返回：1-cut对应利用率
 */
 void CutSearch::run(Batch &batch) {
-    if(gv::cfg.cut_mode == Configuration::CBEAM)
+    if (gv::cfg.cut_mode == Configuration::CBEAM)
+    {
         beam_search(batch);
-    else if(gv::cfg.cut_mode == Configuration::CPFS)
+    }
+    else if (gv::cfg.cut_mode == Configuration::CPFS)
+    {
         pfs(batch);
-    else if(gv::cfg.cut_mode == Configuration::CDFS)
+    }
+    else if (gv::cfg.cut_mode == Configuration::CDFS)
+    {
         dfs(batch);
+    }
+    if(best_obj_.valid())
+    {
+        gv::info.nb_1cut_sol += 1;
+    }
 }
 
 #pragma region BeamSearch

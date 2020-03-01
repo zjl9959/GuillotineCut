@@ -123,7 +123,7 @@ def draw_inst_cfg_log(inst, logs):
     data, labels = list(), list()
     for cfg in cfg_log:
         data.append(cfg_log[cfg].gap)
-        labels.append(cfg)
+        labels.append(cfg.replace('_', '\n'))
     if len(labels) > 2:
         draw_bars(data, labels, 'GAP/%', title, img_path)
         print('保存图片：' + img_path)

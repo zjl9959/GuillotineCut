@@ -93,6 +93,8 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
 void Statistics::clear() {
     #ifdef USE_STATISTICS
     nb_reoptimize_improve = 0;
+    nb_1cut_sol = 0;
+    nb_plate_sol = 0;
     #endif // USE_STATISTICS
 }
 
@@ -100,6 +102,8 @@ String Statistics::to_str() {
     ostringstream oss;
     #ifdef USE_STATISTICS
     oss << "nb_reoptimize_improve:" << nb_reoptimize_improve << endl;
+    oss << "nb_1-cut_sol:" << nb_1cut_sol << endl;
+    oss << "nb_plate_sol:" << nb_plate_sol << endl;
     #endif // USE_STATISTICS
     return oss.str();
 }

@@ -12,12 +12,10 @@ namespace szx {
 struct Configuration {
     enum MODE {
         TBEAM, TLOCAL,
-        PBEAM, P0,
         CBEAM, CDFS, CPFS, CASTAR
     };
 
     MODE top_mode = TBEAM;      // topSearch优化模式
-    MODE plate_mode = PBEAM;    // plateSearch优化模式
     MODE cut_mode = CBEAM;      // cutSearch优化模式
     size_t mtbn = 0;            // TopSearch最大分支数目
     size_t mpbn = 0;            // PlateSearch最大分支数目

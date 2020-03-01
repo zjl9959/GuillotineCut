@@ -12,22 +12,11 @@ namespace szx{
 
 void PlateSearch::run(const Batch &source_batch)
 {
-    if (gv::cfg.plate_mode == Configuration::PBEAM)
+    beam_search(source_batch);
+    if (best_obj_ > 0)
     {
-        beam_search(source_batch);
+        gv::info.nb_plate_sol += 1;
     }
-    else if (gv::cfg.plate_mode == Configuration::P0)
-    {
-        skip(source_batch);
-    }
-}
-
-/*
-* 跳过PlateSearch的搜索过程，直接使用CutSearch对整块原料进行优化。
-*/
-void PlateSearch::skip(const Batch &source_batch)
-{
-    throw "not implement!";
 }
 
 /*
@@ -50,7 +39,7 @@ void PlateSearch::beam_search(const Batch &source_batch)
         {
             batch.remove(sol);
             fix_sol += sol;
-            Area obj = greedy_serial_construct(fix_sol.back().c1cpr, batch, fix_sol);
+            Area obj = greedy_evaluate(fix_sol.back().c1cpr, batch, fix_sol);
             batch.add(sol);
             fix_sol -= sol;
             // 记录最好的1-cut
@@ -85,7 +74,7 @@ void PlateSearch::branch(TCoord start_pos, const Batch &source_batch, List<Solut
     {
         if (gv::timer.isTimeOut())break;
         Picker::Filter filter(gv::param.plateWidth - start_pos);
-        Picker::Terminator terminator(12);
+        Picker::Terminator terminator(gv::cfg.mcbn);
         if (!picker.rand_pick(sub_batch, terminator, filter))continue;
         solver.run(sub_batch);
         if (solver.best_obj().valid())

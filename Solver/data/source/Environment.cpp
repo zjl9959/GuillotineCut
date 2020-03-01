@@ -76,13 +76,6 @@ void Configuration::load(const String &path) {
         else if (it->second == "local")
             top_mode = TLOCAL;
     }
-    it = param_switch.find("plate_mode");
-    if (it != param_switch.end()) {
-        if (it->second == "beam")
-            plate_mode = PBEAM;
-        else if (it->second == "0")
-            plate_mode = P0;
-    }
     it = param_switch.find("cut_mode");
     if (it != param_switch.end()) {
         if (it->second == "beam")
@@ -118,10 +111,7 @@ String Configuration::toBriefStr() const {
         os << "B" << mtbn << "_";
     else if (top_mode == TLOCAL)
         os << "L_";
-    if (plate_mode == PBEAM)
-        os << "B" << mpbn << "_";
-    else if (plate_mode == P0)
-        os << "X_";
+    os << "B" << mpbn << "_";
     if (cut_mode == CBEAM)
         os << "B" << mcbn;
     else if (cut_mode == CDFS)

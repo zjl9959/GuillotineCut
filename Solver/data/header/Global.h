@@ -36,6 +36,8 @@ struct IdMap {
 
 struct Statistics {
     size_t nb_reoptimize_improve;
+    size_t nb_1cut_sol;
+    size_t nb_plate_sol;
 
     void clear();
     String to_str();
