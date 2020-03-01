@@ -34,18 +34,19 @@ void UnitTest::run() {
 void UnitTest::test_CutSearch() {
     cout << "test cut search" << endl;
     TID plate = 0;
-    TCoord start_pos = 0;
+    TCoord start_pos = 1239;
     List<List<TID>> stacks;
-    //stacks = { {0, 1, 2, 3, 4} }; // 手动写入数据。
-    stacks = gv::stacks;            // 从全局数据中读入batch。
+    stacks = { {3, 2, 1, 24, 23, 22, 0} }; // 手动写入数据。
+    //stacks = gv::stacks;            // 从全局数据中读入batch。
     Batch batch(stacks);
     TimePoint start_time(Clock::now());
-    CutSearch solver(plate, start_pos, true);
+    CutSearch solver(plate, start_pos, 0);
     solver.run(batch);
     std::cout << solver.best_obj().str() << std::endl;
     cout << "cost time:" << std::chrono::duration_cast<US>(Clock::now() - start_time).count() << "ms";
     Solution sol;
     solver.get_best_sol(sol);
+    cout << sol << endl;
 }
 
 /*
@@ -53,9 +54,9 @@ void UnitTest::test_CutSearch() {
 */
 void UnitTest::test_PlateSearch() {
     cout << "test plate search" << endl;
-    TID plate = 1;
+    TID plate = 0;
     List<List<TID>> stacks;
-    stacks = { {} };     // 手动写入数据。
+    stacks = { {6, 25, 5, 4, 3, 2, 1, 24, 23, 22, 0, 21, 20} };     // 手动写入数据。
     //stacks = gv::stacks;    // 从全局数据中读入batch。
     Batch batch(stacks);
     TimePoint start_time(Clock::now());
@@ -64,6 +65,7 @@ void UnitTest::test_PlateSearch() {
     cout << "cost time:" << std::chrono::duration_cast<MS>(Clock::now() - start_time).count() << "ms";
     Solution sol;
     solver.get_best_sol(sol);
+    cout << sol << endl;
 }
 
 /*

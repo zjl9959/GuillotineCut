@@ -7,9 +7,17 @@ using namespace std;
 
 namespace szx {
 
-CutSearch::CutSearch(TID plate, TCoord start_pos, bool opt_tail) :
-    plate_(plate), tail_area_((gv::param.plateWidth - start_pos)*gv::param.plateHeight),
-    start_pos_(start_pos), opt_tail_(opt_tail) {}
+CutSearch::CutSearch(TID plate, TCoord start_pos, TCoord end_pos) :
+    plate_(plate), start_pos_(start_pos)
+{
+    if (end_pos)
+    {
+        tail_area_ = (end_pos - start_pos)*gv::param.plateHeight;
+    } else
+    {
+        tail_area_ = 0;
+    }
+}
 
 /*
 * 优化1-cut，根据全局配置参数，自动选择优化策略。
@@ -27,7 +35,8 @@ void CutSearch::run(Batch &batch) {
 
 #pragma region BeamSearch
 /* 束搜索 */
-void CutSearch::beam_search(Batch &batch) {
+void CutSearch::beam_search(Batch &batch)
+{
     Solution fix_sol;   // 已经被固定下来的解。
     Placement resume_point(start_pos_); // 每次分支的恢复点。
     List<Placement> branch_nodes;   // 缓存分支节点。
@@ -106,7 +115,7 @@ void CutSearch::dfs(Batch &batch) {
             cur_sol.push_back(node.place); // 更新当前解
             batch.remove(node.place.item);
         }
-        if (opt_tail_ == false) {             // 对每一个分支状态进行解的更新检测。
+        if (tail_area_ == 0) {             // 对每一个分支状态进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (cur_sol.back().c1cpr - start_pos_)*gv::param.plateHeight));
             update_best_sol(cur_obj, cur_sol);     // 检查更新最优解。
@@ -123,7 +132,7 @@ void CutSearch::dfs(Batch &batch) {
         for (auto it = branch_nodes.begin(); it != branch_nodes.end(); ++it) {
             live_nodes.push_back(DFSTreeNode(node.depth + 1, *it));
         }
-        if (branch_nodes.empty() && opt_tail_) {   // 仅对到达叶子节点的解进行更新检测。
+        if (branch_nodes.empty() && tail_area_ > 0) {   // 仅对到达叶子节点的解进行更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
             update_best_sol(cur_obj, cur_sol);
         }
@@ -156,7 +165,7 @@ void CutSearch::pfs(Batch &batch) {
         update_middle_solution(plate_, temp_sol);
         #endif
         tree.update_batch(last_node, node, batch);
-        if (opt_tail_ == false) {     // 对每一个分支状态进行解的更新检测。
+        if (tail_area_ == 0) {     // 对每一个分支状态进行解的更新检测。
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (node->place.c1cpr - start_pos_)*gv::param.plateHeight));
             tree.get_tree_path(node, cur_sol);
@@ -178,7 +187,7 @@ void CutSearch::pfs(Batch &batch) {
         }
         if (branch_nodes.empty()) {
             tree.add_leaf_node(node);   // 树中需要记录叶子节点，以便删除树。
-            if (opt_tail_ == true) {       // 仅对到达叶子节点的解进行更新检测。
+            if (tail_area_ > 0) {       // 仅对到达叶子节点的解进行更新检测。
                 cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
                 tree.get_tree_path(node, cur_sol);
                 update_best_sol(cur_obj, cur_sol);
@@ -202,15 +211,18 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
     Solution greedy_sol(fix_sol);    // 储存贪心构造的解。
     List<Placement> branch_nodes;
     branch(cur_node, batch, branch_nodes);
-    if (opt_tail_ == false) {
+    if (tail_area_ == 0)
+    {
         cur_obj = UsageRate((double)batch.used_item_area() / (double)(
             (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
         update_best_sol(cur_obj, fix_sol);
-    } else if (opt_tail_ == true && branch_nodes.empty()) {
+    } else if (tail_area_ > 0 && branch_nodes.empty())
+    {
         cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
         update_best_sol(cur_obj, fix_sol);
     }
-    while (!branch_nodes.empty()) {
+    while (!branch_nodes.empty())
+    {
         #if UPDATE_MIDDLE_SOL == 0
         update_middle_solution(plate_, greedy_sol);
         #endif
@@ -229,11 +241,11 @@ UsageRate CutSearch::greedy(Batch &batch, const Solution &fix_sol) {
         batch.remove(cur_node.item);
         branch_nodes.clear();
         branch(cur_node, batch, branch_nodes);
-        if (opt_tail_ == false) {
+        if (tail_area_ == 0) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)(
                 (cur_node.c1cpr - start_pos_)*gv::param.plateHeight));
             update_best_sol(cur_obj, greedy_sol);
-        } else if (opt_tail_ == true && branch_nodes.empty()) {
+        } else if (tail_area_ > 0 && branch_nodes.empty()) {
             cur_obj = UsageRate((double)batch.used_item_area() / (double)tail_area_);
             update_best_sol(cur_obj, greedy_sol);
         }
@@ -470,7 +482,7 @@ void CutSearch::branch(const Placement &old, const Batch &batch, List<Placement>
                             }
                         }
                     }
-                    if (opt_tail_ == false || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
+                    if (tail_area_ == 0 || flag)continue; // if item can placed in a new L2, no need to place it in a new L1.
                     // creat a new L1 and place item in it.
                     slip_r = sliptoDefectRight(old.c1cpr, 0, item.w, item.h);
                     {

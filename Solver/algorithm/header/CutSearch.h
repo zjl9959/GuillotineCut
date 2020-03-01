@@ -15,7 +15,7 @@ namespace szx {
 
 class CutSearch {
 public:
-    CutSearch(TID plate, TCoord start_pos, bool opt_tail);
+    CutSearch(TID plate, TCoord start_pos, TCoord end_pos = 0);
     
     void run(Batch &batch);
     UsageRate best_obj() const
@@ -41,9 +41,8 @@ private:
     void update_best_sol(UsageRate obj, const Solution &sol);
 private:
     const TID plate_;                       // 1-cut位于原料的id。
-    const Area tail_area_;                  // 剩余面积
+    Area tail_area_;                        // 剩余面积
     const TCoord start_pos_;                // 1-cut开始位置。
-    const bool opt_tail_;                   // 是否优化最后一个1-cut。
 
     UsageRate best_obj_;                    // 最优目标函数值。
     Solution best_sol_;                     // 最优解。
