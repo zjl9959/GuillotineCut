@@ -26,9 +26,11 @@ private:
     void skip(const Batch &source_batch);
     void beam_search(const Batch &source_batch);
     void branch(TCoord start_pos, const Batch &source_batch, List<Solution> &sols, TCoord end_pos, size_t nb_branch = 1);
-    Area greedy_evaluate(const Batch &source_batch, const Solution &sol);
+    Area greedy_evaluate(TCoord start_pos, const Batch &source_batch, const Solution &sol);
+    Area greedy_serial_construct(TCoord start_pos, const Batch &source_batch, const Solution &fix_sol);
     Area item_area(const Solution &sol);
-    void update_best_sol(const Solution &sol, Area obj = 0);
+    void update_best_sol(const Solution& sol, Area obj = 0);
+    int get_last_n_1cut(const Solution& sol, Solution& last_n_1cut, int n = 1);
 private:
     TID plate_;                 // 优化的原料id
     Area best_obj_;             // 最大物品面积。

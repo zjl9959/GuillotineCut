@@ -43,6 +43,7 @@ private:
     const TID plate_;                       // 1-cut位于原料的id。
     Area tail_area_;                        // 剩余面积
     const TCoord start_pos_;                // 1-cut开始位置。
+    const TCoord end_pos_;                  // 结束位置。
 
     UsageRate best_obj_;                    // 最优目标函数值。
     Solution best_sol_;                     // 最优解。

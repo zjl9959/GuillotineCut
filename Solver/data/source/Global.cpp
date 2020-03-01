@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include "Solver/utility/LogSwitch.h"
+#include "..\header\Global.h"
 
 using namespace std;
 
@@ -84,9 +85,23 @@ void init_global_variables(const Problem::Input &input, const Environment &env) 
         sort(gv::defect_y[p].begin(), gv::defect_y[p].end(), [](Defect &lhs, Defect &rhs) { return lhs.y < rhs.y; });
     gv::param = input.param;
     gv::support_thread = thread::hardware_concurrency();
+    gv::info.clear();
 }
 
 #define USE_STATISTICS
 
+void Statistics::clear() {
+    #ifdef USE_STATISTICS
+    nb_reoptimize_improve = 0;
+    #endif // USE_STATISTICS
+}
+
+String Statistics::to_str() {
+    ostringstream oss;
+    #ifdef USE_STATISTICS
+    oss << "nb_reoptimize_improve:" << nb_reoptimize_improve << endl;
+    #endif // USE_STATISTICS
+    return oss.str();
+}
 
 }

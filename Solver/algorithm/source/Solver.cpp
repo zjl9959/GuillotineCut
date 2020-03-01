@@ -82,6 +82,7 @@ void Solver::run() {
     if (solver.best_obj() != Problem::Output::MaxWidth) {
         Solution best_sol;
         solver.get_best_sol(best_sol);
+        cout << gv::info.to_str() << endl;
         output = createOutput(best_sol);
         // Êä³ö½â
         output.save(env.solutionPath());

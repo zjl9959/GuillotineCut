@@ -35,7 +35,10 @@ struct IdMap {
 };
 
 struct Statistics {
-    // TODO add statistic.
+    size_t nb_reoptimize_improve;
+
+    void clear();
+    String to_str();
 };
 
 void init_global_variables(const Problem::Input &input, const Environment &env);

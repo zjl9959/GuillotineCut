@@ -8,7 +8,7 @@ using namespace std;
 namespace szx {
 
 CutSearch::CutSearch(TID plate, TCoord start_pos, TCoord end_pos) :
-    plate_(plate), start_pos_(start_pos)
+    plate_(plate), start_pos_(start_pos), end_pos_(end_pos)
 {
     if (end_pos)
     {
@@ -37,41 +37,51 @@ void CutSearch::run(Batch &batch) {
 /* 束搜索 */
 void CutSearch::beam_search(Batch &batch)
 {
-    Solution fix_sol;   // 已经被固定下来的解。
-    Placement resume_point(start_pos_); // 每次分支的恢复点。
-    List<Placement> branch_nodes;   // 缓存分支节点。
+    Solution fix_sol;                       // 已经被固定下来的解。
+    Placement resume_point(start_pos_);     // 每次分支的恢复点。
+    List<Placement> branch_nodes;           // 缓存分支节点。
     // 初始分支
     branch(resume_point, batch, branch_nodes);
     using ScorePair = pair<double, size_t>;
-    while (!branch_nodes.empty()) {
+    while (!branch_nodes.empty())
+    {
         // 限制beam_search宽度不超过set_.max_branch。
         List<ScorePair> score_pair;
-        for (size_t i = 0; i < branch_nodes.size(); ++i) {
-            double score = static_cast<double>(batch.used_item_area() + gv::item_area[branch_nodes[i].item]) / envelope_area(branch_nodes[i]);
+        for (size_t i = 0; i < branch_nodes.size(); ++i)
+        {
+            double cur_used_item_area = batch.used_item_area() + gv::item_area[branch_nodes[i].item];
+            double score = cur_used_item_area / envelope_area(branch_nodes[i]);
             score_pair.push_back(make_pair(score, i));
         }
-        sort(score_pair.begin(), score_pair.end(), [](const ScorePair &lhs, const ScorePair &rhs) {return lhs.first > rhs.first; });
+        sort(score_pair.begin(), score_pair.end(),
+            [](const ScorePair &lhs, const ScorePair &rhs) {
+            return lhs.first > rhs.first;
+        });
         // 贪心的估计并更新
         UsageRate best_score;
         Placement best_place;
-        for (size_t i = 0; i < min(gv::cfg.mcbn, branch_nodes.size()); ++i) {
+        for (size_t i = 0; i < min(gv::cfg.mcbn, branch_nodes.size()); ++i)
+        {
             Placement &place = branch_nodes[score_pair[i].second];
             fix_sol.push_back(place);
             batch.remove(place.item);
             UsageRate score = greedy(batch, fix_sol);
-            if (score.valid() && best_score < score) {
+            if (score.valid() && best_score < score)
+            {
                 best_score = score;
                 best_place = place;
             }
             fix_sol.pop_back();
             batch.add(place.item);
         }
-        if (best_score.valid()) {
+        if (best_score.valid())
+        {
             fix_sol.push_back(best_place);
             batch.remove(best_place.item);
             branch_nodes.clear();
             branch(best_place, batch, branch_nodes);
-        } else {
+        } else
+        {
             break;
         }
     }
@@ -561,6 +571,11 @@ bool CutSearch::constraintCheck(const Placement &old, Placement &node) {
 #pragma endregion defectChecker
 
 #pragma region sideChecker
+    // check if cut1 exceed end_pos_.
+    if (end_pos_ && node.c1cpr > end_pos_)
+    {
+        return false;
+    }
     // check if cut1 exceed stock right side.
     if (node.c1cpr > gv::param.plateWidth) {
         return false;
