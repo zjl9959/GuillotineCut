@@ -64,9 +64,9 @@ def draw_log_bar(nb_item_list, nb_stack_list, instance_list, out_path, title):
     x = np.arange(len(instance_list))  # the label locations
     width = 0.35  # the width of the bars
     fig, ax = plt.subplots(figsize=(8.0, 6.5))
-    ax.set_title(title)
+    #ax.set_title(title)
     rects1 = ax.bar(x - width/2, nb_item_list, width, label='成品')
-    rects2 = ax.bar(x + width/2, nb_stack_list, width, label='栈')
+    rects2 = ax.bar(x + width/2, nb_stack_list, width, label='堆栈')
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_ylabel('数量/个')
     ax.set_xticks(x)
@@ -82,7 +82,7 @@ def draw_log_bar(nb_item_list, nb_stack_list, instance_list, out_path, title):
     plt.savefig(out_path)
 
 def draw_scatter_hist(x, y, out_path, title):
-    fig, axScatter = plt.subplots(figsize=(6.5, 4.0))
+    fig, axScatter = plt.subplots(figsize=(5.5, 5.0))
     axScatter.scatter(x, y)
     axScatter.set_aspect(1.)
     axScatter.set_xlabel('宽度/毫米')
@@ -92,7 +92,7 @@ def draw_scatter_hist(x, y, out_path, title):
     axHisty = divider.append_axes("right", 1.2, pad=0.1, sharey=axScatter)
     axHistx.xaxis.set_tick_params(labelbottom=False)
     axHisty.yaxis.set_tick_params(labelleft=False)
-    x_min, x_max = 0, 6000
+    x_min, x_max = 0, 3500
     y_min, y_max = 0, 3210
     bins_x = np.arange(x_min, x_max, (x_max - x_min)/50)
     bins_y = np.arange(y_min, y_max, (y_max - y_min)/30)
@@ -100,7 +100,7 @@ def draw_scatter_hist(x, y, out_path, title):
     axHisty.hist(y, bins=bins_y, orientation='horizontal')
     axHistx.set_ylabel('计数/个')
     axHisty.set_xlabel('计数/个')
-    axHistx.set_title(title)
+    #axHistx.set_title(title)
     plt.savefig(out_path)
 
 def run():
