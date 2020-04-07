@@ -3,6 +3,7 @@
 import json
 import csv
 import numpy
+import copy
 import datetime
 import matplotlib
 import matplotlib.pyplot as plt
@@ -31,6 +32,18 @@ class Log():
         self.usage_rate = item_area / (waste + item_area) * 100
         self.configure = configure
 
+class BarData():
+    def __init__(self, x_labels, y_lable):
+        self.x_labels = x_labels
+        self.y_label = y_lable
+        self.datas = list()
+        self.names = list()
+
+    def add_data(self, name, data):
+        if len(data) == len(self.x_labels):
+            self.datas.append(data)
+            self.names.append(name)
+
 def parse_log_file():
     # [0]Time, [1]Instance, [2]RandSeed, [3]Duration, [4]Waste, [5]Configure
     log_list = []
@@ -39,6 +52,8 @@ def parse_log_file():
         reader = csv.reader(f, delimiter=';')
         reader.__next__()
         for row in reader:
+            if len(row) < 5:
+                continue
             if int(row[4]) < 0: # 目标函数值小于0代表出错。
                 nb_error_log += 1
                 continue
@@ -48,30 +63,62 @@ def parse_log_file():
     return log_list
 
 def filter_by_group(logs, group):
-    inst_log = dict()
+    res = list()
     for log in logs:
-        if group != log.instance[0]:
-            continue
-        inst = log.instance
-        if inst in inst_log:
-            if log.waste < inst_log[inst].waste:
-                inst_log[inst] = log
-        else:
-            inst_log[inst] = log
-    return inst_log
+        if group == log.instance[0]:
+            res.append(log)
+    return res
 
 def filter_by_inst(logs, inst):
-    cfg_log = dict()
+    res = list()
     for log in logs:
         if inst != log.instance:
-            continue
-        cfg = log.configure
-        if cfg in cfg_log:
-            if log.waste < cfg_log[cfg].waste:
-                cfg_log[cfg] = log
+            res.append(log)
+    return res
+
+def filter_by_cfg(logs, cfg):
+    res = list()
+    for log in logs:
+        if cfg in log.configure:
+            res.append(log)
+    return res
+
+# merge_mode:"ins":[返回不同的instance]，"cfg":[返回不同的configure]，"all":[返回不同的instance+configure]
+# cmp_mode:"worst":[保留最差的目标值]，"best":[保留最好的目标值]，"average":[取平均值]。
+def merge_logs(logs, merge_mode, cmp_mode):
+    log_map = dict()
+    for log in logs:
+        log_id = log.instance + log.configure
+        if merge_mode == 'ins':
+            log_id = log.instance
+        elif merge_mode == 'cfg':
+            log_id = log.configure
+        if log_id in log_map:
+            log_map[log_id].append(log)
         else:
-            cfg_log[cfg] = log
-    return cfg_log
+            log_map[log_id] = [log]
+    res = list()
+    for log_id in log_map.keys():
+        temp_log = copy.deepcopy(log_map[log_id][0])
+        for log in log_map[log_id][1:]:
+            if cmp_mode == 'worst' and log.waste > temp_log.waste:
+                temp_log.waste = log.waste
+                temp_log.gap = log.gap
+                temp_log.usage_rate = log.usage_rate
+            elif cmp_mode == 'best' and log.waste < temp_log.waste:
+                temp_log.waste = log.waste
+                temp_log.gap = log.gap
+                temp_log.usage_rate = log.usage_rate
+            elif cmp_mode == 'average':
+                temp_log.waste += log.waste
+                temp_log.usage_rate += log.usage_rate
+                temp_log.gap += log.gap
+        if cmp_mode == 'average':
+            temp_log.waste /= len(log_map[log_id])
+            temp_log.usage_rate /= len(log_map[log_id])
+            temp_log.gap /= len(log_map[log_id])
+        res.append(temp_log)
+    return res
 
 def autolabel(rect, ax):
     height = round(rect.get_height(), 2)
@@ -81,51 +128,75 @@ def autolabel(rect, ax):
                 textcoords="offset points",
                 ha='center', va='bottom')
 
-def draw_bars(data, x_labels, y_label, title = None, img_path = None):
-    ind = numpy.arange(len(x_labels))
+def draw_bars(bar_data, title = None, img_path = None):
+    ind = numpy.arange(len(bar_data.x_labels))
     width = 0.35
     fig, ax = plt.subplots(figsize=(10.0, 8.0))
     if title:
         ax.set_title(title)
-    rects = ax.bar(ind, data, width)
-    ax.set_ylabel(y_label)
+    rects_list = list()
+    for i in range(len(bar_data.datas)):
+        x_pos = ind + (i - (len(bar_data.datas)-1)*0.5)*width
+        rects = ax.bar(x_pos, bar_data.datas[i], width, label=bar_data.names[i])
+        rects_list.append(rects)
+    ax.set_ylabel(bar_data.y_label)
     ax.set_xticks(ind)
-    ax.set_xticklabels(x_labels)
+    ax.set_xticklabels(bar_data.x_labels)
+    if len(bar_data.names) > 1:
+        ax.legend()
     fig.tight_layout()
-    for i in range(len(rects)):
-        autolabel(rects[i], ax)
+    for i in range(len(rects_list)):
+        height_set = set()
+        for j in range(len(rects_list[i])):
+            height = rects_list[i][j].get_height()
+            if height not in height_set:
+                autolabel(rects_list[i][j], ax)
+                height_set.add(height)
     if img_path:
         plt.savefig(img_path)
     else:
         plt.show()
 
 def draw_group_inst_log(group, logs):
-    inst_log = filter_by_group(logs, group)
+    logs = filter_by_group(logs, group)
+    logs = merge_logs(logs, 'ins', 'best')
     title =  '与最优解之间的GAP（算例集' + group + '）'
     img_path = img_output_dir + '\\' + title + date_time + '.png'
     max_index = 15
     data = [0 for _ in range(max_index)]
     labels = [' ' for _ in range(max_index)]
-    for inst in inst_log:
-        instid = int(inst[1:])
-        data[instid - 1] = inst_log[inst].gap
-        labels[instid - 1] = inst
+    for log in logs:
+        instid = int(log.instance[1:])
+        data[instid - 1] = log.gap
+        labels[instid - 1] = log.instance
+    data2 = list()
+    for inst_name in json_data['J29_final_3600']:
+        if group in inst_name:
+            waste = json_data['J29_final_3600'][inst_name]
+            gap = (waste - json_data['offical_3600'][inst_name]) / waste * 100
+            data2.append(gap)
+    bar_data = BarData(labels, 'GAP/%')
+    bar_data.add_data('当前版本', data)
+    bar_data.add_data('竞赛版本', data2)
     if labels.count(' ') < 5:
-        draw_bars(data, labels, 'GAP/%', title, img_path)
+        draw_bars(bar_data, title, img_path)
         print('保存图片：' + img_path)
     else:
         print('数据不足，无法绘图！')
 
 def draw_inst_cfg_log(inst, logs):
-    cfg_log = filter_by_inst(logs, inst)
+    logs = filter_by_inst(logs, inst)
+    logs = merge_logs(logs, 'cfg', 'best')
     title = '各参数对比图（算例' + inst + '）'
     img_path = img_output_dir + '\\' + title + date_time + '.png'
     data, labels = list(), list()
-    for cfg in cfg_log:
-        data.append(cfg_log[cfg].gap)
-        labels.append(cfg.replace('_', '\n'))
+    for log in logs:
+        data.append(log.gap)
+        labels.append(log.configure.replace('_', '\n'))
+    bar_data = BarData(labels, 'GAP/%')
+    bar_data.add_data('', data)
     if len(labels) > 2:
-        draw_bars(data, labels, 'GAP/%', title, img_path)
+        draw_bars(bar_data, title, img_path)
         print('保存图片：' + img_path)
     else:
         print('数据不足，无法绘图！')
