@@ -122,7 +122,7 @@ def merge_logs(logs, merge_mode, cmp_mode):
 
 def autolabel(rect, ax):
     height = round(rect.get_height(), 2)
-    ax.annotate('{}'.format(height),
+    ax.annotate('{:.2f}'.format(height),
                 xy=(rect.get_x() + rect.get_width() / 2, height),
                 xytext=(0, 3),  # 3 points vertical offset
                 textcoords="offset points",
@@ -130,7 +130,7 @@ def autolabel(rect, ax):
 
 def draw_bars(bar_data, title = None, img_path = None):
     ind = numpy.arange(len(bar_data.x_labels))
-    width = 0.35
+    width = 0.7 / len(bar_data.datas)
     fig, ax = plt.subplots(figsize=(10.0, 8.0))
     if title:
         ax.set_title(title)
@@ -145,13 +145,16 @@ def draw_bars(bar_data, title = None, img_path = None):
     if len(bar_data.names) > 1:
         ax.legend()
     fig.tight_layout()
-    for i in range(len(rects_list)):
-        height_set = set()
-        for j in range(len(rects_list[i])):
-            height = rects_list[i][j].get_height()
-            if height not in height_set:
-                autolabel(rects_list[i][j], ax)
-                height_set.add(height)
+    if len(rects_list) == 0:
+        return
+    if len(bar_data.datas) < 3:
+        for j in range(len(rects_list[0])):
+            height_set = set()
+            for i in range(len(rects_list)):
+                height = '{:.2f}'.format(rects_list[i][j].get_height())
+                if height not in height_set:
+                    autolabel(rects_list[i][j], ax)
+                    height_set.add(height)
     if img_path:
         plt.savefig(img_path)
     else:
@@ -184,6 +187,42 @@ def draw_group_inst_log(group, logs):
     else:
         print('数据不足，无法绘图！')
 
+def draw_group_compare_log(group, logs):
+    logs = filter_by_group(logs, group)
+    logs_best = merge_logs(logs, 'ins', 'best')
+    logs_dfs = filter_by_cfg(logs, 'D')
+    logs_dfs = merge_logs(logs_dfs, 'ins', 'best')
+    logs_pfs = filter_by_cfg(logs, 'P')
+    logs_pfs = merge_logs(logs_pfs, 'ins', 'best')
+    logs_beam = filter_by_cfg(logs, 'B')
+    logs_beam = merge_logs(logs_beam, 'ins', 'best')
+    title =  '子算法求解效果对比图（算例集' + group + '）'
+    img_path = img_output_dir + '\\' + title + date_time + '.png'
+    max_index = 15
+    datas_best = [0 for _ in range(max_index)]
+    for log in logs_best:
+        instid = int(log.instance[1:])
+        datas_best[instid - 1] = log.waste
+    datas_dfs = [0 for _ in range(max_index)]
+    labels = [group + str(i + 1) for i in range(max_index)]
+    for log in logs_dfs:
+        instid = int(log.instance[1:]) - 1
+        datas_dfs[instid] = 100 - (log.waste - datas_best[instid])/log.waste*100
+    datas_pfs = [0 for _ in range(max_index)]
+    for log in logs_pfs:
+        instid = int(log.instance[1:]) - 1
+        datas_pfs[instid] = 100 - (log.waste - datas_best[instid])/log.waste*100
+    datas_beam = [0 for _ in range(max_index)]
+    for log in logs_beam:
+        instid = int(log.instance[1:]) - 1
+        datas_beam[instid] = 100 - (log.waste - datas_best[instid])/log.waste*100
+    bar_data = BarData(labels, 'Score')
+    bar_data.add_data('HISA-DFS', datas_dfs)
+    bar_data.add_data('HISA-A*', datas_pfs)
+    bar_data.add_data('HISA-Beam', datas_beam)
+    draw_bars(bar_data, None, img_path)
+    print('保存图片：' + img_path)
+
 def draw_inst_cfg_log(inst, logs):
     logs = filter_by_inst(logs, inst)
     logs = merge_logs(logs, 'cfg', 'best')
@@ -207,7 +246,8 @@ def run():
     if len(inp1) > 1:
         draw_inst_cfg_log(inp1, logs)
     else:
-        draw_group_inst_log(inp1, logs)
+        #draw_group_inst_log(inp1, logs)
+        draw_group_compare_log(inp1, logs)
 
 if __name__ == "__main__":
     run()
