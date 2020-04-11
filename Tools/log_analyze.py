@@ -233,7 +233,7 @@ def draw_group_compare_log(group, logs):
     for log in logs_beam:
         instid = int(log.instance[1:]) - 1
         datas_beam[instid] = 100 - (log.waste - datas_best[instid])/log.waste*100
-    bar_data = DataGroup(labels, 'Score')
+    bar_data = DataGroup(labels, 'SCORE')
     bar_data.add_data('HISA-DFS', datas_dfs)
     bar_data.add_data('HISA-A*', datas_pfs)
     bar_data.add_data('HISA-Beam', datas_beam)
@@ -276,6 +276,27 @@ def draw_time_log(logs):
     draw_polylines(line_data, None, img_path)
     print('保存图片：' + img_path)
 
+def draw_cfg_compare(logs):
+    cfg_logs_group = list()
+    cfg_names = ['16_16_B8', '32_32_B8', '64_64_B8', '16_16_B16', '32_32_B16', '64_64_B16']
+    legend_names = ['(16,16,8)', '(32,32,8)', '(64,64,8)','(16,16,16)','(32,32,16)','(64,64,16)']
+    for cfg_name in cfg_names:
+        cfg_logs_group.append(filter_by_cfg(logs, cfg_name))
+    img_path = img_output_dir + '\\HISA-Beam算法各配置参数对比图' + date_time + '.png'
+    labels = ['X' + str(i + 1) for i in range(15)]
+    labels += ['B' + str(i + 1) for i in range(15)]
+    line_data = DataGroup(labels, 'USAGERATE/%')
+    for i in range(len(cfg_logs_group)):
+        datas = [0 for _ in range(30)]
+        for log in cfg_logs_group[i]:
+            instid = int(log.instance[1:]) - 1
+            if log.instance[0] == 'B':
+                instid += 15
+            datas[instid] = log.usage_rate
+        line_data.add_data(legend_names[i], datas)
+    draw_polylines(line_data, None, img_path)
+    print('保存图片：' + img_path)
+
 def draw_inst_cfg_log(inst, logs):
     logs = filter_by_inst(logs, inst)
     logs = merge_logs(logs, 'cfg', 'best')
@@ -296,12 +317,14 @@ def draw_inst_cfg_log(inst, logs):
 def run():
     logs = parse_log_file()
     inp1 = input('筛选条件：').strip('\n')
-    if len(inp1) > 1:
+    if len(inp1) == 0:
+        #draw_time_log(logs)
+        draw_cfg_compare(logs)
+    elif len(inp1) > 1:
         draw_inst_cfg_log(inp1, logs)
     else:
         #draw_group_inst_log(inp1, logs)
         draw_group_compare_log(inp1, logs)
-    #draw_time_log(logs)
 
 if __name__ == "__main__":
     run()
