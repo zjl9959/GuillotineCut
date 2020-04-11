@@ -32,7 +32,7 @@ class Log():
         self.usage_rate = item_area / (waste + item_area) * 100
         self.configure = configure
 
-class BarData():
+class DataGroup():
     def __init__(self, x_labels, y_lable):
         self.x_labels = x_labels
         self.y_label = y_lable
@@ -160,6 +160,23 @@ def draw_bars(bar_data, title = None, img_path = None):
     else:
         plt.show()
 
+def draw_polylines(bar_data, title=None, img_path=None):
+    ind = numpy.arange(len(bar_data.x_labels))
+    fig, ax = plt.subplots(figsize=(10.0, 8.0))
+    if title:
+        ax.set_title(title)
+    for i in range(len(bar_data.datas)):
+        ax.plot(ind, bar_data.datas[i], label=bar_data.names[i])
+    ax.set_ylabel(bar_data.y_label)
+    ax.set_xticks(ind)
+    ax.set_xticklabels(bar_data.x_labels)
+    if len(bar_data.names) > 1:
+        ax.legend()
+    if img_path:
+        plt.savefig(img_path)
+    else:
+        plt.show()
+
 def draw_group_inst_log(group, logs):
     logs = filter_by_group(logs, group)
     logs = merge_logs(logs, 'ins', 'best')
@@ -178,7 +195,7 @@ def draw_group_inst_log(group, logs):
             waste = json_data['J29_final_3600'][inst_name]
             gap = (waste - json_data['offical_3600'][inst_name]) / waste * 100
             data2.append(gap)
-    bar_data = BarData(labels, 'GAP/%')
+    bar_data = DataGroup(labels, 'GAP/%')
     bar_data.add_data('当前版本', data)
     bar_data.add_data('竞赛版本', data2)
     if labels.count(' ') < 5:
@@ -216,11 +233,47 @@ def draw_group_compare_log(group, logs):
     for log in logs_beam:
         instid = int(log.instance[1:]) - 1
         datas_beam[instid] = 100 - (log.waste - datas_best[instid])/log.waste*100
-    bar_data = BarData(labels, 'Score')
+    bar_data = DataGroup(labels, 'Score')
     bar_data.add_data('HISA-DFS', datas_dfs)
     bar_data.add_data('HISA-A*', datas_pfs)
     bar_data.add_data('HISA-Beam', datas_beam)
     draw_bars(bar_data, None, img_path)
+    print('保存图片：' + img_path)
+
+def draw_time_log(logs):
+    logs_dfs = filter_by_cfg(logs, 'D')
+    logs_dfs = merge_logs(logs_dfs, 'ins', 'average')
+    logs_pfs = filter_by_cfg(logs, 'P')
+    logs_pfs = merge_logs(logs_pfs, 'ins', 'average')
+    logs_beam = filter_by_cfg(logs, 'B')
+    logs_beam = merge_logs(logs_beam, 'ins', 'average')
+    title =  '子算法运行耗时对比图'
+    img_path = img_output_dir + '\\' + title + date_time + '.png'
+    labels = ['X' + str(i + 1) for i in range(15)]
+    labels += ['B' + str(i + 1) for i in range(15)]
+    datas_dfs = [0 for _ in range(30)]
+    for log in logs_dfs:
+        instid = int(log.instance[1:]) - 1
+        if log.instance[0] == 'B':
+            instid += 15
+        datas_dfs[instid] = log.duration
+    datas_pfs = [0 for _ in range(30)]
+    for log in logs_pfs:
+        instid = int(log.instance[1:]) - 1
+        if log.instance[0] == 'B':
+            instid += 15
+        datas_pfs[instid] = log.duration
+    datas_beam = [0 for _ in range(30)]
+    for log in logs_beam:
+        instid = int(log.instance[1:]) - 1
+        if log.instance[0] == 'B':
+            instid += 15
+        datas_beam[instid] = log.duration
+    line_data = DataGroup(labels, 'CPUTIME/S')
+    line_data.add_data('HISA-DFS', datas_dfs)
+    line_data.add_data('HISA-A*', datas_pfs)
+    line_data.add_data('HISA-Beam', datas_beam)
+    draw_polylines(line_data, None, img_path)
     print('保存图片：' + img_path)
 
 def draw_inst_cfg_log(inst, logs):
@@ -232,7 +285,7 @@ def draw_inst_cfg_log(inst, logs):
     for log in logs:
         data.append(log.gap)
         labels.append(log.configure.replace('_', '\n'))
-    bar_data = BarData(labels, 'GAP/%')
+    bar_data = DataGroup(labels, 'GAP/%')
     bar_data.add_data('', data)
     if len(labels) > 2:
         draw_bars(bar_data, title, img_path)
@@ -248,6 +301,7 @@ def run():
     else:
         #draw_group_inst_log(inp1, logs)
         draw_group_compare_log(inp1, logs)
+    #draw_time_log(logs)
 
 if __name__ == "__main__":
     run()
