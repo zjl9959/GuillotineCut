@@ -62,10 +62,10 @@ def draw_total_waste(datas, inst):
     title = '整体利用率随时间变化（算例' + inst + '）'
     path  = img_output_dir + title + date_time + '.png'
     fig, ax = plt.subplots()
-    ax.set_title(title)
+    #ax.set_title(title)
     ax.plot(x, y)
-    ax.set_xlabel('时间/秒')
-    ax.set_ylabel('利用率/%')
+    ax.set_xlabel('TIME/SECOND')
+    ax.set_ylabel('USAGERATE/%')
     plt.savefig(path)
     print('保存图片到：', path)
 

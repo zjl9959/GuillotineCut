@@ -13,7 +13,7 @@ plt.rcParams['font.sans-serif']=['SimHei']  #用来正常显示中文标签
 plt.rcParams['axes.unicode_minus']=False    #用来正常显示负号
 
 json_info_path = 'INFO.json'
-log_path = '../Deploy/log.csv'
+log_path = '../Deploy/log_analyze.csv'
 # 根据实际需要进行更改。
 img_output_dir = 'C:\\毕业论文\\我的论文\\数据图表\\日志分析\\'
 date_time = datetime.datetime.now().__format__('%y%m%d%H%M%S')
@@ -314,12 +314,39 @@ def draw_inst_cfg_log(inst, logs):
     else:
         print('数据不足，无法绘图！')
 
+def draw_defect_statistic(logs):
+    #logs = merge_logs(logs, 'ins', 'best')
+    img_path = img_output_dir + '\\瑕疵对算法求解质量的影响' + date_time + '.png'
+    defetc2usage = dict()
+    for log in logs:
+        ins_name = log.instance
+        nb_plate = int((log.waste + json_data['item_area'][ins_name])/(6000*3210))
+        nb_defect = 0
+        for i in range(nb_plate):
+            nb_defect += json_data['plate_defects'][ins_name][i]
+        if nb_defect in defetc2usage:
+            old_usage_rate, old_num = defetc2usage[nb_defect]
+            defetc2usage[nb_defect] = [log.usage_rate + old_usage_rate, 1 + old_num]
+        else:
+            defetc2usage[nb_defect] = [log.usage_rate, 1]
+    fig, ax = plt.subplots()
+    x = sorted(defetc2usage.keys())
+    y = list()
+    for key in x:
+        y.append(defetc2usage[key][0]/defetc2usage[key][1])
+    ax.plot(x, y)
+    ax.set_xlabel('DEFECTSNUMBER')
+    ax.set_ylabel('USAGERATE/%')
+    plt.savefig(img_path)
+    print('保存图片到：', img_path)
+
 def run():
     logs = parse_log_file()
     inp1 = input('筛选条件：').strip('\n')
     if len(inp1) == 0:
         #draw_time_log(logs)
-        draw_cfg_compare(logs)
+        #draw_cfg_compare(logs)
+        draw_defect_statistic(logs)
     elif len(inp1) > 1:
         draw_inst_cfg_log(inp1, logs)
     else:
