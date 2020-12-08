@@ -55,6 +55,10 @@ int Cli::run(int argc, char * argv[]) {
     Log(LogSwitch::Szx::Input) << "load instance " << env.instName << " (seed=" << env.randSeed << ")." << endl;
     Problem::Input input;
     if (!input.load(env.batchPath(), env.defectsPath())) { return -1; }
+
+	Length total_area = 0;
+	for (auto &item : input.batch) { total_area += item.width * item.height; }
+	cout << "total area = " << total_area << endl;
     
 	// 调用topSearch求解
     Solver solver(input, env, cfg);

@@ -45,7 +45,7 @@ bool Problem::Input::loadDefects(const String &defectsFilePath) {
 
     CsvReader cr;
     const vector<CsvReader::Row> &rows(cr.scan(ifs));
-    defects.reserve(rows.size() - 2);
+    defects.reserve(rows.size() - 1);
     for (auto r = rows.begin() + 1; r != rows.end(); ++r) { // skip header.
         defects.push_back({
             atoi(r->at(DefectsColumn::DefectId)),

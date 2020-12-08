@@ -53,13 +53,13 @@ public:
         void loadParam() {
             // EXTEND[szx][9]: load from file when provided?
             param.plateNum = 100;
-            param.plateWidth = 6000;
-            param.plateHeight = 3210;
-            param.minL1Width = 100;
-            param.maxL1Width = 3500;
-            param.minL2Height = 100;
-            param.minWasteWidth = 20;
-            param.minWasteHeight = 20;
+            param.plateWidth = 2440;
+            param.plateHeight = 1830;
+            param.minL1Width = 0;
+            param.maxL1Width = 2440;
+            param.minL2Height = 0;
+            param.minWasteWidth = 0;
+            param.minWasteHeight = 0;
         }
         bool loadBatch(const String &batchFilePath);
         bool loadDefects(const String &defectsFilePath);
