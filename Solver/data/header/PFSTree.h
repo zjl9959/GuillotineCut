@@ -38,7 +38,7 @@ private:
         Depth depth_;   // 当前节点扩展深度。
     };
     struct ScoreCmp {
-        bool operator() (const Score &lhs, const Score &rhs) {
+        bool operator() (const Score &lhs, const Score &rhs) const {
             return lhs < rhs;
         }
     };

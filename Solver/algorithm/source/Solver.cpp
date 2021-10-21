@@ -86,6 +86,7 @@ void Solver::run() {
         output.save(env.solutionPath());
         #if SZX_DEBUG
         output.save(env.solutionPathWithTime());
+        output.saveCutOrder(env.cutOrderPath());
         record();
         #endif
     } else {

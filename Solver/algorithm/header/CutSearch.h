@@ -37,7 +37,7 @@ private:
     void update_sol_cache(UsageRate obj, const Solution &sol);
 private:
     struct UsageRateCmp {
-        bool operator()(const UsageRate &lhs, const UsageRate &rhs) {
+        bool operator()(const UsageRate &lhs, const UsageRate &rhs) const {
             return rhs < lhs;
         }
     };

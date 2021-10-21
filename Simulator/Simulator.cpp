@@ -112,9 +112,8 @@ void Simulator::debug() {
 
 void Simulator::benchmark(int repeat) {
     Task task;
-    task.instSet = "B";
-    //task.timeout = "180";
-    task.timeout = "3600";
+    task.instSet = "A";
+    task.timeout = "180";
     //task.maxIter = "1000000000";
     task.jobNum = "8";
     task.cfgPath = Env::DefaultCfgPath();
@@ -123,8 +122,8 @@ void Simulator::benchmark(int repeat) {
     random_device rd;
     mt19937 rgen(rd());
     vector<int> instList;
-    for (int inst = 1; inst <= 15; ++inst) { instList.push_back(inst); }
-    instList = { 1, 6, 9, 10 };
+    for (int inst = 1; inst <= 10; ++inst) { instList.push_back(inst); }
+    //instList = { 1, 6, 9, 10 };
     for (int i = 0; i < repeat; ++i) {
         //shuffle(instList.begin(), instList.end(), rgen);
         for (auto inst = instList.begin(); inst != instList.end(); ++inst) {

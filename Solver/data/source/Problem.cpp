@@ -105,6 +105,17 @@ void Problem::Output::save(const String &filePath) const {
         ofs << endl;
     }
 }
+void Problem::Output::saveCutOrder(const String& filePath) const {
+    ofstream ofs(filePath);
+
+    ofs << "CUT_ID,PLATE_ID,X_BEGIN,Y_BEGIN,X_END,Y_END" << endl;
+    for (auto n = nodes.begin(); n != nodes.end(); ++n) {
+        ofs << n->id << ',' << n->plateId << ',';
+        if (n->cut % 2) { ofs << n->x + n->width << ',' << n->y << ','; }  // 1-cut/3-cut ×ÝÏòÇÐ¸î
+        else { ofs << n->x << ',' << n->y + n->height << ','; }            // 2-cut/4-cut ºáÏòÇÐ¸î
+        ofs << n->x + n->width << ',' << n->y + n->height << ',' << endl;
+    }
+}
 #pragma endregion Problem::Output
 
 }

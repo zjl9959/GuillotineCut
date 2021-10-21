@@ -52,10 +52,10 @@ public:
         void loadParam() {
             // EXTEND[szx][9]: load from file when provided?
             param.plateNum = 100;
-            param.plateWidth = 6000;
-            param.plateHeight = 3210;
+            param.plateWidth = 3660;
+            param.plateHeight = 2440;
             param.minL1Width = 100;
-            param.maxL1Width = 3500;
+            param.maxL1Width = 3660;
             param.minL2Height = 100;
             param.minWasteWidth = 20;
             param.minWasteHeight = 20;
@@ -94,11 +94,12 @@ public:
 
         enum SlnColumn { PlateId, NodeId, NodeX, NodeY, NodeWidth, NodeHeight, NodeType, CutNum, Parent };
 
-        static constexpr Length MaxWidth = 6000 * 100;
+        static constexpr Length MaxWidth = 3660 * 100;
 
         Output() : totalWidth(MaxWidth) {}
         void load(const String &filePath);
         void save(const String &filePath) const;
+        void saveCutOrder(const String& filePath) const;
 
         Length totalWidth; // objective value.
         List<Node> nodes; // solution vector.

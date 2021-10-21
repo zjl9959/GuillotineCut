@@ -46,6 +46,7 @@ struct Environment {
     static String BatchSuffix() { return "_batch.csv"; }
     static String DefectsSuffix() { return "_defects.csv"; }
     static String SolutionSuffix() { return "_solution.csv"; }
+    static String CutOrderSuffix() { return "_cutorder.csv"; }
 
     static String DefaultInstanceDir() { return "Instance/"; }
     static String DefaultSolutionDir() { return "Solution/"; }
@@ -71,6 +72,7 @@ struct Environment {
     String defectsPath() const { return instName + DefectsSuffix(); }
     String solutionPath() const { return slnPath; }
     String solutionPathWithTime() const { return slnPath + "." + localTime + ".csv"; }
+    String cutOrderPath() const { return slnPath + CutOrderSuffix(); }
 
     String visualizPath() const { return DefaultVisualizationDir() + friendlyInstName() + "." + localTime + ".html"; }
     template<typename T>
