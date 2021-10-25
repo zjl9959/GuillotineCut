@@ -85,6 +85,9 @@ void Problem::Output::load(const String &filePath) {
             atoi(r->at(SlnColumn::CutNum)),
             atoi(r->at(SlnColumn::Parent))
         });
+        if (strcmp(r->at(SlnColumn::Parent), "") == 0) {
+            nodes.back().parent = -1;
+        }
     }
 }
 
@@ -105,15 +108,47 @@ void Problem::Output::save(const String &filePath) const {
         ofs << endl;
     }
 }
-void Problem::Output::saveCutOrder(const String& filePath) const {
-    ofstream ofs(filePath);
 
+void Problem::Output::saveCutOrder(const String& filePath) {
+    ofstream ofs(filePath);
     ofs << "CUT_ID,PLATE_ID,X_BEGIN,Y_BEGIN,X_END,Y_END" << endl;
-    for (auto n = nodes.begin(); n != nodes.end(); ++n) {
-        ofs << n->id << ',' << n->plateId << ',';
-        if (n->cut % 2) { ofs << n->x + n->width << ',' << n->y << ','; }  // 1-cut/3-cut ×ÝÏòÇÐ¸î
-        else { ofs << n->x << ',' << n->y + n->height << ','; }            // 2-cut/4-cut ºáÏòÇÐ¸î
-        ofs << n->x + n->width << ',' << n->y + n->height << ',' << endl;
+
+    // 1. ½¨Ê÷£¬×ø±ê´ÓÐ¡µ½´óÅÅÐò
+    List<ID> roots;
+    sort(nodes.begin(), nodes.end(), [](auto& lhs, auto& rhs) { return lhs.id < rhs.id; });
+    for (auto& node : nodes) {
+        if (node.parent < 0) {
+            roots.push_back(node.id);
+            continue;
+        }
+        nodes[node.parent].children.push_back(node.id);
+    }
+    for (auto& node : nodes) {
+        sort(node.children.begin(), node.children.end(), [this](auto& lhs, auto& rhs) {
+            if (nodes[lhs].x == nodes[rhs].x) { return nodes[lhs].y < nodes[rhs].y; }
+            return nodes[lhs].x < nodes[rhs].x;
+        });
+    }
+
+    // 2. BFS
+    queue<ID> q;
+    for (ID root : roots) {
+        q.push(root);
+        Length plateWidth = nodes[root].width, plateHeight = nodes[root].height;
+        while (!q.empty()) {
+            int sz = q.size();
+            while (sz--) {
+                auto& node = nodes[q.front()];
+                q.pop();
+                for (ID child : node.children) { q.push(child); }
+                if (sz && node.x + node.width != plateWidth && node.y + node.height != plateHeight) {
+                    ofs << node.id << ',' << node.plateId << ',';
+                    if (node.cut % 2) { ofs << node.x + node.width << ',' << node.y << ','; }  // 1-cut/3-cut ×ÝÏòÇÐ¸î
+                    else { ofs << node.x << ',' << node.y + node.height << ','; }              // 2-cut/4-cut ºáÏòÇÐ¸î
+                    ofs << node.x + node.width << ',' << node.y + node.height << ',' << endl;
+                }
+            }
+        }
     }
 }
 #pragma endregion Problem::Output

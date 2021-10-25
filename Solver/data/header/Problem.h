@@ -87,6 +87,7 @@ public:
             Type type; // Item.id or Type.
             int cut; // 0 for plate. 1, 2, 3, 4 for real cuts.
             ID parent;
+            List<ID> children;
             Node() {}
             Node(ID plateID, ID nodeID, Coord pos_x, Coord pos_y, Length w, Length h, Type node_type, int cut_depth, ID parentID) :
                 plateId(plateID), id(nodeID), x(pos_x), y(pos_y), width(w), height(h), type(node_type), cut(cut_depth), parent(parentID) {}
@@ -99,7 +100,7 @@ public:
         Output() : totalWidth(MaxWidth) {}
         void load(const String &filePath);
         void save(const String &filePath) const;
-        void saveCutOrder(const String& filePath) const;
+        void saveCutOrder(const String& filePath);
 
         Length totalWidth; // objective value.
         List<Node> nodes; // solution vector.
