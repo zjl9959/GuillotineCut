@@ -130,26 +130,27 @@ void Problem::Output::saveCutOrder(const String& filePath) {
         });
     }
 
-    // 2. BFS
-    queue<ID> q;
-    for (ID root : roots) {
-        q.push(root);
-        Length plateWidth = nodes[root].width, plateHeight = nodes[root].height;
-        while (!q.empty()) {
-            int sz = q.size();
-            while (sz--) {
-                auto& node = nodes[q.front()];
-                q.pop();
-                for (ID child : node.children) { q.push(child); }
-                if (sz && node.x + node.width != plateWidth && node.y + node.height != plateHeight) {
-                    ofs << node.id << ',' << node.plateId << ',';
-                    if (node.cut % 2) { ofs << node.x + node.width << ',' << node.y << ','; }  // 1-cut/3-cut 纵向切割
-                    else { ofs << node.x << ',' << node.y + node.height << ','; }              // 2-cut/4-cut 横向切割
-                    ofs << node.x + node.width << ',' << node.y + node.height << ',' << endl;
-                }
-            }
-        }
-    }
+	// 2. BFS
+	ID cutId = 0;
+	queue<ID> q;
+	for (ID root : roots) {
+		q.push(root);
+		Length plateWidth = nodes[root].width, plateHeight = nodes[root].height;
+		while (!q.empty()) {
+			auto& node = nodes[q.front()];
+			q.pop();
+			for (ID child : node.children) { q.push(child); }
+			if (q.empty() || (!q.empty() && node.parent != nodes[q.front()].parent) ||
+				(node.cut % 2 != 0 && node.x + node.width == plateWidth) ||
+				(node.cut % 2 == 0 && node.y + node.height == plateHeight)) {
+				continue;
+			}  //  最后一个孩子 || 与原料边界重合不输出
+			ofs << ++cutId << ',' << node.plateId << ',';
+			if (node.cut % 2) { ofs << node.x + node.width << ',' << node.y << ','; }  // 1-cut/3-cut 纵向切割
+			else { ofs << node.x << ',' << node.y + node.height << ','; }              // 2-cut/4-cut 横向切割
+			ofs << node.x + node.width << ',' << node.y + node.height << ',' << endl;
+		}
+	}
 }
 #pragma endregion Problem::Output
 

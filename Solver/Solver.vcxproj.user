@@ -11,12 +11,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerWorkingDirectory>$(SolutionDir)Deploy</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>A1_solution_7200s_ok.csv A1_cut.csv</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>A1_solution_97.71%.csv A1_cut.csv</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>$(SolutionDir)Deploy</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>A1_solution_7200s_ok.csv A1_cut.csv</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>A1_solution_97.71%.csv A1_cut.csv</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup>
     <ShowAllFiles>true</ShowAllFiles>
