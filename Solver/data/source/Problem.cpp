@@ -130,27 +130,60 @@ void Problem::Output::saveCutOrder(const String& filePath) {
         });
     }
 
-	// 2. BFS
-	ID cutId = 0;
-	queue<ID> q;
-	for (ID root : roots) {
-		q.push(root);
-		Length plateWidth = nodes[root].width, plateHeight = nodes[root].height;
-		while (!q.empty()) {
-			auto& node = nodes[q.front()];
-			q.pop();
-			for (ID child : node.children) { q.push(child); }
-			if (q.empty() || (!q.empty() && node.parent != nodes[q.front()].parent) ||
-				(node.cut % 2 != 0 && node.x + node.width == plateWidth) ||
-				(node.cut % 2 == 0 && node.y + node.height == plateHeight)) {
-				continue;
-			}  //  最后一个孩子 || 与原料边界重合不输出
-			ofs << ++cutId << ',' << node.plateId << ',';
-			if (node.cut % 2) { ofs << node.x + node.width << ',' << node.y << ','; }  // 1-cut/3-cut 纵向切割
-			else { ofs << node.x << ',' << node.y + node.height << ','; }              // 2-cut/4-cut 横向切割
-			ofs << node.x + node.width << ',' << node.y + node.height << ',' << endl;
-		}
-	}
+    // 2. BFS
+    using Point = pair<Coord, Coord>;
+    using Segment = pair<Point, Point>;
+    vector<Segment> segments;
+    vector<ID> plates;
+    ID cutId = 0;
+    queue<ID> q;
+    for (ID root : roots) {
+        q.push(root);
+        Length plateWidth = nodes[root].width, plateHeight = nodes[root].height;
+        while (!q.empty()) {
+            auto& node = nodes[q.front()];
+            q.pop();
+            for (ID child : node.children) { q.push(child); }
+            if (q.empty() || (!q.empty() && node.parent != nodes[q.front()].parent) ||
+                (node.cut % 2 != 0 && node.x + node.width == plateWidth) ||
+                (node.cut % 2 == 0 && node.y + node.height == plateHeight)) {
+                continue;
+            }  //  最后一个孩子 || 与原料边界重合不输出
+
+            //ofs << ++cutId << ',' << node.plateId << ',';
+            //if (node.cut % 2) { ofs << node.x + node.width << ',' << node.y << ','; }  // 1-cut/3-cut 纵向切割
+            //else { ofs << node.x << ',' << node.y + node.height << ','; }              // 2-cut/4-cut 横向切割
+            //ofs << node.x + node.width << ',' << node.y + node.height << endl;
+
+            Point p1 = node.cut % 2 ? make_pair(node.x + node.width, node.y) : make_pair(node.x, node.y + node.height);
+            Point p2 = make_pair(node.x + node.width, node.y + node.height);
+            bool flag = false;
+            for (auto& seg : segments) {
+                if (seg.first.first == seg.second.first && p1.first == p2.first ||      // 1-cut/3-cut x坐标相同
+                    seg.first.second == seg.second.second && p1.second == p2.second) {  // 2-cut/4-cut y坐标相同
+                    if (seg.first == p2) {
+                        seg.first = p1;
+                        flag = true;
+                    }
+                    if (seg.second == p1) {
+                        seg.second = p2;
+                        flag = true;
+                    }
+                }
+                if (flag) { break; }
+            }
+            if (!flag) {
+                segments.push_back(make_pair(p1, p2));
+                plates.push_back(node.plateId);
+            }
+        }
+    }
+
+    for (int i = 0; i < segments.size(); ++i) {
+        ofs << ++cutId << ',' << plates[i] << ','
+            << segments[i].first.first << ',' << segments[i].first.second << ','
+            << segments[i].second.first << ',' << segments[i].second.second << endl;
+    }
 }
 #pragma endregion Problem::Output
 
